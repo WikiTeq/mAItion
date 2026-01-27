@@ -1,0 +1,12 @@
+{
+	"id": "ragofalltrades",
+	"name": "ragofalltrades",
+	"type": "filter",
+	"content": "",
+	"meta": {
+		"description": "",
+		"manifest": {}
+	},
+	"is_active": true,
+	"is_global": true
+}

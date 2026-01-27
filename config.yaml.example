@@ -1,0 +1,62 @@
+sources:
+  - type: "s3"
+    name: "account1"
+    config:
+      endpoint: "${S3_ACCOUNT1_ENDPOINT}"
+      access_key: "${S3_ACCOUNT1_ACCESS_KEY}"
+      secret_key: "${S3_ACCOUNT1_SECRET_KEY}"
+      region: "${S3_ACCOUNT1_REGION}"
+      use_ssl: "${S3_ACCOUNT1_USE_SSL}"
+      buckets: "${S3_ACCOUNT1_BUCKETS}" # comma-separated string or list
+      schedules: "${S3_ACCOUNT1_SCHEDULES}"
+
+  #- type: "s3"
+  #  name: "account2"
+  #  config:
+  #    endpoint: "${S3_ACCOUNT2_ENDPOINT}"
+  #    access_key: "${S3_ACCOUNT2_ACCESS_KEY}"
+  #    secret_key: "${S3_ACCOUNT2_SECRET_KEY}"
+  #    region: "${S3_ACCOUNT2_REGION}"
+  #    use_ssl: "${S3_ACCOUNT2_USE_SSL}"
+  #    buckets: "${S3_ACCOUNT2_BUCKETS}"
+  #    schedules: "${S3_ACCOUNT2_SCHEDULES}"
+
+  #- type: "mediawiki1"
+  #  name: "wiki1"
+  #  config:
+  #    api_url: "${MEDIAWIKI1_API_URL}"
+  #    request_delay: 0.1
+
+  #- type: "mediawiki2"
+  #  name: "wiki2"
+  #  config:
+  #    api_url: "${MEDIAWIKI2_API_URL}"
+  #    request_delay: 0.1
+
+  #- type: "serpapi"
+  #  name: "serp_ingestion"
+  #  config:
+  #    api_key: "${SERPAPI_KEY}"
+  #    queries: "${SERPAPI_QUERIES}"
+  #    schedules: "${SERPAPI_SCHEDULES}"
+
+embedding:
+  # can be `local` or `openrouter`/`openai`
+  provider: local
+  model_config: sentence-transformers/all-mpnet-base-v2
+  embedding_dim: 768
+
+inference:
+  provider: openrouter
+  model_config: openai/gpt-oss-20b:free
+
+vector_store:
+  table_name: embeddings
+  hybrid_search: true
+  chunk_size: 512
+  chunk_overlap: 50
+  hnsw:
+    hnsw_m: 16
+    hnsw_ef_construction: 64
+    hnsw_ef_search: 40
+    hnsw_dist_method: vector_cosine_ops

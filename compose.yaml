@@ -1,0 +1,154 @@
+services:
+
+  # OWUI front-end
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:0.6.5
+    ports:
+      - "${HTTP_WEB_PORT:-3000}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    volumes:
+      - open-webui:/app/backend/data
+      - open-webui-model-cache:/app/backend/data/cache/embedding/models
+      - open-webui-cache:/root/.cache
+      - ./functions/function.py:/etc/function.py
+      - ./functions/function.json:/etc/function.json
+      - ./helpers/entrypoint.sh:/custom-entrypoint.sh
+      - ./helpers/healthz.py:/etc/healthz.py
+      - ./patches:/etc/patches
+      - ./static:/app/build/static:ro
+      - ./static/favicon.png:/app/build/favicon.png:ro
+    entrypoint: /custom-entrypoint.sh
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    # override the same variables from env_file
+    environment:
+      # see https://docs.openwebui.com/tutorials/integrations/redis#multi-worker-and-multi-instance-deployments
+      - REDIS_URL=redis://redis:6379/1
+      - ENABLE_WEBSOCKET_SUPPORT=true
+      - WEBSOCKET_MANAGER=redis
+      - WEBSOCKET_REDIS_URL=redis://redis:6379/2
+      - REDIS_KEY_PREFIX="open-webui"
+      - DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/$POSTGRES_DB
+      - DATABASE_ENABLE_SESSION_SHARING="True"
+      - HEALTHZ_PORT=8081
+      - HEALTHZ_READY_FILE=/tmp/healthz_ready
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:${HEALTHZ_PORT:-8081}/healthz || exit 1" ]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 5s
+
+  # database
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    env_file:
+      - .env.rag
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./helpers/01-openwebui-init.sql:/docker-entrypoint-initdb.d/01-openwebui-init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1" ]
+      interval: 5s
+      retries: 10
+      timeout: 5s
+      start_period: 5s
+
+  # redis
+  redis:
+    image: redis:7
+    env_file:
+      - .env.rag
+    volumes:
+      - redis_data:/data
+    command: [ "redis-server", "--appendonly", "yes" ]
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      retries: 5
+      timeout: 5s
+      start_period: 5s
+
+  # rag-of-all-trades API
+  api:
+    image: ghcr.io/wikiteq/rag-of-all-trades:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.rag
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - api-modesl-cache:/root/.cache
+    command: >-
+      sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1" ]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 10s
+
+  # rag-of-all-trades WORKER
+  celery_worker:
+    image: ghcr.io/wikiteq/rag-of-all-trades:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.rag
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    command: >-
+      bash -c "celery -A celery_app worker
+      --pool=prefork --concurrency=${CELERY_CONCURRENCY:-2}
+      --max-tasks-per-child=${MAX_TASK_CHILD:-50}
+      --max-memory-per-child=${MAX_MEMORY_PER_CHILD:-300000}
+      --loglevel=info
+      -Q celery
+      -O fair"
+    restart: unless-stopped
+
+  # rag-of-all-trades BEAT
+  celery_beat:
+    image: ghcr.io/wikiteq/rag-of-all-trades:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.rag
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    command: >-
+      bash -c "celery -A celery_app beat --loglevel=info"
+    restart: unless-stopped
+
+volumes:
+  open-webui:
+  open-webui-cache:
+  open-webui-model-cache:
+  postgres_data:
+  redis_data:
+  api-modesl-cache:

@@ -1,0 +1,338 @@
+diff --git backend/open_webui/__init__.py backend/open_webui/__init__.py
+index ff386957c..71da8b6e0 100644
+--- backend/open_webui/__init__.py
++++ backend/open_webui/__init__.py
+@@ -17,7 +17,7 @@ def version_callback(value: bool):
+     if value:
+         from open_webui.env import VERSION
+ 
+-        typer.echo(f"Open WebUI version: {VERSION}")
++        typer.echo(f"mAItion version: {VERSION}")
+         raise typer.Exit()
+ 
+ 
+diff --git backend/open_webui/config.py backend/open_webui/config.py
+index 3b40977f2..22b17bcea 100644
+--- backend/open_webui/config.py
++++ backend/open_webui/config.py
+@@ -822,7 +822,7 @@ if OLLAMA_BASE_URL == "" and OLLAMA_API_BASE_URL != "":
+ if ENV == "prod":
+     if OLLAMA_BASE_URL == "/ollama" and not K8S_FLAG:
+         if USE_OLLAMA_DOCKER.lower() == "true":
+-            # if you use all-in-one docker container (Open WebUI + Ollama)
++            # if you use all-in-one docker container (mAItion + Ollama)
+             # with the docker build arg USE_OLLAMA=true (--build-arg="USE_OLLAMA=true") this only works with http://localhost:11434
+             OLLAMA_BASE_URL = "http://localhost:11434"
+         else:
+diff --git backend/open_webui/env.py backend/open_webui/env.py
+index c9d71a4a0..0dcbec2a6 100644
+--- backend/open_webui/env.py
++++ backend/open_webui/env.py
+@@ -105,11 +105,9 @@ for source in log_sources:
+ 
+ log.setLevel(SRC_LOG_LEVELS["CONFIG"])
+ 
+-WEBUI_NAME = os.environ.get("WEBUI_NAME", "Open WebUI")
+-if WEBUI_NAME != "Open WebUI":
+-    WEBUI_NAME += " (Open WebUI)"
++WEBUI_NAME = os.environ.get("WEBUI_NAME", "mAItion")
+ 
+-WEBUI_FAVICON_URL = "https://openwebui.com/favicon.png"
++WEBUI_FAVICON_URL = "/favicon.png"
+ 
+ TRUSTED_SIGNATURE_KEY = os.environ.get("TRUSTED_SIGNATURE_KEY", "")
+ 
+diff --git backend/open_webui/main.py backend/open_webui/main.py
+index 56ea17fa1..8d4db75ca 100644
+--- backend/open_webui/main.py
++++ backend/open_webui/main.py
+@@ -408,17 +408,16 @@ class SPAStaticFiles(StaticFiles):
+ 
+ print(
+     rf"""
+- ██████╗ ██████╗ ███████╗███╗   ██╗    ██╗    ██╗███████╗██████╗ ██╗   ██╗██╗
+-██╔═══██╗██╔══██╗██╔════╝████╗  ██║    ██║    ██║██╔════╝██╔══██╗██║   ██║██║
+-██║   ██║██████╔╝█████╗  ██╔██╗ ██║    ██║ █╗ ██║█████╗  ██████╔╝██║   ██║██║
+-██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║    ██║███╗██║██╔══╝  ██╔══██╗██║   ██║██║
+-╚██████╔╝██║     ███████╗██║ ╚████║    ╚███╔███╔╝███████╗██████╔╝╚██████╔╝██║
+- ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝     ╚══╝╚══╝ ╚══════╝╚═════╝  ╚═════╝ ╚═╝
+-
++███╗   ███╗ █████╗ ██╗████████╗██╗ ██████╗ ███╗   ██╗
++████╗ ████║██╔══██╗██║╚══██╔══╝██║██╔═══██╗████╗  ██║
++██╔████╔██║███████║██║   ██║   ██║██║   ██║██╔██╗ ██║
++██║╚██╔╝██║██╔══██║██║   ██║   ██║██║   ██║██║╚██╗██║
++██║ ╚═╝ ██║██║  ██║██║   ██║   ██║╚██████╔╝██║ ╚████║
++╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+ 
+ v{VERSION} - building the best open-source AI user interface.
+ {f"Commit: {WEBUI_BUILD_HASH}" if WEBUI_BUILD_HASH != "dev-build" else ""}
+-https://github.com/open-webui/open-webui
++https://github.com/WikiTeq/mAItion
+ """
+ )
+ 
+@@ -437,7 +436,7 @@ async def lifespan(app: FastAPI):
+ 
+ 
+ app = FastAPI(
+-    title="Open WebUI",
++    title="mAItion",
+     docs_url="/docs" if ENV == "dev" else None,
+     openapi_url="/openapi.json" if ENV == "dev" else None,
+     redoc_url=None,
+@@ -1370,6 +1369,10 @@ async def get_app_version():
+ 
+ @app.get("/api/version/updates")
+ async def get_app_latest_release_version(user=Depends(get_verified_user)):
++
++    # configuration via ENV is not supported in 0.6.5
++    return {"current": VERSION, "latest": VERSION}
++
+     if OFFLINE_MODE:
+         log.debug(
+             f"Offline mode is enabled, returning current version as latest version"
+@@ -1435,7 +1438,7 @@ async def get_manifest_json():
+         return {
+             "name": app.state.WEBUI_NAME,
+             "short_name": app.state.WEBUI_NAME,
+-            "description": "Open WebUI is an open, extensible, user-friendly interface for AI that adapts to your workflow.",
++            "description": "mAItion",
+             "start_url": "/",
+             "display": "standalone",
+             "background_color": "#343541",
+diff --git backend/open_webui/retrieval/web/searxng.py backend/open_webui/retrieval/web/searxng.py
+index 15e3c098a..68585a7e2 100644
+--- backend/open_webui/retrieval/web/searxng.py
++++ backend/open_webui/retrieval/web/searxng.py
+@@ -67,7 +67,7 @@ def search_searxng(
+     response = requests.get(
+         query_url,
+         headers={
+-            "User-Agent": "Open WebUI (https://github.com/open-webui/open-webui) RAG Bot",
++            "User-Agent": "mAItion (https://github.com/WikiTeq/mAItion) RAG Bot",
+             "Accept": "text/html",
+             "Accept-Encoding": "gzip, deflate",
+             "Accept-Language": "en-US,en;q=0.5",
+diff --git backend/open_webui/routers/audio.py backend/open_webui/routers/audio.py
+index da51d1ecf..96167313d 100644
+--- backend/open_webui/routers/audio.py
++++ backend/open_webui/routers/audio.py
+@@ -331,7 +331,7 @@ async def speech(request: Request, user=Depends(get_verified_user)):
+ 
+             raise HTTPException(
+                 status_code=getattr(r, "status", 500) if r else 500,
+-                detail=detail if detail else "Open WebUI: Server Connection Error",
++                detail=detail if detail else "mAItion: Server Connection Error",
+             )
+ 
+     elif request.app.state.config.TTS_ENGINE == "elevenlabs":
+@@ -385,7 +385,7 @@ async def speech(request: Request, user=Depends(get_verified_user)):
+ 
+             raise HTTPException(
+                 status_code=getattr(r, "status", 500) if r else 500,
+-                detail=detail if detail else "Open WebUI: Server Connection Error",
++                detail=detail if detail else "mAItion: Server Connection Error",
+             )
+ 
+     elif request.app.state.config.TTS_ENGINE == "azure":
+@@ -441,7 +441,7 @@ async def speech(request: Request, user=Depends(get_verified_user)):
+ 
+             raise HTTPException(
+                 status_code=getattr(r, "status", 500) if r else 500,
+-                detail=detail if detail else "Open WebUI: Server Connection Error",
++                detail=detail if detail else "mAItion: Server Connection Error",
+             )
+ 
+     elif request.app.state.config.TTS_ENGINE == "transformers":
+@@ -560,7 +560,7 @@ def transcribe(request: Request, file_path):
+                 except Exception:
+                     detail = f"External: {e}"
+ 
+-            raise Exception(detail if detail else "Open WebUI: Server Connection Error")
++            raise Exception(detail if detail else "mAItion: Server Connection Error")
+ 
+     elif request.app.state.config.STT_ENGINE == "deepgram":
+         try:
+@@ -623,7 +623,7 @@ def transcribe(request: Request, file_path):
+                         detail = f"External: {res['error'].get('message', '')}"
+                 except Exception:
+                     detail = f"External: {e}"
+-            raise Exception(detail if detail else "Open WebUI: Server Connection Error")
++            raise Exception(detail if detail else "mAItion: Server Connection Error")
+ 
+     elif request.app.state.config.STT_ENGINE == "azure":
+         # Check file exists and size
+@@ -735,7 +735,7 @@ def transcribe(request: Request, file_path):
+ 
+             raise HTTPException(
+                 status_code=getattr(r, "status_code", 500) if r else 500,
+-                detail=detail if detail else "Open WebUI: Server Connection Error",
++                detail=detail if detail else "mAItion: Server Connection Error",
+             )
+ 
+ 
+diff --git backend/open_webui/routers/ollama.py backend/open_webui/routers/ollama.py
+index 775cd0446..e5e09c48e 100644
+--- backend/open_webui/routers/ollama.py
++++ backend/open_webui/routers/ollama.py
+@@ -176,7 +176,7 @@ async def send_post_request(
+ 
+         raise HTTPException(
+             status_code=r.status if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+ 
+ 
+@@ -248,7 +248,7 @@ async def verify_connection(
+         except aiohttp.ClientError as e:
+             log.exception(f"Client error: {str(e)}")
+             raise HTTPException(
+-                status_code=500, detail="Open WebUI: Server Connection Error"
++                status_code=500, detail="mAItion: Server Connection Error"
+             )
+         except Exception as e:
+             log.exception(f"Unexpected error: {e}")
+@@ -450,7 +450,7 @@ async def get_ollama_tags(
+ 
+             raise HTTPException(
+                 status_code=r.status_code if r else 500,
+-                detail=detail if detail else "Open WebUI: Server Connection Error",
++                detail=detail if detail else "mAItion: Server Connection Error",
+             )
+ 
+     if user.role == "user" and not BYPASS_MODEL_ACCESS_CONTROL:
+@@ -526,7 +526,7 @@ async def get_ollama_versions(request: Request, url_idx: Optional[int] = None):
+ 
+                 raise HTTPException(
+                     status_code=r.status_code if r else 500,
+-                    detail=detail if detail else "Open WebUI: Server Connection Error",
++                    detail=detail if detail else "mAItion: Server Connection Error",
+                 )
+     else:
+         return {"version": False}
+@@ -714,7 +714,7 @@ async def copy_model(
+ 
+         raise HTTPException(
+             status_code=r.status_code if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+ 
+ 
+@@ -779,7 +779,7 @@ async def delete_model(
+ 
+         raise HTTPException(
+             status_code=r.status_code if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+ 
+ 
+@@ -838,7 +838,7 @@ async def show_model_info(
+ 
+         raise HTTPException(
+             status_code=r.status_code if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+ 
+ 
+@@ -918,7 +918,7 @@ async def embed(
+ 
+         raise HTTPException(
+             status_code=r.status_code if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+ 
+ 
+@@ -997,7 +997,7 @@ async def embeddings(
+ 
+         raise HTTPException(
+             status_code=r.status_code if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+ 
+ 
+@@ -1411,7 +1411,7 @@ async def get_openai_models(
+             ]
+         except Exception as e:
+             log.exception(e)
+-            error_detail = "Open WebUI: Server Connection Error"
++            error_detail = "mAItion: Server Connection Error"
+             if r is not None:
+                 try:
+                     res = r.json()
+diff --git backend/open_webui/routers/openai.py backend/open_webui/routers/openai.py
+index 0310014cf..97a891dff 100644
+--- backend/open_webui/routers/openai.py
++++ backend/open_webui/routers/openai.py
+@@ -216,8 +216,8 @@ async def speech(request: Request, user=Depends(get_verified_user)):
+                     "Authorization": f"Bearer {request.app.state.config.OPENAI_API_KEYS[idx]}",
+                     **(
+                         {
+-                            "HTTP-Referer": "https://openwebui.com/",
+-                            "X-Title": "Open WebUI",
++                            "HTTP-Referer": "https://github.com/WikiTeq/mAItion",
++                            "X-Title": "mAItion",
+                         }
+                         if "openrouter.ai" in url
+                         else {}
+@@ -263,7 +263,7 @@ async def speech(request: Request, user=Depends(get_verified_user)):
+ 
+             raise HTTPException(
+                 status_code=r.status_code if r else 500,
+-                detail=detail if detail else "Open WebUI: Server Connection Error",
++                detail=detail if detail else "mAItion: Server Connection Error",
+             )
+ 
+     except ValueError:
+@@ -516,7 +516,7 @@ async def get_models(
+                 # ClientError covers all aiohttp requests issues
+                 log.exception(f"Client error: {str(e)}")
+                 raise HTTPException(
+-                    status_code=500, detail="Open WebUI: Server Connection Error"
++                    status_code=500, detail="mAItion: Server Connection Error"
+                 )
+             except Exception as e:
+                 log.exception(f"Unexpected error: {e}")
+@@ -577,7 +577,7 @@ async def verify_connection(
+             # ClientError covers all aiohttp requests issues
+             log.exception(f"Client error: {str(e)}")
+             raise HTTPException(
+-                status_code=500, detail="Open WebUI: Server Connection Error"
++                status_code=500, detail="mAItion: Server Connection Error"
+             )
+         except Exception as e:
+             log.exception(f"Unexpected error: {e}")
+@@ -706,8 +706,8 @@ async def generate_chat_completion(
+                 "Content-Type": "application/json",
+                 **(
+                     {
+-                        "HTTP-Referer": "https://openwebui.com/",
+-                        "X-Title": "Open WebUI",
++                        "HTTP-Referer": "https://github.com/WikiTeq/mAItion",
++                        "X-Title": "mAItion",
+                     }
+                     if "openrouter.ai" in url
+                     else {}
+@@ -757,7 +757,7 @@ async def generate_chat_completion(
+ 
+         raise HTTPException(
+             status_code=r.status if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+     finally:
+         if not streaming and session:
+@@ -834,7 +834,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
+                 detail = f"External: {e}"
+         raise HTTPException(
+             status_code=r.status if r else 500,
+-            detail=detail if detail else "Open WebUI: Server Connection Error",
++            detail=detail if detail else "mAItion: Server Connection Error",
+         )
+     finally:
+         if not streaming and session:

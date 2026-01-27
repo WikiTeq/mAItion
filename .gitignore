@@ -1,0 +1,6 @@
+.env
+.idea/
+.env.*
+config.yaml
+!.env.*.example
+model-cache/
