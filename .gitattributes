@@ -1,0 +1,18 @@
+# Text
+*.example text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.patch text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.sql text eol=lf
+*.svg text eol=lf
+*.webmanifest text eol=lf
+*.yaml text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+LICENSE text eol=lf
+
+# Binary
+*.ico binary
+*.png binary
