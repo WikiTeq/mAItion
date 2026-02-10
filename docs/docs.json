@@ -1,7 +1,7 @@
 {
 	"$schema": "https://mintlify.com/docs.json",
 	"theme": "maple",
-	"name": "Maition",
+	"name": "mAItion",
 	"colors": {
 		"primary": "#ff0000"
 	},
