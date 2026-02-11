@@ -9,6 +9,9 @@
 	"icons": {
 		"library": "fontawesome"
 	},
+	"api": {
+		"openapi": "openapi.yaml"
+	},
 	"navbar": {
 		"links": [
 			{
@@ -22,12 +25,21 @@
 	"navigation": {
 		"tabs": [
 			{
-				"tab": "API Reference",
+				"tab": "Documentation",
+				"icon": "code",
+				"groups": [
+					{
+						"group": "Getting started",
+						"pages": [
+							"index"
+						]
+					}
+				]
+			},
+			{
+				"tab": "API reference",
 				"openapi": "openapi.yaml"
 			}
-		],
-		"pages": [
-			"index"
 		]
 	}
 }

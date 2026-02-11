@@ -15,20 +15,8 @@ paths:
           content:
             application/json:
               schema: {}
-  /:
-    get:
-      summary: Read Root
-      operationId: read_root__get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
   /api/v1/query/:
     post:
-      tags:
-      - Applications APIs
       summary: Query Endpoint
       description: Retrieve top-k chunks from vector store without LLM answer.
       operationId: query_endpoint_api_v1_query__post
@@ -53,8 +41,6 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/rephrase/:
     post:
-      tags:
-      - Applications APIs
       summary: Query Endpoint
       description: Rephrase Node for by default 5 chunks using LLM.
       operationId: query_endpoint_api_v1_rephrase__post
