@@ -10,7 +10,10 @@
 		"library": "fontawesome"
 	},
 	"api": {
-		"openapi": "openapi.yaml"
+		"openapi": "openapi.yaml",
+		"playground": {
+			"display": "none"
+		}
 	},
 	"navbar": {
 		"links": [
