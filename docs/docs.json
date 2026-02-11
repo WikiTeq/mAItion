@@ -20,6 +20,12 @@
 		]
 	},
 	"navigation": {
+		"tabs": [
+			{
+				"tab": "API Reference",
+				"openapi": "openapi.yaml"
+			}
+		],
 		"pages": [
 			"index"
 		]

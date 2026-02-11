@@ -1,0 +1,212 @@
+openapi: 3.1.0
+info:
+  title: Rag Of All Trades
+  description: RAG Service
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Combined health check for FastAPI, vector store, and Celery.
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /:
+    get:
+      summary: Read Root
+      operationId: read_root__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/query/:
+    post:
+      tags:
+      - Applications APIs
+      summary: Query Endpoint
+      description: Retrieve top-k chunks from vector store without LLM answer.
+      operationId: query_endpoint_api_v1_query__post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api__v1__chunk_retrieval__schema__QueryRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api__v1__chunk_retrieval__schema__QueryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rephrase/:
+    post:
+      tags:
+      - Applications APIs
+      summary: Query Endpoint
+      description: Rephrase Node for by default 5 chunks using LLM.
+      operationId: query_endpoint_api_v1_rephrase__post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/api__v1__rephrase_retrieval__schema__QueryRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api__v1__rephrase_retrieval__schema__QueryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    api__v1__chunk_retrieval__schema__QueryRequest:
+      properties:
+        query:
+          type: string
+          title: Query
+        top_k:
+          type: integer
+          title: Top K
+          default: 5
+        metadata_filters:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Metadata Filters
+      type: object
+      required:
+      - query
+      title: QueryRequest
+    api__v1__chunk_retrieval__schema__QueryResponse:
+      properties:
+        references:
+          items:
+            $ref: '#/components/schemas/api__v1__rephrase_retrieval__schema__SourceReference'
+          type: array
+          title: References
+        raw:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Raw
+      type: object
+      required:
+      - references
+      title: QueryResponse
+    api__v1__rephrase_retrieval__schema__QueryRequest:
+      properties:
+        query:
+          type: string
+          title: Query
+      type: object
+      required:
+      - query
+      title: QueryRequest
+    api__v1__rephrase_retrieval__schema__QueryResponse:
+      properties:
+        answer:
+          type: string
+          title: Answer
+        references:
+          items:
+            $ref: '#/components/schemas/api__v1__rephrase_retrieval__schema__SourceReference'
+          type: array
+          title: References
+      type: object
+      required:
+      - answer
+      - references
+      title: QueryResponse
+    api__v1__rephrase_retrieval__schema__SourceReference:
+      properties:
+        source_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Name
+        source_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Type
+        url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Url
+        score:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Score
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Text
+        extras:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Extras
+      type: object
+      title: SourceReference
