@@ -1,0 +1,11 @@
+services:
+  mint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/docs
+    working_dir: /docs
+    command: mint dev --port 3333
+    ports:
+      - "3333:3333"
