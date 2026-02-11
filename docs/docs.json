@@ -2,8 +2,26 @@
 	"$schema": "https://mintlify.com/docs.json",
 	"theme": "maple",
 	"name": "mAItion",
+	"description": "mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs, allowing you to chat, search and interact with your data through a slick chat interface.",
 	"colors": {
 		"primary": "#ff0000"
 	},
-	"navigation": {}
+	"icons": {
+		"library": "fontawesome"
+	},
+	"navbar": {
+		"links": [
+			{
+				"type": "github",
+				"label": "GitHub",
+				"href": "https://github.com/WikiTeq/mAItion",
+				"icon": "github"
+			}
+		]
+	},
+	"navigation": {
+		"pages": [
+			"index"
+		]
+	}
 }
