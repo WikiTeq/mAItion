@@ -1,0 +1,58 @@
+---
+title: "FAQ"
+description: "Frequently asked questions about mAItion setup, connectors, ingestion, and runtime behavior."
+keywords:
+  - mAItion
+  - FAQ
+  - troubleshooting
+  - setup
+---
+
+## What is mAItion?
+
+mAItion is an AI knowledge platform that ingests data from connectors and lets you chat with that data.
+
+## Do I need OpenAI or OpenRouter to start?
+
+Not for basic ingestion and retrieval. For rephrase/chat model calls, configure provider keys in env files.
+
+## Why do I not see my documents in answers yet?
+
+Most common causes:
+
+- connector is not configured
+- ingestion schedule did not run yet
+- source credentials are wrong
+
+Check connector env vars, `config.yaml`, and service health with `docker compose ps`.
+
+## How often does data refresh?
+
+Per connector schedule. Configure schedule env vars (in seconds), for example:
+
+- `S3_ACCOUNT1_SCHEDULES`
+- `MEDIAWIKI1_SCHEDULES`
+- `SERPAPI1_SCHEDULES`
+
+## Can I use multiple connectors at once?
+
+Yes. You can enable multiple source types and multiple instances of the same type in `config.yaml`.
+
+## Can I use multiple S3 accounts or buckets?
+
+Yes. Add additional source entries and matching env vars (`S3_ACCOUNT2_*`, `S3_ACCOUNT3_*`, etc). You
+can also configure individual connectors to use different buckets to keep provenance separate.
+
+## What is the difference between frontend and backend env files?
+
+- `.env.openwebui.example`: Frontend runtime and admin bootstrap settings
+- `.env.rag.example`: RAG backend API/workers, connectors, rate limits, provider config
+
+## Is `ENABLE_SIGNUP` required?
+
+Keep `ENABLE_SIGNUP=True` on first start for admin auto-provisioning, then disable later for single-user/private mode.
+
+## How can I improve answer quality?
+
+- Keep sources fresh (shorter schedules)
+- Use reliable embedding and inference models
