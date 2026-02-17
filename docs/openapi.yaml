@@ -41,7 +41,7 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/rephrase/:
     post:
-      summary: Query Endpoint
+      summary: Rephrase Endpoint
       description: Rephrase Node for by default 5 chunks using LLM.
       operationId: query_endpoint_api_v1_rephrase__post
       requestBody:
