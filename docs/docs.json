@@ -37,6 +37,12 @@
 							"index",
 							"quickstart"
 						]
+					},
+					{
+						"group": "Connectors",
+						"pages": [
+							"s3-connector"
+						]
 					}
 				]
 			},

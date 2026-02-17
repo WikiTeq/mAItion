@@ -1,0 +1,43 @@
+---
+title: "S3 Connector"
+---
+
+Use S3 Connector to ingest documents from S3-compatible object storage into mAItion knowledge base.
+
+## What It Does
+
+- reads files from one or more buckets
+- converts content to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `S3_ACCOUNT1_ENDPOINT`: S3 API endpoint URL
+- `S3_ACCOUNT1_ACCESS_KEY`: access key ID
+- `S3_ACCOUNT1_SECRET_KEY`: secret key
+- `S3_ACCOUNT1_REGION`: bucket region
+- `S3_ACCOUNT1_USE_SSL`: `True` or `False`
+- `S3_ACCOUNT1_BUCKETS`: bucket name(s), comma-separated for multiple
+- `S3_ACCOUNT1_SCHEDULES`: ingestion interval(s) in seconds
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "s3"
+    name: "account1"
+    config:
+      endpoint: "${S3_ACCOUNT1_ENDPOINT}"
+      access_key: "${S3_ACCOUNT1_ACCESS_KEY}"
+      secret_key: "${S3_ACCOUNT1_SECRET_KEY}"
+      region: "${S3_ACCOUNT1_REGION}"
+      use_ssl: "${S3_ACCOUNT1_USE_SSL}"
+      buckets: "${S3_ACCOUNT1_BUCKETS}"
+      schedules: "${S3_ACCOUNT1_SCHEDULES}"
+```
+
+## Multiple S3 Accounts
+
+Add more `sources` entries (`account2`, `account3`, etc) with separate env vars per account.
