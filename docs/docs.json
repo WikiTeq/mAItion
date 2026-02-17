@@ -50,7 +50,8 @@
 						"group": "Configuration",
 						"pages": [
 							"config-reference",
-							"frontend-env"
+							"frontend-env",
+							"backend-env"
 						]
 					}
 				]
