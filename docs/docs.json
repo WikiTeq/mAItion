@@ -41,7 +41,8 @@
 					{
 						"group": "Connectors",
 						"pages": [
-							"s3-connector"
+							"s3-connector",
+							"mediawiki-connector"
 						]
 					}
 				]
