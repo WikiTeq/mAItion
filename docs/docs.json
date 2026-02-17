@@ -34,24 +34,24 @@
 					{
 						"group": "Getting started",
 						"pages": [
-							"index",
-							"quickstart"
+							"getting-started/index",
+							"getting-started/quickstart"
 						]
 					},
 					{
 						"group": "Connectors",
 						"pages": [
-							"s3-connector",
-							"mediawiki-connector",
-							"serpapi-connector"
+							"connectors/s3-connector",
+							"connectors/mediawiki-connector",
+							"connectors/serpapi-connector"
 						]
 					},
 					{
 						"group": "Configuration",
 						"pages": [
-							"config-reference",
-							"frontend-env",
-							"backend-env"
+							"configuration/config-reference",
+							"configuration/frontend-env",
+							"configuration/backend-env"
 						]
 					}
 				]
