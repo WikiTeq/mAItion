@@ -42,7 +42,8 @@
 						"group": "Connectors",
 						"pages": [
 							"s3-connector",
-							"mediawiki-connector"
+							"mediawiki-connector",
+							"serpapi-connector"
 						]
 					}
 				]
