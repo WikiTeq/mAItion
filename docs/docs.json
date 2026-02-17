@@ -53,6 +53,12 @@
 							"configuration/frontend-env",
 							"configuration/backend-env"
 						]
+					},
+					{
+						"group": "Features",
+						"pages": [
+							"features/up-to-date-knowledge"
+						]
 					}
 				]
 			},
