@@ -39,6 +39,13 @@
 						]
 					},
 					{
+						"group": "Features",
+						"pages": [
+							"features/up-to-date-knowledge",
+							"features/citation-backed-answers"
+						]
+					},
+					{
 						"group": "Connectors",
 						"pages": [
 							"connectors/s3-connector",
@@ -52,13 +59,6 @@
 							"configuration/config-reference",
 							"configuration/frontend-env",
 							"configuration/backend-env"
-						]
-					},
-					{
-						"group": "Features",
-						"pages": [
-							"features/up-to-date-knowledge",
-							"features/citation-backed-answers"
 						]
 					}
 				]
