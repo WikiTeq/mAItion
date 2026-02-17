@@ -45,6 +45,12 @@
 							"mediawiki-connector",
 							"serpapi-connector"
 						]
+					},
+					{
+						"group": "Configuration",
+						"pages": [
+							"config-reference"
+						]
 					}
 				]
 			},
