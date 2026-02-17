@@ -34,7 +34,32 @@
 					{
 						"group": "Getting started",
 						"pages": [
-							"index"
+							"getting-started/index",
+							"getting-started/quickstart",
+							"getting-started/faq"
+						]
+					},
+					{
+						"group": "Features",
+						"pages": [
+							"features/up-to-date-knowledge",
+							"features/citation-backed-answers"
+						]
+					},
+					{
+						"group": "Connectors",
+						"pages": [
+							"connectors/s3-connector",
+							"connectors/mediawiki-connector",
+							"connectors/serpapi-connector"
+						]
+					},
+					{
+						"group": "Configuration",
+						"pages": [
+							"configuration/config-reference",
+							"configuration/frontend-env",
+							"configuration/backend-env"
 						]
 					}
 				]

@@ -1,0 +1,49 @@
+---
+title: "S3"
+description: "Configure the mAItion S3 connector to ingest files from AWS S3 and S3-compatible storage."
+keywords:
+  - mAItion
+  - S3 connector
+  - AWS S3
+  - ingestion
+---
+
+Use S3 Connector to ingest documents from [S3](https://aws.amazon.com/s3/-compatible) object storage (AWS S3, MinIO, B2, R2, etc).
+
+## What It Does
+
+- reads files from one or more buckets
+- converts content to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `S3_ACCOUNT1_ENDPOINT`: S3 API endpoint URL
+- `S3_ACCOUNT1_ACCESS_KEY`: access key ID
+- `S3_ACCOUNT1_SECRET_KEY`: secret key
+- `S3_ACCOUNT1_REGION`: bucket region
+- `S3_ACCOUNT1_USE_SSL`: `True` or `False`
+- `S3_ACCOUNT1_BUCKETS`: bucket name(s), comma-separated for multiple
+- `S3_ACCOUNT1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "s3"
+    name: "account1"
+    config:
+      endpoint: "${S3_ACCOUNT1_ENDPOINT}"
+      access_key: "${S3_ACCOUNT1_ACCESS_KEY}"
+      secret_key: "${S3_ACCOUNT1_SECRET_KEY}"
+      region: "${S3_ACCOUNT1_REGION}"
+      use_ssl: "${S3_ACCOUNT1_USE_SSL}"
+      buckets: "${S3_ACCOUNT1_BUCKETS}"
+      schedules: "${S3_ACCOUNT1_SCHEDULES}"
+```
+
+## Multiple S3 Accounts
+
+Add more `sources` entries (`account2`, `account3`, etc) with separate env vars per account.

@@ -1,0 +1,85 @@
+---
+title: "Config reference"
+description: "Reference for mAItion config.yaml: sources, embedding, inference, and vector store settings."
+keywords:
+  - mAItion
+  - config.yaml
+  - configuration
+  - vector store
+---
+
+Reference for `config.yaml`.
+
+Environment placeholders like `${VAR_NAME}` resolve at runtime.
+
+## Top-level Keys
+
+- `sources`: connector list for ingestion jobs
+- `embedding`: embedding provider + model config
+- `inference`: LLM provider + model config for rephrase/chat tasks
+- `vector_store`: chunking and pgvector/HNSW settings
+
+## `sources`
+
+Each item:
+
+```yaml
+- type: "s3" # or mediawiki / serpapi / etc connector type
+  name: "account1"
+  config:
+    # connector-specific fields
+```
+
+Connector `config` fields differ by connector type. See connector pages for exact keys.
+
+## `embedding`
+
+```yaml
+embedding:
+  provider: local # local | openrouter | openai
+  model_config: sentence-transformers/all-mpnet-base-v2
+  embedding_dim: 768
+```
+
+- `provider`: embedding backend
+- `model_config`: model id/name used by provider
+- `embedding_dim`: vector dimension returned by model
+
+> WARNING: once embedding dimension is set, it cannot be changed without rebuilding the index.
+
+## `inference`
+
+```yaml
+inference:
+  provider: openrouter # openrouter | openai
+  model_config: openai/gpt-oss-20b:free
+```
+
+- `provider`: inference backend
+- `model_config`: chat/rephrase model id
+
+> NOTE: inference backend is not used for vector search, only for the rephrase endpoint.
+
+## `vector_store`
+
+```yaml
+vector_store:
+  table_name: embeddings
+  hybrid_search: true
+  chunk_size: 512
+  chunk_overlap: 50
+  hnsw:
+    hnsw_m: 16
+    hnsw_ef_construction: 64
+    hnsw_ef_search: 40
+    hnsw_dist_method: vector_cosine_ops
+```
+
+- `table_name`: embeddings table name
+- `hybrid_search`: vector + keyword retrieval toggle
+- `chunk_size`: chunk size for indexing
+- `chunk_overlap`: overlap between adjacent chunks
+- `hnsw.hnsw_m`: graph neighbors per node
+- `hnsw.hnsw_ef_construction`: index build quality/speed tradeoff
+- `hnsw.hnsw_ef_search`: search recall/speed tradeoff
+- `hnsw.hnsw_dist_method`: vector distance operator

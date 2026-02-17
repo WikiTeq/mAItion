@@ -1,0 +1,75 @@
+---
+title: "Quick Start"
+description: "Quick start guide for mAItion: prerequisites, configuration, startup, and first login."
+keywords:
+  - mAItion
+  - quick start
+  - setup
+  - docker
+---
+
+Upon completion of this Quick Start process you'll have a fully functional mAItion instance running locally
+and configured to use your S3 bucket as a data source.
+
+## Requirements
+
+- Docker and Docker Compose
+- S3 bucket with documents
+- OpenRouter or OpenAI API key
+
+## 1. Prepare Configuration Files
+
+Create `.env.rag` from `.env.rag.example`:
+
+- `S3_ACCOUNT1_ENDPOINT`: S3 API endpoint URL (`https://s3.amazonaws.com` for AWS S3)
+- `S3_ACCOUNT1_ACCESS_KEY`: access key ID used to read bucket objects
+- `S3_ACCOUNT1_SECRET_KEY`: secret key paired with the access key
+- `S3_ACCOUNT1_REGION`: bucket region (example: `us-east-1`)
+- `S3_ACCOUNT1_BUCKETS`: one bucket or comma-separated bucket names
+- `S3_ACCOUNT1_SCHEDULES`: ingestion interval in seconds (or comma-separated intervals, default is `3600`)
+- `S3_ACCOUNT1_USE_SSL`: enable TLS for S3 connection (default is `True`)
+- `OPENROUTER_API_KEY`: API key for OpenRouter model calls (optional, only used for rephrase)
+
+Create `config.yaml` from `config.yaml.example`.
+
+Default configuration is pre-configured for:
+
+- single S3 connector
+- `sentence-transformers/all-mpnet-base-v2` for embeddings
+- `openai/gpt-oss-20b:free` for rephrase endpoint (optional, only used for rephrase)
+
+Create `.env` from `.env.openwebui.example`:
+
+- set `OPENAI_API_KEY`
+- optionally set `OPENAI_DEFAULT_MODEL` (default is `openai/gpt-4.1-nano`)
+- optionally change `HTTP_WEB_PORT` (default is `3000`)
+
+## 2. Start Stack
+
+Run:
+
+```bash
+docker compose up -d
+```
+
+Wait for all services to become healthy:
+
+```bash
+docker compose ps
+```
+
+It can take up to ~1 minute on cold start.
+
+## 3. Login
+
+Open `http://localhost:3000`.
+
+Use admin credentials from `.env`:
+
+- email: `X_WEBUI_ADMIN_EMAIL`
+- password: `X_WEBUI_ADMIN_PASS`
+
+If unchanged, defaults are:
+
+- username: `admin@example123.com`
+- password: `q1w2e3r4!`

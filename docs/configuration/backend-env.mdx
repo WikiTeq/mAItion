@@ -1,0 +1,49 @@
+---
+title: "Environment Variables (Backend)"
+description: "Reference for backend environment variables in .env.rag.example used by the mAItion API and workers."
+keywords:
+  - mAItion
+  - backend env
+  - .env.rag
+  - environment variables
+---
+
+Reference value for `.env.rag` file.
+
+## Application Setup
+
+- `REDIS_URL`: Redis connection URL
+- `POSTGRES_USER`: Postgres username
+- `POSTGRES_PASSWORD`: Postgres password
+- `POSTGRES_DB`: backend database name
+- `POSTGRES_HOST`: Postgres host/service name
+- `POSTGRES_PORT`: Postgres port
+
+## LLM Provider
+
+- `OPENROUTER_API_KEY`: API key for OpenRouter/OpenAI-compatible backend
+- `OPENROUTER_API_BASE`: base URL for provider API
+
+## Workers and Limits
+
+- `CELERY_CONCURRENCY`: number of Celery worker processes
+- `MAX_TASK_CHILD`: max tasks per child process before recycle
+- `MAX_MEMORY_PER_CHILD`: per-child memory cap (KB)
+
+## ONNX Runtime / GPU
+
+- `CUDA_VISIBLE_DEVICES`: visible GPU device list
+- `ORT_DISABLE_GPU`: disable GPU for ONNX Runtime (`1`/`0`)
+- `ORT_DYLD_DISABLE_GPU`: disable GPU for ONNX Runtime on DYLD-based systems
+
+## CORS
+
+- `CORS_ORIGINS`: allowed origins list for cross-origin requests
+
+> NOTE: the value can be provided in a Python-syntax string, e.g. `["http://localhost","http://localhost:3000"]`
+
+## Rate Limiting
+
+- `ENABLE_RATE_LIMIT`: enable rate limiting (`True`/`False`)
+- `CHUNK_RATE_LIMIT`: rate limit for chunk endpoint (example: `30/minute`)
+- `REPHRASE_RATE_LIMIT`: rate limit for rephrase endpoint (example: `30/minute`)

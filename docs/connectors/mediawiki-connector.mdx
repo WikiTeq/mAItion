@@ -1,0 +1,40 @@
+---
+title: "MediaWiki"
+description: "Configure the mAItion MediaWiki connector to ingest wiki pages via the MediaWiki API."
+keywords:
+  - mAItion
+  - MediaWiki connector
+  - wiki ingestion
+  - connectors
+---
+
+Use MediaWiki Connector to ingest pages from [MediaWiki](https://www.mediawiki.org/wiki/MediaWiki) sites into mAItion knowledge base.
+
+## What It Does
+
+- reads pages from MediaWiki instance
+- converts content to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `MEDIAWIKI1_API_URL`: MediaWiki API URL (example: `https://en.wikipedia.org/w/api.php`)
+- `MEDIAWIKI1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "mediawiki"
+    name: "wiki1"
+    config:
+      api_url: "${MEDIAWIKI1_API_URL}"
+      request_delay: 0.1
+      schedules: "${MEDIAWIKI1_SCHEDULES}"
+```
+
+## Multiple MediaWiki Sources
+
+Add more `sources` entries (`wiki2`, `wiki3`, etc) with separate env vars per source.

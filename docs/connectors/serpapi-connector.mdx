@@ -1,0 +1,41 @@
+---
+title: "SerpAPI"
+description: "Configure the mAItion SerpAPI connector to ingest Google search results on a schedule."
+keywords:
+  - mAItion
+  - SerpAPI connector
+  - Google search ingestion
+  - connectors
+---
+
+Use [SerpAPI](https://serpapi.com/) Connector to ingest Google Search results.
+
+## What It Does
+
+- runs configured search queries via SerpAPI
+- converts results to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `SERPAPI1_KEY`: SerpAPI API key
+- `SERPAPI1_QUERIES`: one query or comma-separated queries
+- `SERPAPI1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "serpapi"
+    name: "serp_ingestion1"
+    config:
+      api_key: "${SERPAPI1_KEY}"
+      queries: "${SERPAPI1_QUERIES}"
+      schedules: "${SERPAPI1_SCHEDULES}"
+```
+
+## Multiple SerpAPI Sources
+
+Add more `sources` entries (`serp_ingestion2`, `serp_ingestion3`, etc) with separate env vars per source.

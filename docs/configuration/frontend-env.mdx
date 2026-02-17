@@ -1,0 +1,80 @@
+---
+title: "Environment Variables (Frontend)"
+description: "Reference for frontend environment variables in .env.openwebui.example for mAItion OpenWebUI setup."
+keywords:
+  - mAItion
+  - frontend env
+  - OpenWebUI
+  - environment variables
+---
+
+Reference value for `.env` file.
+
+## URL and Port
+
+- `WEBUI_URL`: public URL of OpenWebUI (example: `http://localhost:3000`)
+- `HTTP_WEB_PORT`: host port mapped to OpenWebUI container
+- `WEBUI_SECRET_KEY`: app secret key (generate strong random value)
+
+## Database
+
+- `POSTGRES_USER`: Postgres username
+- `POSTGRES_PASSWORD`: Postgres password
+- `POSTGRES_DB`: Postgres database name
+- `POSTGRES_HOST`: Postgres host/service name
+- `POSTGRES_PORT`: Postgres port
+
+## Admin Provisioning
+
+- `X_WEBUI_ADMIN_USER`: initial admin display name
+- `X_WEBUI_ADMIN_EMAIL`: initial admin email
+- `X_WEBUI_ADMIN_PASS`: initial admin password
+- `WEBUI_AUTH`: enable web authentication (`True`/`False`)
+- `ENABLE_SIGNUP`: allow signup on first boot (`True`/`False`)
+- `ENABLE_LOGIN_FORM`: enable login form (`True`/`False`)
+
+> Note: keep `ENABLE_SIGNUP=True` on first start so admin account auto-provisioning
+works. After first boot, you can disable it to run in single-user or private modes.
+
+## OpenAI-Compatible Provider (Optional)
+
+- `ENABLE_OPENAI_API`: auto-provision provider settings (`True`/`False`)
+- `OPENAI_API_BASE_URL`: provider base URL (example: `https://openrouter.ai/api/v1`)
+- `OPENAI_API_KEY`: provider API key
+- `OPENAI_DEFAULT_MODEL`: default model ID
+
+## Runtime
+
+- `ENV`: runtime mode (example: `dev`)
+- `UVICORN_WORKERS`: number of Uvicorn workers
+- `USER_AGENT`: outgoing user agent string
+
+## Minimal Example
+
+```dotenv
+WEBUI_URL=http://localhost:3000
+HTTP_WEB_PORT=3000
+WEBUI_SECRET_KEY=<random-hex>
+
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=openwebui
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+
+X_WEBUI_ADMIN_USER=Admin
+X_WEBUI_ADMIN_EMAIL=admin@example123.com
+X_WEBUI_ADMIN_PASS=<strong-password>
+WEBUI_AUTH=True
+ENABLE_SIGNUP=True
+ENABLE_LOGIN_FORM=True
+
+ENABLE_OPENAI_API=True
+OPENAI_API_BASE_URL=https://openrouter.ai/api/v1
+OPENAI_API_KEY=<api-key>
+OPENAI_DEFAULT_MODEL=openai/gpt-4.1-nano
+
+ENV=dev
+UVICORN_WORKERS=1
+USER_AGENT=rag-of-all-trades+openwebui/0.6.5
+```
