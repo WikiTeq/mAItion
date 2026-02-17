@@ -49,7 +49,8 @@
 					{
 						"group": "Configuration",
 						"pages": [
-							"config-reference"
+							"config-reference",
+							"frontend-env"
 						]
 					}
 				]
