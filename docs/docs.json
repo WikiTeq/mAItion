@@ -34,7 +34,8 @@
 					{
 						"group": "Getting started",
 						"pages": [
-							"index"
+							"index",
+							"quickstart"
 						]
 					}
 				]
