@@ -6,6 +6,10 @@
 	"colors": {
 		"primary": "#ff0000"
 	},
+	"logo": {
+		"light": "/logos/maition-light.svg",
+		"dark": "/logos/maition-dark.svg"
+	},
 	"icons": {
 		"library": "fontawesome"
 	},
