@@ -1,0 +1,6 @@
+# Most things are text
+* text eol=lf
+
+# But not everything
+*.ico binary
+*.png binary
