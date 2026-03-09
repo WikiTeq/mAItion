@@ -32,7 +32,7 @@ interact with your knowledge with ease!
 
 * A single place to chat with your company knowledge that's scattered across many external systems
 * A central space for looking up and refining your existing knowledge across many knowledge bases
-* A tool to find secret knowledge that can not be found in the other was across your scattered data
+* A tool to find secret knowledge that cannot be found any other way across your scattered data
 * An entry-point into your on-premise hosted LLM models supporting evaluations and per-model settings
 
 ## 🌐 Connectors included
@@ -40,6 +40,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Slack
 
 ## 🌐 Extra connectors
 
@@ -48,7 +49,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Gmail
 * Google Drive
 * Jira
-* Slack
 * GitHub
 * Gitlab
 * Notion
@@ -346,6 +346,36 @@ PIPEDRIVE1_API_TOKEN=your-pipedrive-api-token
 PIPEDRIVE1_SCHEDULES=3600
 PIPEDRIVE2_API_TOKEN=your-second-pipedrive-api-token
 PIPEDRIVE2_SCHEDULES=3600
+```
+
+### Slack Connector
+
+The Slack connector ingests messages from Slack channels. Each message (with its thread replies concatenated) becomes a separate document in the vector store.
+
+Channels can be specified directly by ID or resolved dynamically via name patterns or regex.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "slack"
+    name: "slack1"
+    config:
+      token: "${SLACK1_TOKEN}"
+      channel_ids: "${SLACK1_CHANNEL_IDS}"          # comma-separated channel IDs (mutually exclusive with channel_patterns)
+      # channel_patterns: "general,^dev-.*"         # channel name patterns or regex (mutually exclusive with channel_ids)
+      # channel_types: "public_channel,private_channel"  # optional, used with channel_patterns
+      # earliest_date: "2024-01-01"                 # optional: fetch messages from this date
+      # latest_date: "2025-01-01"                   # optional: fetch messages up to this date
+      schedules: "${SLACK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+SLACK1_TOKEN=xoxb-your-bot-token
+SLACK1_CHANNEL_IDS=C1234567890,C0987654321
+SLACK1_SCHEDULES=60
 ```
 
 ## Embeddings and Inference
