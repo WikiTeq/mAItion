@@ -51,6 +51,7 @@ sources:
   #    # - updated_at: last modification timestamp (ISO-8601 or datetime)
   #    # - content:    main text body to embed
   #    query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
+  #    required_columns: "id,title,updated_at,content"  # optional: validate these columns exist in query result
   #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
   #    schedules: "${DB_POSTGRES1_SCHEDULES}"
 
@@ -59,7 +60,7 @@ sources:
   #  config:
   #    type: "mysql"                                                            # "postgres" or "mysql"
   #    connection_string: "${DB_MYSQL1_CONNECTION_STRING}"                      # SQLAlchemy connection string
-  #    # Required columns: id, title, updated_at, content
+  #    # Column convention: id, title, updated_at, content
   #    query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
   #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
   #    schedules: "${DB_MYSQL1_SCHEDULES}"

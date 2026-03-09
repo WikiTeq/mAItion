@@ -235,7 +235,7 @@ SERPAPI1_SCHEDULES=3600
 The Database connector ingests rows from MySQL or PostgreSQL databases by executing a pre-configured SQL
 SELECT query. Each row becomes a document in the vector store.
 
-**Required columns** — the query **must** return these four columns:
+**Column convention** — by convention the query should return these four columns:
 
 | Column | Description |
 |---|---|
@@ -243,6 +243,8 @@ SELECT query. Each row becomes a document in the vector store.
 | `title` | Human-readable name of the item |
 | `updated_at` | Last modification timestamp (ISO-8601 string or datetime) |
 | `content` | Main text body to embed |
+
+Column name validation is opt-in: set `required_columns` in config to enforce that specific columns are present in the query result. If omitted, no validation is performed.
 
 Additional columns can be stored in document metadata via `metadata_columns`.
 
@@ -255,8 +257,8 @@ sources:
     config:
       type: "postgres"                              # "postgres" or "mysql"
       connection_string: "${DB_POSTGRES1_CONNECTION_STRING}"
-      # Required columns: id, title, updated_at, content
       query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
+      required_columns: "id,title,updated_at,content"  # optional: validate these columns exist
       metadata_columns: "author,year"               # optional: extra columns in metadata
       schedules: "${DB_POSTGRES1_SCHEDULES}"
 
