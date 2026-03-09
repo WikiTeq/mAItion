@@ -14,6 +14,7 @@ interact with your knowledge with ease!
 * Data ingestion from S3 buckets with Everything-to-Markdown conversion via [MarkItDown](https://github.com/microsoft/markitdown)
 * Data ingestion from MediaWiki with Wiki-to-Markdown conversion via [html2text](https://github.com/Alir3z4/html2text)
 * SerpAPI search query results ingestion from Google Search results with customizable queries
+* Database ingestion from MySQL and PostgreSQL via arbitrary SQL SELECT queries
 * Flexible configuration supporting an arbitrary number of connectors
 * Built with extensibility in mind, allowing for custom connectors addition with ease
 * MCP servers support (stdio, streamable http)
@@ -38,6 +39,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Database (MySQL + PostgreSQL via SQL SELECT query)
 
 ### 🌐 Extra connectors
 
@@ -228,6 +230,57 @@ SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
 ````
 
+### Database Connector
+
+The Database connector ingests rows from MySQL or PostgreSQL databases by executing a pre-configured SQL
+SELECT query. Each row becomes a document in the vector store.
+
+**Required columns** — the query **must** return these four columns:
+
+| Column | Description |
+|---|---|
+| `id` | Unique row identifier (used as document ID) |
+| `title` | Human-readable name of the item |
+| `updated_at` | Last modification timestamp (ISO-8601 string or datetime) |
+| `content` | Main text body to embed |
+
+Additional columns can be stored in document metadata via `metadata_columns`.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "database"
+    name: "postgres1"
+    config:
+      type: "postgres"                              # "postgres" or "mysql"
+      connection_string: "${DB_POSTGRES1_CONNECTION_STRING}"
+      # Required columns: id, title, updated_at, content
+      query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
+      metadata_columns: "author,year"               # optional: extra columns in metadata
+      schedules: "${DB_POSTGRES1_SCHEDULES}"
+
+  - type: "database"
+    name: "mysql1"
+    config:
+      type: "mysql"
+      connection_string: "${DB_MYSQL1_CONNECTION_STRING}"
+      query: "SELECT id, title, updated_at, content FROM articles"
+      schedules: "${DB_MYSQL1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+# PostgreSQL
+DB_POSTGRES1_CONNECTION_STRING=postgresql+psycopg://user:pass@localhost/mydb
+DB_POSTGRES1_SCHEDULES=3600
+
+# MySQL
+DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@localhost/mydb
+DB_MYSQL1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
@@ -315,7 +368,7 @@ The `config.yaml` file contains the main configuration of the service.
 ```yaml
 sources: # holds the list of sources to ingest from (Connectors)
 
-  - type: # type of the connector (s3, mediawiki, serpapi)
+  - type: # type of the connector (s3, mediawiki, serpapi, database)
     name: # arbitrary name for the connector, will be stored in metadata
     config:
       # connector specific configuration
