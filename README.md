@@ -2,9 +2,9 @@
 
 ![mAItion](https://github.com/WikiTeq/mAItion/blob/main/mAItion.png?raw=true)
 
-mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs, 
+mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs,
 allowing you to chat, search and interact with your data through a slick chat interface. With mAItion
-you can aggregate all your knowledge from many sources using Connectors into a central place and 
+you can aggregate all your knowledge from many sources using Connectors into a central place and
 interact with your knowledge with ease!
 
 ## ✨ Features
@@ -126,7 +126,6 @@ The connector has the following configuration options:
 # config.yaml
 
 sources:
-  - 
   - type: "s3" # must be s3
     name: "account1" # arbitrary name for the connector, will be stored in metadata
     config:
@@ -137,7 +136,7 @@ sources:
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
       buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
       schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
-      
+
   - type: "s3"
     name: "account2"
     config:
@@ -227,6 +226,35 @@ SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
 ````
+
+### Notion Connector
+
+The Notion connector ingests pages from a Notion workspace. Each page becomes a separate document in the vector store.
+
+Three modes are supported: explicit `page_ids`, `database_ids`, or load-all (when neither is set — fetches all pages the integration has access to).
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "notion"
+    name: "notion1"
+    config:
+      integration_token: "${NOTION1_INTEGRATION_TOKEN}"  # Notion integration token (secret_...)
+      page_ids: "${NOTION1_PAGE_IDS}"                    # optional: comma-separated page IDs
+      database_ids: "${NOTION1_DATABASE_IDS}"            # optional: comma-separated database IDs
+      request_delay: 0.3                                 # optional: delay between API calls in seconds
+      schedules: "${NOTION1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+NOTION1_INTEGRATION_TOKEN=secret_your-notion-integration-token
+NOTION1_PAGE_IDS=page-id-1,page-id-2
+NOTION1_DATABASE_IDS=database-id-1
+NOTION1_SCHEDULES=60
+```
 
 ## Embeddings and Inference
 
