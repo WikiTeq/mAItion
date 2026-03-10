@@ -39,6 +39,7 @@ interact with your knowledge with ease!
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
 * GitHub (repository files and issues, PAT or GitHub App auth)
+* GitLab (repository files and issues, supports GitLab.com and self-hosted)
 
 ### 🌐 Extra connectors
 
@@ -48,7 +49,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Google Drive
 * Jira
 * Slack
-* Gitlab
 * Notion
 * Microsoft Teams
 * Microsoft Office 365
@@ -267,6 +267,51 @@ For GitHub App authentication, replace `personal_token` with:
       github_app_id: "${GITHUB1_APP_ID}"
       github_app_installation_id: "${GITHUB1_APP_INSTALLATION_ID}"
       github_app_private_key: "${GITHUB1_APP_PRIVATE_KEY}"
+```
+
+### GitLab Connector
+
+The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
+Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_api` scope.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "gitlab"
+    name: "gitlab1"
+    config:
+      gitlab_url: "${GITLAB1_URL}"
+      personal_token: "${GITLAB1_TOKEN}"
+      project_id: 12345678              # integer project ID (required unless group_id only)
+      #group_id: 999                    # optional, for group-level issue queries
+      ref: "main"                       # optional, branch/tag/commit, default "main"
+      #path: "docs"                     # optional, limit to sub-directory
+      #file_path: "README.md"           # optional, single file only
+      recursive: true                   # optional, default true
+      include_issues: false             # set true to also ingest issues
+      #issues_state: "opened"           # optional: opened/closed/all, default "opened"
+      #issues_labels: "bug,docs"        # optional, comma-separated
+      #issues_assignee: "username"      # optional
+      #issues_author: "username"        # optional
+      #issues_milestone: "v1.0"         # optional
+      #issues_search: "keyword"         # optional
+      #issues_get_all: false            # optional, fetch all pages, default false
+      #issues_scope: "created_by_me"    # optional: created_by_me/assigned_to_me/all
+      #issues_type: "issue"             # optional: issue/incident/test_case/task
+      #issues_confidential: false       # optional
+      #issues_iids: [1, 2, 3]           # optional, filter by specific issue IDs
+      #issues_created_after: "2024-01-01T00:00:00Z"
+      #issues_created_before: "2024-12-31T23:59:59Z"
+      schedules: "${GITLAB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+GITLAB1_URL=https://gitlab.com
+GITLAB1_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+GITLAB1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
