@@ -40,6 +40,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* GitHub (repository files and issues, PAT or GitHub App auth)
 
 ## 🌐 Extra connectors
 
@@ -49,7 +50,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Google Drive
 * Jira
 * Slack
-* GitHub
 * Gitlab
 * Notion
 * Microsoft Teams
@@ -304,6 +304,47 @@ JIRA1_EMAIL=your-email@example.com
 JIRA1_API_TOKEN=your-api-token
 JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
 JIRA1_SCHEDULES=3600
+```
+
+### GitHub Connector
+
+The GitHub connector ingests repository files and optionally issues from a GitHub repository.
+Supports PAT and GitHub App authentication, branch or commit targeting, file extension/directory
+filters, and issue label filters.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "github"
+    name: "github1"
+    config:
+      # Auth — use one of: personal_token OR github_app_* credentials
+      personal_token: "${GITHUB1_PERSONAL_TOKEN}"
+      owner: "${GITHUB1_OWNER}"          # repository owner / org
+      repo: "${GITHUB1_REPO}"            # repository name
+      branch: "main"                     # default "main" (mutually exclusive with commit_sha)
+      include_extensions: "md,py"        # optional, comma-separated
+      include_issues: false              # set true to also ingest issues
+      concurrent_requests: 5             # optional, default 5
+      schedules: "${GITHUB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+GITHUB1_PERSONAL_TOKEN=ghp_xxxxxxxxxxxx
+GITHUB1_OWNER=your-org-or-username
+GITHUB1_REPO=your-repo-name
+GITHUB1_SCHEDULES=3600
+```
+
+For GitHub App authentication, replace `personal_token` with:
+
+```yaml
+      github_app_id: "${GITHUB1_APP_ID}"
+      github_app_installation_id: "${GITHUB1_APP_INSTALLATION_ID}"
+      github_app_private_key: "${GITHUB1_APP_PRIVATE_KEY}"
 ```
 
 ## Embeddings and Inference
