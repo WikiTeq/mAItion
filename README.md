@@ -42,6 +42,8 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
+* GitHub (repository files and issues, PAT or GitHub App auth)
+* GitLab (repository files and issues, supports GitLab.com and self-hosted)
 
 ## 🌐 Extra connectors
 
@@ -52,6 +54,7 @@ Over 100 extra connectors are available at request, including the most popular o
 * Jira
 * GitHub
 * Gitlab
+* Slack
 * Notion
 * Microsoft Teams
 * Microsoft Office 365
@@ -460,6 +463,73 @@ ONEDRIVE1_CLIENT_SECRET=your-azure-app-client-secret
 ONEDRIVE1_TENANT_ID=your-azure-tenant-id
 ONEDRIVE1_USER_PRINCIPAL_NAME=user@your-org.onmicrosoft.com
 ONEDRIVE1_SCHEDULES=3600
+```
+
+### GitLab Connector
+
+The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
+Uses [LlamaIndex GitLab readers](https://llamahub.ai/l/readers/llama-index-readers-gitlab) for all
+discovery and content fetching. Supports both GitLab.com and self-hosted instances via a Personal
+Access Token with the `read_api` scope — it covers both the repository files and issues APIs that this
+connector uses.
+
+> **Known limitation:** `GitLabRepositoryReader.load_data()` re-downloads all repository file content on
+> every scheduled run; ROAT's vector checksum skip does not reduce GitLab API calls for the files
+> connector. This is a limitation of the underlying LlamaIndex reader, not this connector, for the
+> current iteration.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "gitlab"
+    name: "gitlab1"
+    config:
+      gitlab_url: "${GITLAB1_URL}"        # e.g. https://gitlab.com
+      personal_token: "${GITLAB1_TOKEN}"
+      project_id: 12345678               # integer project ID; required unless group_id is set, mutually exclusive with group_id
+      #group_id: 999                     # integer group ID, for group-wide issue queries (repository files not supported in group mode); mutually exclusive with project_id
+      ref: "main"                        # optional, branch/tag/commit, default "main"
+      #path: "docs"                      # optional, limit to sub-directory
+      #file_path: "README.md"            # optional, single file only
+      recursive: true                    # optional, default true
+      files_iterator: true               # optional, use iterator pagination to fetch all files (default true); set to false to limit to 20 files (GitLab API default page size)
+      include_issues: false              # optional, default false
+      schedules: "${GITLAB1_SCHEDULES}"
+
+  # With issue ingestion and filters:
+  #- type: "gitlab"
+  #  name: "gitlab2"
+  #  config:
+  #    gitlab_url: "${GITLAB2_URL}"
+  #    personal_token: "${GITLAB2_TOKEN}"
+  #    project_id: 87654321
+  #    include_issues: true
+  #    issues_state: "opened"            # opened/closed/all, default "opened"
+  #    issues_labels: "bug,feature"      # optional, comma-separated
+  #    issues_assignee: "username"       # optional
+  #    issues_author: "username"         # optional
+  #    issues_milestone: "v2.0"          # optional
+  #    issues_search: "keyword"          # optional
+  #    issues_get_all: true              # optional, fetch all pages, default true; set to false to limit to 20 issues (GitLab API default page size)
+  #    issues_scope: "created_by_me"     # optional: created_by_me/assigned_to_me/all
+  #    issues_type: "issue"              # optional: issue/incident/test_case/task
+  #    issues_confidential: false        # optional
+  #    issues_non_archived: true         # optional
+  #    issues_iids: [1, 2, 3]            # optional, filter by specific issue IIDs; a YAML list or a comma-separated string ("1,2,3") both work
+  #    issues_created_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+  #    issues_created_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
+  #    issues_updated_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+  #    issues_updated_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
+  #    schedules: "${GITLAB2_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+GITLAB1_URL=https://gitlab.com
+GITLAB1_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+GITLAB1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
