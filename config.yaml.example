@@ -40,6 +40,24 @@ sources:
   #    queries: "${SERPAPI_QUERIES}"
   #    schedules: "${SERPAPI_SCHEDULES}"
 
+  # DROPBOX CONNECTORS (optional):
+
+  #- type: "dropbox"
+  #  name: "dropbox1"
+  #  config:
+  #    access_token: "${DROPBOX1_ACCESS_TOKEN}"
+  #    # Paths to ingest (optional). If omitted, ingests everything from root recursively.
+  #    #paths:
+  #    #  - "/Documents/Engineering"
+  #    #  - "/Shared/Wiki"
+  #    # Extension filters (mutually exclusive, optional):
+  #    #include_extensions: "md,docx,pdf"   # only these extensions
+  #    #exclude_extensions: "png,jpg,gif"   # all except these
+  #    # Directory name filters (mutually exclusive, optional):
+  #    #include_directories: "source,docs"  # only these folder names
+  #    #exclude_directories: "archive,tmp"  # all except these folder names
+  #    schedules: "${DROPBOX1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
