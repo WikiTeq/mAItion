@@ -42,6 +42,7 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
+* Dropbox (repository files and folders with flexible path, extension, and directory filters)
 
 ## 🌐 Extra connectors
 
@@ -55,7 +56,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Notion
 * Microsoft Teams
 * Microsoft Office 365
-* Dropbox
 * Trello
 * Web scraper
 * YouTube
@@ -460,6 +460,40 @@ ONEDRIVE1_CLIENT_SECRET=your-azure-app-client-secret
 ONEDRIVE1_TENANT_ID=your-azure-tenant-id
 ONEDRIVE1_USER_PRINCIPAL_NAME=user@your-org.onmicrosoft.com
 ONEDRIVE1_SCHEDULES=3600
+```
+
+### Dropbox Connector
+
+The Dropbox connector ingests files from Dropbox using the official Dropbox Python SDK.
+Supports ingesting from specific paths or the entire account root, with optional extension and directory name filters.
+Requires a [Dropbox access token](https://www.dropbox.com/developers/apps) with `files.content.read` scope.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "dropbox"
+    name: "dropbox1"
+    config:
+      access_token: "${DROPBOX1_ACCESS_TOKEN}"
+      # Paths to ingest (optional). If omitted, ingests everything from root recursively.
+      paths:
+        - "/Documents/Engineering"
+        - "/Shared/Wiki"
+      # Extension filters (mutually exclusive, optional):
+      #include_extensions: "md,docx,pdf"   # only these extensions
+      #exclude_extensions: "png,jpg,gif"   # all except these
+      # Directory name filters (mutually exclusive, optional):
+      #include_directories: "source,docs"  # only these folder names
+      #exclude_directories: "archive,tmp"  # all except these folder names
+      schedules: "${DROPBOX1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+DROPBOX1_ACCESS_TOKEN=sl.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DROPBOX1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
