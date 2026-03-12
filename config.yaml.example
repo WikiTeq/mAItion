@@ -105,6 +105,17 @@ sources:
   #    api_token: "${PIPEDRIVE2_API_TOKEN}"
   #    schedules: "${PIPEDRIVE2_SCHEDULES}"
 
+  #- type: "confluence"
+  #  name: "confluence1"
+  #  config:
+  #    base_url: "${CONFLUENCE1_BASE_URL}"
+  #    username: "${CONFLUENCE1_USERNAME}"
+  #    api_token: "${CONFLUENCE1_API_TOKEN}"
+  #    space_key: "${CONFLUENCE1_SPACE_KEY}"
+  #    page_status: "current"
+  #    max_pages: 50
+  #    schedules: "${CONFLUENCE1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
