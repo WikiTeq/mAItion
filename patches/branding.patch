@@ -336,3 +336,39 @@ index 0310014cf..97a891dff 100644
          )
      finally:
          if not streaming and session:
+
+diff --git build/index.html build/index.html
+--- build/index.html
++++ build/index.html
+@@ -7,7 +7,7 @@
+ 		<link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+ 		<link rel="shortcut icon" href="/static/favicon.ico" />
+ 		<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png" />
+-		<meta name="apple-mobile-web-app-title" content="Open WebUI" />
++		<meta name="apple-mobile-web-app-title" content="mAItion" />
+ 
+ 		<link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+ 		<meta
+@@ -16,11 +16,11 @@
+ 		/>
+ 		<meta name="theme-color" content="#171717" />
+ 		<meta name="robots" content="noindex,nofollow" />
+-		<meta name="description" content="Open WebUI" />
++		<meta name="description" content="mAItion" />
+ 		<link
+ 			rel="search"
+ 			type="application/opensearchdescription+xml"
+-			title="Open WebUI"
++			title="mAItion"
+ 			href="/opensearch.xml"
+ 		/>
+ 		<script src="/static/loader.js" defer></script>
+@@ -101,7 +101,7 @@
+ 			})();
+ 		</script>
+ 
+-		<title>Open WebUI</title>
++		<title>mAItion</title>
+ 
+ 		
+ 		<link rel="modulepreload" href="/_app/immutable/entry/start.EK3-Hvgz.js">
