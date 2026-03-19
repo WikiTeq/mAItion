@@ -40,6 +40,19 @@ sources:
   #    queries: "${SERPAPI_QUERIES}"
   #    schedules: "${SERPAPI_SCHEDULES}"
 
+  #- type: "fireflies"
+  #  name: "fireflies1"
+  #  config:
+  #    api_key: "${FIREFLIES_API_KEY}"
+  #    filter_keyword: ""            # optional, filter by title keyword
+  #    filter_fromDate: ""           # optional, ISO 8601 e.g. 2024-01-01T00:00:00.000Z
+  #    filter_toDate: ""             # optional, ISO 8601
+  #    filter_hostEmail: ""          # optional, filter by host email
+  #    filter_organizers: ""         # optional, filter by organizer email(s); comma-separated or YAML list
+  #    filter_channel_id: ""         # optional, filter by channel ID
+  #    max_items: 100                # optional, default 100
+  #    schedules: "60"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
