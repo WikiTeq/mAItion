@@ -55,7 +55,8 @@
 						"pages": [
 							"connectors/s3-connector",
 							"connectors/mediawiki-connector",
-							"connectors/serpapi-connector"
+							"connectors/serpapi-connector",
+							"connectors/jira-connector"
 						]
 					},
 					{

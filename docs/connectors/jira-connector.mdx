@@ -1,0 +1,45 @@
+---
+title: "Jira"
+description: "Configure the mAItion Jira connector to ingest Jira issues into the knowledge base."
+keywords:
+  - mAItion
+  - Jira connector
+  - Jira ingestion
+  - connectors
+---
+
+Use the Jira Connector to ingest issues from [Jira](https://www.atlassian.com/software/jira) into the mAItion knowledge base.
+
+## What It Does
+
+- fetches issues from one or more Jira projects
+- converts issue content (summary, description, comments) to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `JIRA1_URL`: base URL of your Jira instance (example: `https://yourorg.atlassian.net`)
+- `JIRA1_USERNAME`: Jira account email used for authentication
+- `JIRA1_API_TOKEN`: Jira API token (generate at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens))
+- `JIRA1_PROJECT_KEY`: Jira project key to ingest (example: `MYPROJECT`)
+- `JIRA1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "jira"
+    name: "jira1"
+    config:
+      url: "${JIRA1_URL}"
+      username: "${JIRA1_USERNAME}"
+      api_token: "${JIRA1_API_TOKEN}"
+      project_key: "${JIRA1_PROJECT_KEY}"
+      schedules: "${JIRA1_SCHEDULES}"
+```
+
+## Multiple Jira Sources
+
+Add more `sources` entries (`jira2`, `jira3`, etc) with separate env vars per source.
