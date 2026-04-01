@@ -12,33 +12,78 @@ Use the Jira Connector to ingest issues from [Jira](https://www.atlassian.com/so
 
 ## What It Does
 
-- fetches issues from one or more Jira projects
-- converts issue content (summary, description, comments) to Markdown for indexing
+- fetches issues from one or more Jira projects using a JQL query
+- converts issue content (summary, description) to Markdown for indexing
+- optionally ingests issue comments as separate indexed content
 - runs ingestion on configurable schedules
+
+## Authentication
+
+Two authentication methods are supported:
+
+- **Basic auth** (`auth_type: basic`): uses an email address and an API token. Suitable for Jira Cloud. Generate a token at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens).
+- **Personal Access Token** (`auth_type: token`): uses a PAT as a Bearer token. Suitable for Jira Server, Data Center, and Jira Cloud.
 
 ## Required Environment Variables
 
 Set these in `.env.rag`:
 
-- `JIRA1_URL`: base URL of your Jira instance (example: `https://yourorg.atlassian.net`)
-- `JIRA1_USERNAME`: Jira account email used for authentication
-- `JIRA1_API_TOKEN`: Jira API token (generate at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens))
-- `JIRA1_PROJECT_KEY`: Jira project key to ingest (example: `MYPROJECT`)
-- `JIRA1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+- `JIRA1_SERVER_URL`: base URL of your Jira instance (example: `https://yourorg.atlassian.net`)
+- `JIRA1_API_TOKEN`: API token (basic auth) or Personal Access Token (PAT auth)
+- `JIRA1_EMAIL`: Jira account email — required only when `auth_type` is `basic`
+- `JIRA1_JQL`: JQL query to select issues (example: `project = MYPROJECT ORDER BY updated DESC`)
+- `JIRA1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
 
 ## `config.yaml` Example
+
+### Basic auth (Jira Cloud)
 
 ```yaml
 sources:
   - type: "jira"
     name: "jira1"
     config:
-      url: "${JIRA1_URL}"
-      username: "${JIRA1_USERNAME}"
+      server_url: "${JIRA1_SERVER_URL}"
+      auth_type: "basic"
+      email: "${JIRA1_EMAIL}"
       api_token: "${JIRA1_API_TOKEN}"
-      project_key: "${JIRA1_PROJECT_KEY}"
+      jql: "${JIRA1_JQL}"
+      max_results: 50           # optional, default 50
+      load_comments: true
+      max_comments: 10          # optional, default 10
       schedules: "${JIRA1_SCHEDULES}"
 ```
+
+### PAT auth (Jira Server / Data Center)
+
+```yaml
+sources:
+  - type: "jira"
+    name: "jira1"
+    config:
+      server_url: "${JIRA1_SERVER_URL}"
+      auth_type: "token"
+      api_token: "${JIRA1_API_TOKEN}"
+      jql: "${JIRA1_JQL}"
+      max_results: 50           # optional, default 50
+      load_comments: true
+      max_comments: 10          # optional, default 10
+      schedules: "${JIRA1_SCHEDULES}"
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `server_url` | yes | — | Base URL of your Jira instance |
+| `auth_type` | yes | — | `basic` or `token` |
+| `email` | when `auth_type=basic` | — | Jira account email |
+| `api_token` | yes | — | API token or Personal Access Token |
+| `jql` | yes | — | JQL query to select issues |
+| `max_results` | no | `50` | Maximum number of issues to fetch |
+| `load_comments` | no | `false` | Whether to ingest issue comments |
+| `max_comments` | no | `10` | Maximum comments to include per issue |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
 
 ## Multiple Jira Sources
 
