@@ -274,7 +274,7 @@ WEB2_SCHEDULES=60
 ### Jira Connector
 
 The Jira connector ingests issues from Jira Cloud or Jira Server/Data Center.
-It supports two authentication modes: basic auth (email + API token, for Jira Cloud) and token auth (Personal Access Token, for Jira Server/Data Center).
+It supports two authentication modes: `basic` (email + API token) and `token` (Personal Access Token / PAT).
 
 ```yaml
 # config.yaml
@@ -284,7 +284,7 @@ sources:
     name: "jira1"
     config:
       server_url: "${JIRA1_SERVER_URL}"
-      auth_type: "basic"        # "basic" for Jira Cloud, "token" for Jira Server/Data Center
+      auth_type: "basic"        # "basic" (email + API token) or "token" (PAT)
       email: "${JIRA1_EMAIL}"   # required when auth_type is "basic"
       api_token: "${JIRA1_API_TOKEN}"
       jql: "${JIRA1_JQL}"       # JQL query to select issues

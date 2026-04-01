@@ -64,7 +64,7 @@ sources:
   #    html_to_text: true
   #    schedules: "${WEB2_SCHEDULES}"
 
-  # Jira connector (basic auth for Jira Cloud; use auth_type: token for Jira Server/Data Center)
+  # Jira connector (auth_type: "basic" = email + API token; "token" = Personal Access Token / PAT)
   #- type: "jira"
   #  name: "jira1"
   #  config:
