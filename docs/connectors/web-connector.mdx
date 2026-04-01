@@ -30,8 +30,8 @@ Set these in `.env.rag`:
 **Sitemap mode:**
 
 - `WEB2_SITEMAP_URL`: URL of the `sitemap.xml` to parse
-- `WEB2_INCLUDE_PREFIX`: *(optional)* only ingest URLs with this path prefix — mutually exclusive with `exclude_prefix`
-- `WEB2_EXCLUDE_PREFIX`: *(optional)* skip URLs with this path prefix — mutually exclusive with `include_prefix`
+- `WEB2_INCLUDE_PREFIX`: *(optional)* only ingest URLs with this path prefix — mutually exclusive with `WEB2_EXCLUDE_PREFIX`
+- `WEB2_EXCLUDE_PREFIX`: *(optional)* skip URLs with this path prefix — mutually exclusive with `WEB2_INCLUDE_PREFIX`
 - `WEB2_SCHEDULES`: ingestion interval in seconds (default is `3600`)
 
 ## `config.yaml` Example
