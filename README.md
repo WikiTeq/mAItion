@@ -228,6 +228,42 @@ SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
 ````
 
+### Outlook Connector
+
+The Outlook connector ingests emails from a Microsoft 365 mailbox via the Microsoft Graph API.
+Uses the [LlamaIndex OutlookEmailReader](https://llamahub.ai/l/readers/llama-index-readers-microsoft-outlook-emails)
+for authentication and email fetching.
+
+> **Note:** Only **Microsoft 365 / Entra ID (Business)** accounts are supported.
+> Personal Microsoft accounts are not supported (client credentials flow limitation).
+> Requires an Azure app registration with `Mail.Read` application permission and admin consent.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "outlook"
+    name: "outlook1"
+    config:
+      client_id: "${OUTLOOK1_CLIENT_ID}"
+      client_secret: "${OUTLOOK1_CLIENT_SECRET}"
+      tenant_id: "${OUTLOOK1_TENANT_ID}"
+      user_email: "${OUTLOOK1_USER_EMAIL}"
+      folder: "Inbox"           # optional, default Inbox; display names like "My Folder" are supported
+      num_mails: 100            # optional, default 10
+      schedules: "${OUTLOOK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+OUTLOOK1_CLIENT_ID=your-azure-app-client-id
+OUTLOOK1_CLIENT_SECRET=your-azure-app-client-secret
+OUTLOOK1_TENANT_ID=your-azure-tenant-id
+OUTLOOK1_USER_EMAIL=user@company.onmicrosoft.com
+OUTLOOK1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
