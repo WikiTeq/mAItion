@@ -1,0 +1,85 @@
+---
+title: "Web"
+description: "Configure the mAItion Web connector to ingest content from web pages and sitemaps."
+keywords:
+  - mAItion
+  - Web connector
+  - web scraper
+  - sitemap
+  - ingestion
+---
+
+Use the Web Connector to ingest content from web pages into the mAItion knowledge base. It supports two mutually exclusive modes: scraping a fixed list of URLs, or discovering URLs from a sitemap.
+
+## What It Does
+
+- fetches and scrapes content from web pages
+- converts HTML to text for indexing
+- for sitemap mode, discovers all URLs listed in a `sitemap.xml` (including sitemap indexes)
+- runs ingestion on configurable schedules
+
+## Environment Variables
+
+Set these in `.env.rag`:
+
+**URLs mode:**
+
+- `WEB1_URLS`: comma-separated list of URLs to scrape
+- `WEB1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+**Sitemap mode:**
+
+- `WEB2_SITEMAP_URL`: URL of the `sitemap.xml` to parse
+- `WEB2_INCLUDE_PREFIX`: *(optional)* only ingest URLs with this path prefix — mutually exclusive with `WEB2_EXCLUDE_PREFIX`
+- `WEB2_EXCLUDE_PREFIX`: *(optional)* skip URLs with this path prefix — mutually exclusive with `WEB2_INCLUDE_PREFIX`
+- `WEB2_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  # URLs mode — scrape a fixed list of pages
+  - type: "web"
+    name: "web1"
+    config:
+      urls: "${WEB1_URLS}"
+      html_to_text: true
+      schedules: "${WEB1_SCHEDULES}"
+
+  # Sitemap mode — discover URLs from sitemap.xml
+  - type: "web"
+    name: "web2"
+    config:
+      sitemap_url: "${WEB2_SITEMAP_URL}"
+      include_prefix: "${WEB2_INCLUDE_PREFIX}"
+      html_to_text: true
+      schedules: "${WEB2_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+# URLs mode
+WEB1_URLS=https://example.com/page1,https://example.com/page2
+WEB1_SCHEDULES=3600
+
+# Sitemap mode
+WEB2_SITEMAP_URL=https://example.com/sitemap.xml
+WEB2_INCLUDE_PREFIX=/blog/
+WEB2_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `urls` | yes (URLs mode) | — | Comma-separated list of URLs to scrape |
+| `sitemap_url` | yes (sitemap mode) | — | URL of the `sitemap.xml` to parse |
+| `include_prefix` | no | — | Only ingest URLs with this path prefix (mutually exclusive with `exclude_prefix`) |
+| `exclude_prefix` | no | — | Skip URLs with this path prefix (mutually exclusive with `include_prefix`) |
+| `html_to_text` | no | `true` | Convert HTML to plain text before indexing |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Web Sources
+
+Add more `sources` entries (`web3`, `web4`, etc) with separate env vars per source.
