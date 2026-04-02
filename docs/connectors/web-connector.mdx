@@ -69,6 +69,17 @@ WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=3600
 ```
 
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `urls` | yes (URLs mode) | — | Comma-separated list of URLs to scrape |
+| `sitemap_url` | yes (sitemap mode) | — | URL of the `sitemap.xml` to parse |
+| `include_prefix` | no | — | Only ingest URLs with this path prefix (mutually exclusive with `exclude_prefix`) |
+| `exclude_prefix` | no | — | Skip URLs with this path prefix (mutually exclusive with `include_prefix`) |
+| `html_to_text` | no | `true` | Convert HTML to plain text before indexing |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
 ## Multiple Web Sources
 
 Add more `sources` entries (`web3`, `web4`, etc) with separate env vars per source.
