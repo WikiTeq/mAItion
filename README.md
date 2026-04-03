@@ -243,9 +243,7 @@ sources:
   - type: "web"
     name: "web1"
     config:
-      urls:
-        - "https://example.com/page1"
-        - "https://example.com/page2"
+      urls: "${WEB1_URLS}"
       html_to_text: true
       schedules: "${WEB1_SCHEDULES}"
 
@@ -253,8 +251,8 @@ sources:
   - type: "web"
     name: "web2"
     config:
-      sitemap_url: "https://example.com/sitemap.xml"
-      include_prefix: "/blog/"
+      sitemap_url: "${WEB2_SITEMAP_URL}"
+      include_prefix: "${WEB2_INCLUDE_PREFIX}"
       html_to_text: true
       schedules: "${WEB2_SCHEDULES}"
 ```
@@ -262,7 +260,10 @@ sources:
 ```dotenv
 # .env.rag
 
+WEB1_URLS=https://example.com/page1,https://example.com/page2
 WEB1_SCHEDULES=60
+WEB2_SITEMAP_URL=https://example.com/sitemap.xml
+WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=60
 ```
 
