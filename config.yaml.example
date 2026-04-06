@@ -40,6 +40,18 @@ sources:
   #    queries: "${SERPAPI_QUERIES}"
   #    schedules: "${SERPAPI_SCHEDULES}"
 
+  # TRELLO CONNECTORS (optional):
+
+  #- type: "trello"
+  #  name: "trello1"
+  #  config:
+  #    api_key: "${TRELLO1_API_KEY}"
+  #    api_token: "${TRELLO1_API_TOKEN}"
+  #    #board_ids: "${TRELLO1_BOARD_IDS}"  # optional, comma-separated; omit to ingest all boards
+  #    load_comments: false                # optional, default false
+  #    max_comments: 10                    # optional, default 10
+  #    schedules: "${TRELLO1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
