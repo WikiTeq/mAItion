@@ -54,6 +54,7 @@ Over 100 extra connectors are available at request, including the most popular o
 * Microsoft Office 365
 * Dropbox
 * Trello
+* Web scraper
 * YouTube
 * FTP
 * SCP
@@ -227,6 +228,44 @@ SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
 ````
+
+### Web Connector
+
+The Web connector ingests content from web pages. It supports two mutually exclusive modes:
+- **URLs mode**: scrapes a fixed list of URLs
+- **Sitemap mode**: discovers URLs from a `sitemap.xml` with optional `include_prefix` filter
+
+```yaml
+# config.yaml
+
+sources:
+  # URLs mode
+  - type: "web"
+    name: "web1"
+    config:
+      urls: "${WEB1_URLS}"
+      html_to_text: true
+      schedules: "${WEB1_SCHEDULES}"
+
+  # Sitemap mode
+  - type: "web"
+    name: "web2"
+    config:
+      sitemap_url: "${WEB2_SITEMAP_URL}"
+      include_prefix: "${WEB2_INCLUDE_PREFIX}"
+      html_to_text: true
+      schedules: "${WEB2_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+WEB1_URLS=https://example.com/page1,https://example.com/page2
+WEB1_SCHEDULES=60
+WEB2_SITEMAP_URL=https://example.com/sitemap.xml
+WEB2_INCLUDE_PREFIX=/blog/
+WEB2_SCHEDULES=60
+```
 
 ## Embeddings and Inference
 

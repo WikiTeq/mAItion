@@ -40,6 +40,23 @@ sources:
   #    queries: "${SERPAPI_QUERIES}"
   #    schedules: "${SERPAPI_SCHEDULES}"
 
+  # Web scraper — URLs mode
+  #- type: "web"
+  #  name: "web1"
+  #  config:
+  #    urls: "${WEB1_URLS}"
+  #    html_to_text: true
+  #    schedules: "${WEB1_SCHEDULES}"
+
+  # Web scraper — sitemap mode
+  #- type: "web"
+  #  name: "web2"
+  #  config:
+  #    sitemap_url: "${WEB2_SITEMAP_URL}"
+  #    include_prefix: "${WEB2_INCLUDE_PREFIX}"
+  #    html_to_text: true
+  #    schedules: "${WEB2_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
