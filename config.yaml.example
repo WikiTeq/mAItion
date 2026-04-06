@@ -40,6 +40,31 @@ sources:
   #    queries: "${SERPAPI_QUERIES}"
   #    schedules: "${SERPAPI_SCHEDULES}"
 
+  #- type: "database"
+  #  name: "postgres1"
+  #  config:
+  #    type: "postgres"                                                         # "postgres" or "mysql"
+  #    connection_string: "${DB_POSTGRES1_CONNECTION_STRING}"                   # SQLAlchemy connection string
+  #    # Required columns: id, title, updated_at, content
+  #    # - id:         unique row identifier (used as document ID)
+  #    # - title:      human-readable name of the item
+  #    # - updated_at: last modification timestamp (ISO-8601 or datetime)
+  #    # - content:    main text body to embed
+  #    query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
+  #    required_columns: "id,title,updated_at,content"  # optional: validate these columns exist in query result
+  #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
+  #    schedules: "${DB_POSTGRES1_SCHEDULES}"
+
+  #- type: "database"
+  #  name: "mysql1"
+  #  config:
+  #    type: "mysql"                                                            # "postgres" or "mysql"
+  #    connection_string: "${DB_MYSQL1_CONNECTION_STRING}"                      # SQLAlchemy connection string
+  #    # Column convention: id, title, updated_at, content
+  #    query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
+  #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
+  #    schedules: "${DB_MYSQL1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
