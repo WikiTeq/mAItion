@@ -40,6 +40,23 @@ sources:
   #    queries: "${SERPAPI_QUERIES}"
   #    schedules: "${SERPAPI_SCHEDULES}"
 
+  #- type: "sharepoint"
+  #  name: "sharepoint1"
+  #  config:
+  #    client_id: "${SHAREPOINT1_CLIENT_ID}"
+  #    client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
+  #    tenant_id: "${SHAREPOINT1_TENANT_ID}"
+  #    # sharepoint_site_id can be provided instead of sharepoint_site_name
+  #    sharepoint_site_name: "MySite"
+  #    # optionally, instead of site_name:
+  #    # sharepoint_host_name: "contoso.sharepoint.com"
+  #    # sharepoint_relative_url: "sites/YourSiteName"
+  #    # sharepoint_folder_id can be provided instead of sharepoint_folder_path
+  #    sharepoint_folder_path: "Documents/Reports"
+  #    sharepoint_type: "file"                   # "file" (default) or "page"
+  #    recursive: true
+  #    schedules: "${SHAREPOINT1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

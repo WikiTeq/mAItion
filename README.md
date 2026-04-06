@@ -228,6 +228,58 @@ SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
 ````
 
+### SharePoint Connector
+
+The SharePoint connector ingests files from SharePoint document libraries or site pages.
+Authentication is via Microsoft Entra ID (client credentials / app registration).
+
+Supports two modes:
+- **File mode** (`sharepoint_type: file`, default): load files from a drive/folder
+- **Page mode** (`sharepoint_type: page`): load SharePoint site pages
+
+```yaml
+# config.yaml
+
+sources:
+  # Loading files from a SharePoint drive
+  - type: "sharepoint"
+    name: "sharepoint1"
+    config:
+      client_id: "${SHAREPOINT1_CLIENT_ID}"
+      client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
+      tenant_id: "${SHAREPOINT1_TENANT_ID}"
+      # sharepoint_site_id can be provided instead of sharepoint_site_name
+      sharepoint_site_name: "MySite"
+      # optionally, instead of site_name:
+      # sharepoint_host_name: "contoso.sharepoint.com"
+      # sharepoint_relative_url: "sites/YourSiteName"
+      # sharepoint_folder_id can be provided instead of sharepoint_folder_path
+      sharepoint_folder_path: "Documents/Reports"
+      sharepoint_type: "file"                   # "file" (default) or "page"
+      recursive: true
+      schedules: "${SHAREPOINT1_SCHEDULES}"
+
+  # Loading SharePoint site pages
+  - type: "sharepoint"
+    name: "sharepoint2"
+    config:
+      client_id: "${SHAREPOINT2_CLIENT_ID}"
+      client_secret: "${SHAREPOINT2_CLIENT_SECRET}"
+      tenant_id: "${SHAREPOINT2_TENANT_ID}"
+      sharepoint_site_name: "TeamSite"
+      sharepoint_type: "page"
+      schedules: "${SHAREPOINT2_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+SHAREPOINT1_CLIENT_ID=your-azure-app-client-id
+SHAREPOINT1_CLIENT_SECRET=your-azure-app-client-secret
+SHAREPOINT1_TENANT_ID=your-azure-tenant-id
+SHAREPOINT1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
