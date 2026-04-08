@@ -2,6 +2,14 @@
 
 ![mAItion](https://github.com/WikiTeq/mAItion/blob/main/mAItion.png?raw=true)
 
+<a href="https://www.star-history.com/?repos=WikiTeq%2FmAItion&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=WikiTeq/mAItion&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=WikiTeq/mAItion&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=WikiTeq/mAItion&type=date&legend=top-left" />
+ </picture>
+</a>
+
 mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs, 
 allowing you to chat, search and interact with your data through a slick chat interface. With mAItion
 you can aggregate all your knowledge from many sources using Connectors into a central place and 
