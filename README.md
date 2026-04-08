@@ -174,26 +174,31 @@ sources:
   - type: "mediawiki"
     name: "wiki1"
     config:
-      api_url: "${MEDIAWIKI1_API_URL}"
-      request_delay: 0.1
+      host: "${MEDIAWIKI1_HOST}"
+      path: "/w/"          # optional, default /w/
+      scheme: "https"      # optional, default https
+      page_limit: 500      # optional, max pages per namespace (default: unlimited)
+      namespaces: "0,1"    # optional, comma-separated namespace IDs (default: content namespaces)
+      filter_redirects: true  # optional, exclude redirect pages (default: true)
+      username: "${MEDIAWIKI1_USERNAME}"  # optional, for private wikis
+      password: "${MEDIAWIKI1_PASSWORD}"  # optional, for private wikis
       schedules: "${MEDIAWIKI1_SCHEDULES}"
 
   - type: "mediawiki"
     name: "wiki2"
     config:
-      ...
-
-  - type: "mediawiki"
-    name: "wiki3"
-    config:
-      ...
+      host: "${MEDIAWIKI2_HOST}"
+      schedules: "${MEDIAWIKI2_SCHEDULES}"
 ```
 
 ```dotenv
 # .env.rag
 
-MEDIAWIKI1_API_URL=https://en.wikipedia.org/w/api.php
+MEDIAWIKI1_HOST=wiki.example.org
 MEDIAWIKI1_SCHEDULES=3600
+# Only needed for private wikis requiring login:
+#MEDIAWIKI1_USERNAME=your-bot-username
+#MEDIAWIKI1_PASSWORD=your-bot-password
 ````
 
 ### SerpAPI Connector
