@@ -36,6 +36,15 @@ sources:
       schedules: "${SERPAPI1_SCHEDULES}"
 ```
 
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `api_key` | yes | — | SerpAPI API key |
+| `queries` | yes | — | One query or comma-separated list of queries |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Seconds to wait between API requests. Increase to avoid rate-limiting (e.g. `0.1`) |
+
 ## Multiple SerpAPI Sources
 
 Add more `sources` entries (`serp_ingestion2`, `serp_ingestion3`, etc) with separate env vars per source.

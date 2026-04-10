@@ -44,6 +44,19 @@ sources:
       schedules: "${S3_ACCOUNT1_SCHEDULES}"
 ```
 
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `endpoint` | yes | — | S3 API endpoint URL |
+| `access_key` | yes | — | Access key ID |
+| `secret_key` | yes | — | Secret access key |
+| `region` | yes | — | Bucket region |
+| `use_ssl` | no | `True` | Whether to use HTTPS |
+| `buckets` | yes | — | Bucket name(s), comma-separated |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Seconds to wait between API requests. Increase to avoid rate-limiting (e.g. `0.1`) |
+
 ## Multiple S3 Accounts
 
 Add more `sources` entries (`account2`, `account3`, etc) with separate env vars per account.
