@@ -32,6 +32,15 @@ Each item:
 
 Connector `config` fields differ by connector type. See connector pages for exact keys.
 
+### Common Connector Fields
+
+The following fields are supported by all connector types:
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Seconds to wait between outbound API requests. Increase to avoid rate-limiting (e.g. `0.1`) |
+
 ## `embedding`
 
 ```yaml

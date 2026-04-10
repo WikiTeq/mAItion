@@ -79,6 +79,7 @@ WEB2_SCHEDULES=3600
 | `exclude_prefix` | no | — | Skip URLs with this path prefix (mutually exclusive with `include_prefix`) |
 | `html_to_text` | no | `true` | Convert HTML to plain text before indexing |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Seconds to wait between outbound requests. Increase to avoid rate-limiting (e.g. `0.1`) |
 
 ## Multiple Web Sources
 
