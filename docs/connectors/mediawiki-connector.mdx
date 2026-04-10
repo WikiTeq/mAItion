@@ -8,20 +8,27 @@ keywords:
   - connectors
 ---
 
-Use MediaWiki Connector to ingest pages from [MediaWiki](https://www.mediawiki.org/wiki/MediaWiki) sites into mAItion knowledge base.
+Use the MediaWiki Connector to ingest pages from [MediaWiki](https://www.mediawiki.org/wiki/MediaWiki) sites into the mAItion knowledge base.
 
 ## What It Does
 
-- reads pages from MediaWiki instance
+- reads pages from a MediaWiki instance by namespace
 - converts content to Markdown for indexing
+- optionally filters out redirect pages
 - runs ingestion on configurable schedules
+
+## Authentication
+
+For **public wikis**, no authentication is required. For **private wikis**, provide a username and password via environment variables — see the config example below.
 
 ## Required Environment Variables
 
 Set these in `.env.rag`:
 
-- `MEDIAWIKI1_API_URL`: MediaWiki API URL (example: `https://en.wikipedia.org/w/api.php`)
-- `MEDIAWIKI1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+- `MEDIAWIKI1_HOST`: hostname of the MediaWiki instance (example: `en.wikipedia.org`)
+- `MEDIAWIKI1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+- `MEDIAWIKI1_USERNAME`: username for private wiki authentication (optional)
+- `MEDIAWIKI1_PASSWORD`: password for private wiki authentication (optional)
 
 ## `config.yaml` Example
 
@@ -30,11 +37,50 @@ sources:
   - type: "mediawiki"
     name: "wiki1"
     config:
-      api_url: "${MEDIAWIKI1_API_URL}"
-      request_delay: 0.1
+      host: "${MEDIAWIKI1_HOST}"
+      path: "/w/"          # optional, default /w/
+      scheme: "https"      # optional, default https
+      page_limit: 500      # optional, max pages per namespace (default: unlimited)
+      namespaces: "0,1"    # optional, comma-separated namespace IDs (default: content namespaces)
+      filter_redirects: true  # optional, exclude redirect pages (default: true)
+      username: "${MEDIAWIKI1_USERNAME}"  # optional, for private wikis
+      password: "${MEDIAWIKI1_PASSWORD}"  # optional, for private wikis
       schedules: "${MEDIAWIKI1_SCHEDULES}"
+      request_delay: 0.1     # optional, delay in seconds between requests (default: 0)
 ```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `host` | yes | — | Hostname of the MediaWiki instance (e.g. `en.wikipedia.org`) |
+| `path` | no | `/w/` | Path to the MediaWiki API root |
+| `scheme` | no | `https` | URL scheme (`http` or `https`) |
+| `page_limit` | no | unlimited | Maximum pages to fetch per namespace |
+| `namespaces` | no | content namespaces | Comma-separated namespace IDs to ingest |
+| `filter_redirects` | no | `true` | Exclude redirect pages from ingestion |
+| `username` | no | — | Username for private wiki authentication |
+| `password` | no | — | Password for private wiki authentication |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Delay in seconds between API requests (useful for rate-limited wikis) |
 
 ## Multiple MediaWiki Sources
 
 Add more `sources` entries (`wiki2`, `wiki3`, etc) with separate env vars per source.
+
+```yaml
+sources:
+  - type: "mediawiki"
+    name: "wiki1"
+    config:
+      host: "${MEDIAWIKI1_HOST}"
+      schedules: "${MEDIAWIKI1_SCHEDULES}"
+
+  - type: "mediawiki"
+    name: "wiki2"
+    config:
+      host: "${MEDIAWIKI2_HOST}"
+      username: "${MEDIAWIKI2_USERNAME}"  # optional, for private wikis
+      password: "${MEDIAWIKI2_PASSWORD}"  # optional, for private wikis
+      schedules: "${MEDIAWIKI2_SCHEDULES}"
+```
