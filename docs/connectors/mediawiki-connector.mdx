@@ -21,14 +21,17 @@ Use the MediaWiki Connector to ingest pages from [MediaWiki](https://www.mediawi
 
 For **public wikis**, no authentication is required. For **private wikis**, provide a username and password via environment variables — see the config example below.
 
-## Required Environment Variables
+## Environment Variables
 
 Set these in `.env.rag`:
 
+**Required:**
 - `MEDIAWIKI1_HOST`: hostname of the MediaWiki instance (example: `en.wikipedia.org`)
+
+**Optional:**
 - `MEDIAWIKI1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
-- `MEDIAWIKI1_USERNAME`: username for private wiki authentication (optional)
-- `MEDIAWIKI1_PASSWORD`: password for private wiki authentication (optional)
+- `MEDIAWIKI1_USERNAME`: username for private wiki authentication
+- `MEDIAWIKI1_PASSWORD`: password for private wiki authentication
 
 ## `config.yaml` Example
 
@@ -66,7 +69,7 @@ sources:
 
 ## Multiple MediaWiki Sources
 
-Add more `sources` entries (`wiki2`, `wiki3`, etc) with separate env vars per source.
+Add more `sources` entries (`wiki2`, `wiki3`, etc.) with separate env vars per source.
 
 ```yaml
 sources:
