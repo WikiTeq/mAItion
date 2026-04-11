@@ -20,11 +20,11 @@ Use the Directory Connector to ingest files from a local filesystem directory in
 
 ## Prerequisites
 
-The directory must be accessible inside the `api` container. Mount it as a Docker volume in `compose.yaml`:
+The directory must be accessible inside the `celery_worker` container. Mount it as a Docker volume in `compose.yaml`:
 
 ```yaml
 services:
-  api:
+  celery_worker:
     volumes:
       - /path/on/host:/data/docs:ro
 ```
