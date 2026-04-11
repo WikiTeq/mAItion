@@ -21,6 +21,10 @@ Use the MediaWiki Connector to ingest pages from [MediaWiki](https://www.mediawi
 
 For **public wikis**, no authentication is required. For **private wikis**, provide a username and password via environment variables — see the config example below.
 
+<Note>
+  It is recommended to use [Bot passwords](https://www.mediawiki.org/wiki/Manual:Bot_passwords) instead of your wiki account credentials. Bot passwords are scoped, revocable tokens that limit access to only the API actions the connector needs.
+</Note>
+
 ## Environment Variables
 
 Set these in `.env.rag`:
