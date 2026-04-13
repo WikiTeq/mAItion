@@ -138,23 +138,69 @@ do_first_start() {
     			echo ""
             	echo "[Custom entrypoint] Setting default OpenAI model.."
 
+                # setup openai provider
+                echo ""
+                echo "[Custom entrypoint] Adding provider"
     			curl -s -X POST "http://localhost:8080/openai/config/update" \
     		      -H "Authorization: Bearer ${API_KEY}" \
     		      -H "Content-Type: application/json" \
                   --data-raw "{\"ENABLE_OPENAI_API\":true,\"OPENAI_API_BASE_URLS\":[\"$OPENAI_API_BASE_URL\"],\"OPENAI_API_KEYS\":[\"$OPENAI_API_KEY\"],\"OPENAI_API_CONFIGS\":{\"0\":{\"enable\":true,\"tags\":[],\"prefix_id\":\"\",\"model_ids\":[\"$OPENAI_DEFAULT_MODEL\"]}}}"
 
+                # set the model as default
+                echo ""
+                echo "[Custom entrypoint] Adding default model"
                 curl -s -X POST "http://localhost:8080/api/v1/users/user/settings/update" \
                   -H "Authorization: Bearer ${API_KEY}" \
                   -H "Content-Type: application/json" \
                   --data-raw "{\"ui\":{\"version\":\"0.6.5\",\"models\":[\"$OPENAI_DEFAULT_MODEL\"]}}"
+
+                # rename the model
+                echo ""
+                echo "[Custom entrypoint] Renaming the model"
+                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
+                  -H "Authorization: Bearer ${API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  --data-raw "{\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"wikiteq/centurion\",\"base_model_id\":null,\"params\":{},\"access_control\":null,\"owned_by\":\"openai\",\"openai\":{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"wikiteq/centurion\",\"owned_by\":\"openai\",\"openai\":{\"id\":\"$OPENAI_DEFAULT_MODEL\"},\"urlIdx\":0},\"urlIdx\":0,\"is_active\":true}"
+
     		fi
     	fi
+
+    	# user setup
+    	if [ -n "$X_WEBUI_USER_EMAIL" ]; then
+    	    echo ""
+            echo "[Custom entrypoint] Creating first non-admin user"
+    	    curl -s -X POST "http://localhost:8080/api/v1/auths/add" \
+              -H "Authorization: Bearer ${API_KEY}" \
+              -H "Content-Type: application/json" \
+              --data-raw "{\"name\":\"$X_WEBUI_USER_EMAIL\",\"email\":\"$X_WEBUI_USER_EMAIL\",\"password\":\"$X_WEBUI_USER_PASS\",\"role\":\"user\"}"
+    	fi
+
+    	#disable ollama API
+    	if [ "$ENABLE_OLLAMA_API" == "false" ] || [ "$ENABLE_OLLAMA_API" == "False" ]; then
+    	    echo ""
+            echo "[Custom entrypoint] Disabling Ollama"
+            curl -s -X POST "http://localhost:8080/ollama/config/update" \
+              -H "Authorization: Bearer ${API_KEY}" \
+              -H "Content-Type: application/json" \
+              --data-raw "{\"ENABLE_OLLAMA_API\":false,\"OLLAMA_BASE_URLS\":[\"/ollama\"],\"OLLAMA_API_CONFIGS\":{\"0\":{}}}"
+        fi
+
+		# remove default suggestions
+		echo ""
+		echo "[Custom entrypoint] Removing default suggestions"
+		curl -s -X POST "http://localhost:8080/api/v1/configs/suggestions" \
+		-H "Authorization: Bearer ${API_KEY}" \
+		-H "Content-Type: application/json" \
+		--data-raw "{\"suggestions\":[]}"
 
     	touch /app/backend/data/.first_start
 }
 
 start_healthz_server
 apply_patches
+
+pip install hf_xet
+
 start_app
 wait_for_app
 #copy_statics
