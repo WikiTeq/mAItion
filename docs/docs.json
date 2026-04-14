@@ -57,7 +57,8 @@
 							"connectors/mediawiki-connector",
 							"connectors/serpapi-connector",
 							"connectors/jira-connector",
-							"connectors/web-connector"
+							"connectors/web-connector",
+							"connectors/directory-connector"
 						]
 					},
 					{

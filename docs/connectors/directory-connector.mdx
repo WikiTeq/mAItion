@@ -1,0 +1,66 @@
+---
+title: "Directory"
+description: "Configure the mAItion Directory connector to ingest files from a local filesystem directory into the knowledge base."
+keywords:
+  - mAItion
+  - Directory connector
+  - local files ingestion
+  - connectors
+---
+
+Use the Directory Connector to ingest files from a local filesystem directory into the mAItion knowledge base.
+
+## What It Does
+
+- reads files from a directory path mounted inside the container
+- supports recursive traversal of subdirectories
+- filters files by extension, hidden status, or empty content
+- optionally limits the number of files ingested
+- runs ingestion on a configurable schedule
+
+## Prerequisites
+
+The directory must be accessible inside the `celery_worker` container. Mount it as a Docker volume in `compose.yaml`:
+
+```yaml
+services:
+  celery_worker:
+    volumes:
+      - /path/on/host:/data/docs:ro
+```
+
+Use the same container path (e.g. `/data/docs`) as the `path` value in `config.yaml`.
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "directory"
+    name: "local_docs"
+    config:
+      path: "/data/docs"            # required, path inside the container
+      recursive: true               # optional, default true
+      required_exts: "txt,md,pdf"  # optional, comma-separated extensions
+      exclude_hidden: true          # optional, default true
+      exclude_empty: false          # optional, default false
+      num_files_limit: 1000         # optional, positive integer
+      schedules: "3600"
+      request_delay: 0              # optional, delay in seconds between files (default: 0)
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `path` | yes | — | Absolute path to the directory inside the container |
+| `recursive` | no | `true` | Whether to recurse into subdirectories |
+| `required_exts` | no | — | Comma-separated file extensions to include (e.g. `txt,md,pdf`). All files are included when omitted. |
+| `exclude_hidden` | no | `true` | Skip hidden files and directories (those starting with `.`) |
+| `exclude_empty` | no | `false` | Skip empty files |
+| `num_files_limit` | no | — | Maximum number of files to ingest. Unlimited when omitted. |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Delay in seconds between processing each file. Useful for throttling I/O on large directories. |
+
+## Multiple Directory Sources
+
+Add more `sources` entries (`directory2`, `directory3`, etc.) with separate volume mounts and paths per source.
