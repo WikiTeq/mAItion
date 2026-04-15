@@ -410,3 +410,13 @@ requests.exceptions.ReadTimeout: (ReadTimeoutError("HTTPSConnectionPool(host='hu
 
 OpenWebUI downloads some HuggingFace models during first boot. Sometimes HuggingFace endpoints may timeout.
 In this scenario just run `docker compose down -v` to wipe the stack and start over with `docker compose up -d`
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=WikiTeq%2FmAItion&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=WikiTeq/mAItion&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=WikiTeq/mAItion&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=WikiTeq/mAItion&type=date&legend=top-left" />
+ </picture>
+</a>
