@@ -93,7 +93,7 @@ docker compose ps
 NAME                                      IMAGE                                      COMMAND                  SERVICE     CREATED         STATUS                   PORTS
 rag-of-all-trades-openwebui-api-1         ghcr.io/wikiteq/rag-of-all-trades:latest   "sh -c 'alembic upgr…"   api         4 minutes ago   Up 4 minutes (healthy)   8000/tcp
 rag-of-all-trades-openwebui-openwebui-1   ghcr.io/open-webui/open-webui:0.6.5        "/custom-entrypoint.…"   openwebui   4 minutes ago   Up 4 minutes (healthy)   0.0.0.0:3000->8080/tcp, [::]:3000->8080/tcp
-rag-of-all-trades-openwebui-postgres-1    ankane/pgvector:v0.5.1                     "docker-entrypoint.s…"   postgres    4 minutes ago   Up 4 minutes (healthy)   5432/tcp
+rag-of-all-trades-openwebui-postgres-1    pgvector/pgvector:0.8.2-pg18-trixie        "docker-entrypoint.s…"   postgres    4 minutes ago   Up 4 minutes (healthy)   5432/tcp
 rag-of-all-trades-openwebui-redis-1       redis:7                                    "docker-entrypoint.s…"   redis       4 minutes ago   Up 4 minutes (healthy)   6379/tcp
 ```
 
@@ -401,6 +401,42 @@ vector_store:
 
 The `openwebui` service depends on the `api` service healthiness and will remain pending until the API service
 is online. Check the `api` container for any errors, review the `config.yaml` and `.env.rag` for typos.
+
+## Upgrading
+
+### Migrating from `ankane/pgvector` to `pgvector/pgvector` (PostgreSQL 18)
+
+The `ankane/pgvector` image is deprecated. The replacement is `pgvector/pgvector`, which also changes
+the PostgreSQL major version (15 → 18). Because PostgreSQL data directories are version-specific,
+an in-place upgrade is not possible — you must dump and restore.
+
+> **Note:** PostgreSQL 18+ changed the expected volume mount point from
+> `/var/lib/postgresql/data` to `/var/lib/postgresql`. This is already reflected in `compose.yaml`.
+
+**If you have existing data to preserve:**
+
+```bash
+# 1. While the old container is still running, dump all data
+docker compose exec postgres pg_dumpall -U ${POSTGRES_USER} > pgdump_pg15.sql
+
+# 2. Stop all services and remove the old volume
+docker compose down -v
+
+# 3. Start the new postgres container
+docker compose up postgres -d
+
+# 4. Wait for it to be healthy, then restore
+docker compose exec -T postgres psql -U ${POSTGRES_USER} < pgdump_pg15.sql
+
+# 5. Start everything else
+docker compose up -d
+```
+
+**If you have no data to preserve (fresh / dev environment):**
+
+```bash
+docker compose down -v && docker compose up -d
+```
 
 ### HuggingFace connection timeout
 
