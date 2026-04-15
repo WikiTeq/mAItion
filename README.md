@@ -286,7 +286,7 @@ sources:
     config:
       token: "${SLACK1_TOKEN}"
       channel_ids: "${SLACK1_CHANNEL_IDS}"          # comma-separated channel IDs (mutually exclusive with channel_patterns)
-      # channel_patterns: "general,^dev-.*"         # channel name patterns or regex (mutually exclusive with channel_ids)
+      # channel_patterns: "${SLACK1_CHANNEL_PATTERNS}" # channel name patterns or regex (mutually exclusive with channel_ids)
       # channel_types: "public_channel,private_channel"  # optional, used with channel_patterns
       # earliest_date: "2024-01-01"                 # optional: fetch messages from this date
       # latest_date: "2025-01-01"                   # optional: fetch messages up to this date
@@ -298,6 +298,7 @@ sources:
 
 SLACK1_TOKEN=xoxb-your-bot-token
 SLACK1_CHANNEL_IDS=C1234567890,C0987654321
+SLACK1_CHANNEL_PATTERNS=general,^dev.*
 SLACK1_SCHEDULES=60
 ```
 

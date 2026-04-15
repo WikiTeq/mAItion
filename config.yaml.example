@@ -69,7 +69,7 @@ sources:
   #  config:
   #    token: "${SLACK1_TOKEN}"                                                   # Slack bot token (xoxb-...)
   #    channel_ids: "${SLACK1_CHANNEL_IDS}"                                       # comma-separated channel IDs
-  #    # channel_patterns: "general,^dev-.*"                                      # mutually exclusive with channel_ids
+  #    # channel_patterns: "${SLACK1_CHANNEL_PATTERNS}"                            # mutually exclusive with channel_ids
   #    # channel_types: "public_channel,private_channel"                          # optional, used with channel_patterns
   #    # earliest_date: "2024-01-01"                                              # optional
   #    # latest_date: "2025-01-01"                                                # optional
