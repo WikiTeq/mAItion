@@ -13,6 +13,11 @@
 	"icons": {
 		"library": "fontawesome"
 	},
+	"integrations": {
+		"gtm": {
+			"tagId": "GTM-MQPGSF3N"
+		}
+	},
 	"api": {
 		"openapi": "openapi.yaml",
 		"playground": {
