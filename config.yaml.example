@@ -112,6 +112,17 @@ sources:
   #    max_pages: 50
   #    schedules: "${CONFLUENCE1_SCHEDULES}"
 
+  # mode: folder_id
+  #- type: "confluence"
+  #  name: "confluence5"
+  #  config:
+  #    base_url: "${CONFLUENCE1_BASE_URL}"
+  #    username: "${CONFLUENCE1_USERNAME}"
+  #    api_token: "${CONFLUENCE1_API_TOKEN}"
+  #    folder_id: "${CONFLUENCE1_FOLDER_ID}"
+  #    max_pages: 50
+  #    schedules: "${CONFLUENCE1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

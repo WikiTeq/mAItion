@@ -344,6 +344,17 @@ sources:
       cql: "${CONFLUENCE1_CQL}"
       max_pages: 50
       schedules: "${CONFLUENCE1_SCHEDULES}"
+
+  # mode: folder_id — all pages inside a folder
+  - type: "confluence"
+    name: "confluence5"
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      folder_id: "${CONFLUENCE1_FOLDER_ID}"
+      max_pages: 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
 ```
 
 ```dotenv
@@ -352,10 +363,12 @@ sources:
 CONFLUENCE1_BASE_URL=https://yoursite.atlassian.net/wiki
 CONFLUENCE1_USERNAME=you@example.com
 CONFLUENCE1_API_TOKEN=your-api-token
+CONFLUENCE1_PASSWORD=your-password  # mutually exclusive with API_TOKEN
 CONFLUENCE1_SPACE_KEY=ENG
 CONFLUENCE1_PAGE_IDS=123456,789012
 CONFLUENCE1_PAGE_LABEL=meeting-notes
 CONFLUENCE1_CQL=space = 'ENG' AND type = page
+CONFLUENCE1_FOLDER_ID=12345
 CONFLUENCE1_SCHEDULES=3600
 ```
 
