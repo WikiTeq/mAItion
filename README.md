@@ -54,6 +54,7 @@ Over 100 extra connectors are available at request, including the most popular o
 * Notion
 * Microsoft Teams
 * Microsoft Office 365
+* Box
 * Dropbox
 * Trello
 * Web scraper
@@ -306,6 +307,81 @@ JIRA1_EMAIL=your-email@example.com
 JIRA1_API_TOKEN=your-api-token
 JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
 JIRA1_SCHEDULES=3600
+```
+
+### Box Connector
+
+The Box connector ingests files from Box cloud storage using the [LlamaIndex Box reader](https://llamahub.ai/l/readers/llama-index-readers-box).
+It supports CCG and JWT authentication, folder-based ingestion, file-ID-based ingestion, full-text content search, and metadata-based search.
+One or more ingestion modes can be combined in a single source.
+
+**Ingestion modes** (at least one required):
+
+| Mode | Config keys |
+|---|---|
+| Folder | `folder_id`, `is_recursive` |
+| File IDs | `file_ids` |
+| Content search | `search_query`, `search_file_extensions`, `search_ancestor_folder_ids` |
+| Metadata search | `metadata_template`, `metadata_ancestor_folder_id`, `metadata_query`, `metadata_query_params` |
+
+**CCG auth (default)** — Client Credentials Grant, enterprise or user-level:
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "box"
+    name: "box1"
+    config:
+      box_client_id: "${BOX1_CLIENT_ID}"
+      box_client_secret: "${BOX1_CLIENT_SECRET}"
+      box_enterprise_id: "${BOX1_ENTERPRISE_ID}"  # required unless box_user_id is set
+      # box_user_id: "${BOX1_USER_ID}"            # optional: user-level CCG access
+      folder_id: "0"       # ingest root folder
+      is_recursive: true   # optional, default false
+      schedules: "${BOX1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BOX1_CLIENT_ID=your-box-app-client-id
+BOX1_CLIENT_SECRET=your-box-app-client-secret
+BOX1_ENTERPRISE_ID=your-box-enterprise-id
+BOX1_SCHEDULES=3600
+```
+
+**JWT auth** — for server-side authentication with a private key:
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "box"
+    name: "box2"
+    config:
+      box_client_id: "${BOX2_CLIENT_ID}"
+      box_client_secret: "${BOX2_CLIENT_SECRET}"
+      auth_type: "jwt"
+      box_jwt_key_id: "${BOX2_JWT_KEY_ID}"
+      box_private_key: "${BOX2_PRIVATE_KEY}"
+      box_private_key_passphrase: "${BOX2_PRIVATE_KEY_PASSPHRASE}"
+      box_enterprise_id: "${BOX2_ENTERPRISE_ID}"  # optional for JWT
+      file_ids: "${BOX2_FILE_IDS}"
+      schedules: "${BOX2_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BOX2_CLIENT_ID=your-box-app-client-id2
+BOX2_CLIENT_SECRET=your-box-app-client-secret2
+BOX2_ENTERPRISE_ID=your-box-enterprise-id2
+BOX2_JWT_KEY_ID=your-jwt-public-key-id
+BOX2_PRIVATE_KEY=-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----
+BOX2_PRIVATE_KEY_PASSPHRASE=your-passphrase
+BOX2_FILE_IDS=123,456
+BOX2_SCHEDULES=3600
 ```
 
 ### Pipedrive Connector
