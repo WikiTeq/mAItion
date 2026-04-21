@@ -127,7 +127,6 @@ The connector has the following configuration options:
 # config.yaml
 
 sources:
-  - 
   - type: "s3" # must be s3
     name: "account1" # arbitrary name for the connector, will be stored in metadata
     config:
@@ -138,7 +137,7 @@ sources:
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
       buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
       schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
-      
+
   - type: "s3"
     name: "account2"
     config:
@@ -150,7 +149,7 @@ sources:
       ...
 ```
 
-````dotenv
+```dotenv
 # .env.rag
 
 S3_ACCOUNT1_ENDPOINT=https://s3.amazonaws.com
@@ -160,7 +159,7 @@ S3_ACCOUNT1_REGION=us-east-1
 S3_ACCOUNT1_USE_SSL=True
 S3_ACCOUNT1_BUCKETS=bucket1,bucket2
 S3_ACCOUNT1_SCHEDULES=3600,60
-````
+```
 
 ### MediaWiki Connector
 
@@ -199,7 +198,7 @@ MEDIAWIKI1_SCHEDULES=3600
 # Only needed for private wikis requiring login:
 #MEDIAWIKI1_USERNAME=your-bot-username
 #MEDIAWIKI1_PASSWORD=your-bot-password
-````
+```
 
 ### SerpAPI Connector
 
@@ -232,7 +231,32 @@ sources:
 SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
-````
+```
+
+### Slab Connector
+
+The Slab connector ingests posts from a [Slab](https://slab.com/) knowledge base via the GraphQL API.
+When `topic_ids` is configured, only posts belonging to those topics are ingested.
+When omitted, all organisation posts are fetched using cursor-based pagination.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "slab"
+    name: "slab1"
+    config:
+      api_token: "${SLAB1_API_TOKEN}"
+      # topic_ids: "topic_abc123,topic_def456"  # optional
+      schedules: "${SLAB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+SLAB1_API_TOKEN=your-slab-api-token
+SLAB1_SCHEDULES=3600
+```
 
 ### Web Connector
 
