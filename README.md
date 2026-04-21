@@ -237,6 +237,31 @@ SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
 ```
 
+### Slab Connector
+
+The Slab connector ingests posts from a [Slab](https://slab.com/) knowledge base via the GraphQL API.
+When `topic_ids` is configured, only posts belonging to those topics are ingested.
+When omitted, all organisation posts are fetched using cursor-based pagination.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "slab"
+    name: "slab1"
+    config:
+      api_token: "${SLAB1_API_TOKEN}"
+      # topic_ids: "topic_abc123,topic_def456"  # optional
+      schedules: "${SLAB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+SLAB1_API_TOKEN=your-slab-api-token
+SLAB1_SCHEDULES=3600
+```
+
 ### Web Connector
 
 The Web connector ingests content from web pages. It supports two mutually exclusive modes:
