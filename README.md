@@ -38,6 +38,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Bitbucket
 
 ### 🌐 Extra connectors
 
@@ -127,7 +128,6 @@ The connector has the following configuration options:
 # config.yaml
 
 sources:
-  - 
   - type: "s3" # must be s3
     name: "account1" # arbitrary name for the connector, will be stored in metadata
     config:
@@ -138,7 +138,7 @@ sources:
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
       buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
       schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
-      
+
   - type: "s3"
     name: "account2"
     config:
@@ -150,7 +150,7 @@ sources:
       ...
 ```
 
-````dotenv
+```dotenv
 # .env.rag
 
 S3_ACCOUNT1_ENDPOINT=https://s3.amazonaws.com
@@ -160,7 +160,7 @@ S3_ACCOUNT1_REGION=us-east-1
 S3_ACCOUNT1_USE_SSL=True
 S3_ACCOUNT1_BUCKETS=bucket1,bucket2
 S3_ACCOUNT1_SCHEDULES=3600,60
-````
+```
 
 ### MediaWiki Connector
 
@@ -199,7 +199,7 @@ MEDIAWIKI1_SCHEDULES=3600
 # Only needed for private wikis requiring login:
 #MEDIAWIKI1_USERNAME=your-bot-username
 #MEDIAWIKI1_PASSWORD=your-bot-password
-````
+```
 
 ### SerpAPI Connector
 
@@ -232,7 +232,7 @@ sources:
 SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
-````
+```
 
 ### Web Connector
 
@@ -270,6 +270,40 @@ WEB1_SCHEDULES=60
 WEB2_SITEMAP_URL=https://example.com/sitemap.xml
 WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=60
+```
+
+### Bitbucket Connector
+
+The Bitbucket connector ingests files from Bitbucket Cloud repositories via the Bitbucket REST API v2.0. Supports workspace/repository scoping, branch selection, recursive file walking, and include/exclude filtering on file extensions and directories.
+
+> **Note:** `include_extensions` and `exclude_extensions` are mutually exclusive. `include_directories` and `exclude_directories` are mutually exclusive.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "bitbucket"
+    name: "bitbucket1"
+    config:
+      username: "${BITBUCKET1_USERNAME}"
+      api_token: "${BITBUCKET1_API_TOKEN}"
+      workspace: "${BITBUCKET1_WORKSPACE}"
+      repo: "${BITBUCKET1_REPO}"
+      branch: "${BITBUCKET1_BRANCH}"        # optional, default "master"
+      include_extensions: "md,txt"          # optional (mutually exclusive with exclude_extensions)
+      include_directories: "docs"           # optional (mutually exclusive with exclude_directories)
+      schedules: "${BITBUCKET1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BITBUCKET1_USERNAME=your-bitbucket-username
+BITBUCKET1_API_TOKEN=your-api-token
+BITBUCKET1_WORKSPACE=your-workspace-slug
+BITBUCKET1_REPO=your-repo-slug
+BITBUCKET1_BRANCH=master
+BITBUCKET1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference

@@ -64,6 +64,23 @@ sources:
   #    html_to_text: true
   #    schedules: "${WEB2_SCHEDULES}"
 
+  # Bitbucket Cloud
+  #- type: "bitbucket"
+  #  name: "bitbucket1"
+  #  config:
+  #    username: "${BITBUCKET1_USERNAME}"
+  #    api_token: "${BITBUCKET1_API_TOKEN}"
+  #    workspace: "${BITBUCKET1_WORKSPACE}"
+  #    repo: "${BITBUCKET1_REPO}"
+  #    branch: "${BITBUCKET1_BRANCH}"          # optional, default "master"
+  #    # include_extensions and exclude_extensions are mutually exclusive:
+  #    #include_extensions: "md,txt"           # optional: only ingest these extensions
+  #    #exclude_extensions: "png,jpg"          # optional: skip these extensions
+  #    # include_directories and exclude_directories are mutually exclusive:
+  #    #include_directories: "docs,src"        # optional: only ingest files under these dirs
+  #    #exclude_directories: "tests"           # optional: skip files under these dirs
+  #    schedules: "${BITBUCKET1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
