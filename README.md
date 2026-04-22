@@ -41,6 +41,7 @@ interact with your knowledge with ease!
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
 * Slack
+* Bitbucket
 
 ## 🌐 Extra connectors
 
@@ -379,6 +380,40 @@ SLACK1_TOKEN=xoxb-your-bot-token
 SLACK1_CHANNEL_IDS=C1234567890,C0987654321
 SLACK1_CHANNEL_PATTERNS=general,^dev.*
 SLACK1_SCHEDULES=3600
+```
+
+### Bitbucket Connector
+
+The Bitbucket connector ingests files from Bitbucket Cloud repositories via the Bitbucket REST API v2.0. Supports workspace/repository scoping, branch selection, recursive file walking, and include/exclude filtering on file extensions and directories.
+
+> **Note:** `include_extensions` and `exclude_extensions` are mutually exclusive. `include_directories` and `exclude_directories` are mutually exclusive.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "bitbucket"
+    name: "bitbucket1"
+    config:
+      username: "${BITBUCKET1_USERNAME}"
+      api_token: "${BITBUCKET1_API_TOKEN}"
+      workspace: "${BITBUCKET1_WORKSPACE}"
+      repo: "${BITBUCKET1_REPO}"
+      branch: "${BITBUCKET1_BRANCH}"        # optional, default "master"
+      include_extensions: "md,txt"          # optional (mutually exclusive with exclude_extensions)
+      include_directories: "docs"           # optional (mutually exclusive with exclude_directories)
+      schedules: "${BITBUCKET1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BITBUCKET1_USERNAME=your-bitbucket-username
+BITBUCKET1_API_TOKEN=your-api-token
+BITBUCKET1_WORKSPACE=your-workspace-slug
+BITBUCKET1_REPO=your-repo-slug
+BITBUCKET1_BRANCH=master
+BITBUCKET1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
