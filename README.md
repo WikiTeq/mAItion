@@ -7,6 +7,8 @@ allowing you to chat, search and interact with your data through a slick chat in
 you can aggregate all your knowledge from many sources using Connectors into a central place and 
 interact with your knowledge with ease!
 
+📚 **Documentation:** [docs.maition.com](https://docs.maition.com/)
+
 ## ✨ Features
 
 * Support for both local and remote LLMs for embedding and inference
