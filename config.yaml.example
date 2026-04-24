@@ -47,6 +47,17 @@ sources:
   #    queries: "${SERPAPI_QUERIES}"
   #    schedules: "${SERPAPI_SCHEDULES}"
 
+
+  #- type: "slab"
+  #  name: "slab1"
+  #  config:
+  #    api_token: "${SLAB1_API_TOKEN}"
+  #    # topic_ids: "topic_abc123,topic_def456"  # optional
+  #    max_retries: 3      # optional, default 3
+  #    retry_delay: 2      # optional, seconds between retries (default 2)
+  #    search_batch_size: 100  # optional, posts per search page (default 100)
+  #    schedules: "${SLAB1_SCHEDULES}"
+
   # Web scraper — URLs mode
   #- type: "web"
   #  name: "web1"
