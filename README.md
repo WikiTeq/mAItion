@@ -2,9 +2,9 @@
 
 ![mAItion](https://github.com/WikiTeq/mAItion/blob/main/mAItion.png?raw=true)
 
-mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs, 
+mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs,
 allowing you to chat, search and interact with your data through a slick chat interface. With mAItion
-you can aggregate all your knowledge from many sources using Connectors into a central place and 
+you can aggregate all your knowledge from many sources using Connectors into a central place and
 interact with your knowledge with ease!
 
 📚 **Documentation:** [docs.maition.com](https://docs.maition.com/)
@@ -32,7 +32,7 @@ interact with your knowledge with ease!
 
 * A single place to chat with your company knowledge that's scattered across many external systems
 * A central space for looking up and refining your existing knowledge across many knowledge bases
-* A tool to find secret knowledge that can not be found in the other was across your scattered data
+* A tool to find secret knowledge that cannot be found any other way across your scattered data
 * An entry-point into your on-premise hosted LLM models supporting evaluations and per-model settings
 
 ### 🌐 Connectors included
@@ -40,6 +40,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Slack
 
 ### 🌐 Extra connectors
 
@@ -48,7 +49,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Gmail
 * Google Drive
 * Jira
-* Slack
 * GitHub
 * Gitlab
 * Notion
@@ -79,8 +79,8 @@ Over 100 extra connectors are available at request, including the most popular o
 * Create `config.yaml` out of `config.yaml.example`
     * The default config works OK and is configured to:
         * Use a single S3 bucket as data source
-        * Use `openai/gpt-oss-20b:free` [model](https://openrouter.ai/openai/gpt-oss-20b:free) for rerphrase
-        * User local `sentence-transformers/all-mpnet-base-v2` [model](https://huggingface.co/sentence-transformers/all-mpnet-base-v2) for embeddings
+        * Use `openai/gpt-oss-20b:free` [model](https://openrouter.ai/openai/gpt-oss-20b:free) for rephrase
+        * Use local `sentence-transformers/all-mpnet-base-v2` [model](https://huggingface.co/sentence-transformers/all-mpnet-base-v2) for embeddings
         * You can change the values if necessary, refer to https://github.com/wikiteq/rag-of-all-trades for details
 * Create `.env` file by copying `.env.openwebui.example`
     * Set `OPENAI_API_KEY`
@@ -129,7 +129,6 @@ The connector has the following configuration options:
 # config.yaml
 
 sources:
-  - 
   - type: "s3" # must be s3
     name: "account1" # arbitrary name for the connector, will be stored in metadata
     config:
@@ -140,7 +139,7 @@ sources:
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
       buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
       schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
-      
+
   - type: "s3"
     name: "account2"
     config:
@@ -152,7 +151,7 @@ sources:
       ...
 ```
 
-````dotenv
+```dotenv
 # .env.rag
 
 S3_ACCOUNT1_ENDPOINT=https://s3.amazonaws.com
@@ -162,7 +161,7 @@ S3_ACCOUNT1_REGION=us-east-1
 S3_ACCOUNT1_USE_SSL=True
 S3_ACCOUNT1_BUCKETS=bucket1,bucket2
 S3_ACCOUNT1_SCHEDULES=3600,60
-````
+```
 
 ### MediaWiki Connector
 
@@ -201,7 +200,7 @@ MEDIAWIKI1_SCHEDULES=3600
 # Only needed for private wikis requiring login:
 #MEDIAWIKI1_USERNAME=your-bot-username
 #MEDIAWIKI1_PASSWORD=your-bot-password
-````
+```
 
 ### SerpAPI Connector
 
@@ -234,7 +233,7 @@ sources:
 SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
-````
+```
 
 ### Web Connector
 
@@ -272,6 +271,37 @@ WEB1_SCHEDULES=60
 WEB2_SITEMAP_URL=https://example.com/sitemap.xml
 WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=60
+```
+
+### Slack Connector
+
+The Slack connector ingests messages from Slack channels. Each message (with its thread replies concatenated) becomes a separate document in the vector store.
+
+Channels can be specified directly by ID or resolved dynamically via name patterns or regex.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "slack"
+    name: "slack1"
+    config:
+      token: "${SLACK1_TOKEN}"
+      channel_ids: "${SLACK1_CHANNEL_IDS}"          # comma-separated channel IDs (mutually exclusive with channel_patterns)
+      # channel_patterns: "${SLACK1_CHANNEL_PATTERNS}" # channel name patterns or regex (mutually exclusive with channel_ids)
+      # channel_types: "public_channel,private_channel"  # optional, used with channel_patterns
+      # earliest_date: "2024-01-01"                 # optional: fetch messages from this date
+      # latest_date: "2025-01-01"                   # optional: fetch messages up to this date
+      schedules: "${SLACK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+SLACK1_TOKEN=xoxb-your-bot-token
+SLACK1_CHANNEL_IDS=C1234567890,C0987654321
+SLACK1_CHANNEL_PATTERNS=general,^dev.*
+SLACK1_SCHEDULES=60
 ```
 
 ## Embeddings and Inference
