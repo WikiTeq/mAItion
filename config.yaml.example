@@ -64,6 +64,19 @@ sources:
   #    html_to_text: true
   #    schedules: "${WEB2_SCHEDULES}"
 
+  # Box cloud storage
+  #- type: "box"
+  #  name: "box1"
+  #  config:
+  #    box_client_id: "${BOX1_CLIENT_ID}"
+  #    box_client_secret: "${BOX1_CLIENT_SECRET}"
+  #    box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
+  #    folder_id: "0"           # optional: Box folder ID ("0" = root)
+  #    is_recursive: true       # optional: traverse subfolders, default false
+  #    # file_ids: "123,456"    # optional: comma-separated file IDs (mutually exclusive with folder_id)
+  #    # box_user_id: "${BOX1_USER_ID}"  # optional: user ID for user-level CCG access
+  #    schedules: "${BOX1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

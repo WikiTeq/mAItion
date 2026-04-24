@@ -54,6 +54,7 @@ Over 100 extra connectors are available at request, including the most popular o
 * Notion
 * Microsoft Teams
 * Microsoft Office 365
+* Box
 * Dropbox
 * Trello
 * Web scraper
@@ -272,6 +273,38 @@ WEB1_SCHEDULES=60
 WEB2_SITEMAP_URL=https://example.com/sitemap.xml
 WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=60
+```
+
+### Box Connector
+
+The Box connector ingests files from Box cloud storage using Client Credential Grant (CCG) authentication.
+Files can be selected by folder ID (with optional recursive traversal) or by explicit file IDs.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "box"
+    name: "box1"
+    config:
+      box_client_id: "${BOX1_CLIENT_ID}"
+      box_client_secret: "${BOX1_CLIENT_SECRET}"
+      box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
+      folder_id: "0"           # optional: Box folder ID ("0" = root); mutually exclusive with file_ids
+      is_recursive: true       # optional: traverse subfolders, default false
+      # file_ids: "123,456"    # optional: comma-separated file IDs
+      # box_user_id: "${BOX1_USER_ID}"  # optional: user ID for user-level CCG access
+      schedules: "${BOX1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BOX1_CLIENT_ID=your-box-app-client-id
+BOX1_CLIENT_SECRET=your-box-app-client-secret
+BOX1_ENTERPRISE_ID=your-box-enterprise-id
+BOX1_USER_ID=                  # optional: Box user ID for user-level CCG access
+BOX1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
