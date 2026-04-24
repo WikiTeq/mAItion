@@ -52,7 +52,8 @@
 						"group": "Features",
 						"pages": [
 							"features/up-to-date-knowledge",
-							"features/citation-backed-answers"
+							"features/citation-backed-answers",
+							"features/mcp-server"
 						]
 					},
 					{

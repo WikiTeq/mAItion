@@ -1,0 +1,168 @@
+---
+title: "MCP Server"
+description: "Expose mAItion's retrieval capabilities as an MCP endpoint for programmatic integration with agents and other systems."
+keywords:
+  - mAItion
+  - MCP
+  - Model Context Protocol
+  - AI integration
+  - RAG API
+---
+
+The mAItion MCP server exposes the retrieval API as a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint. This lets any MCP-compatible system — agents, orchestration frameworks, or custom integrations — call mAItion's retrieval tools programmatically.
+
+## Why use MCP instead of the REST API?
+
+The REST API is HTTP-based and requires manual integration. MCP is a structured protocol designed for AI systems: tools are self-describing, inputs and outputs are schema-validated, and any MCP-aware runtime can discover and call them without custom wiring.
+
+What makes mAItion's MCP useful:
+
+- Results come from **your private connector data** (Jira, MediaWiki, S3, etc.) — not the public internet
+- Every response includes **source citations** for attribution
+- Data stays **fresh** via scheduled connector ingestion
+
+## Prerequisites
+
+- mAItion is running (`docker compose up -d`) and healthy
+- At least one connector has been configured and has indexed data
+
+## Enable the MCP Server
+
+Add the following to your `.env.rag` file:
+
+```bash
+# MCP Server
+MCP_ENABLE=1
+MCP_API_KEY=your-strong-random-key   # generate: openssl rand -hex 32
+```
+
+Then restart the API service:
+
+```bash
+docker compose restart api
+```
+
+Verify it started:
+
+```bash
+docker compose logs api | grep -i mcp
+# Expected: INFO - MCP server enabled
+```
+
+> **Security:** `MCP_API_KEY` is required when `MCP_ENABLE=1` — the service will refuse to start without it. Use a strong random value and never commit it to version control. Your `.env.rag` file is already gitignored.
+
+## Expose the API Port
+
+By default, the `api` service is internal to the Docker network. MCP clients running on your host machine need port `8000` exposed. Add a `ports` entry to the `api` service in `compose.yaml`:
+
+```yaml
+  api:
+    image: ghcr.io/wikiteq/rag-of-all-trades:latest
+    ports:
+      - "8000:8000"   # add this line
+    # ... rest of service config
+```
+
+Then restart:
+
+```bash
+docker compose restart api
+```
+
+> **Production note:** Do not expose port 8000 publicly without a reverse proxy and TLS. The MCP endpoint is protected by Bearer token auth, but network-level exposure should still be controlled.
+
+## Endpoint
+
+The MCP server uses **streamable HTTP** transport (stateless, no session header required). The endpoint is:
+
+```
+http://<host>:8000/mcp/
+```
+
+All requests must include a Bearer token:
+
+```http
+Authorization: Bearer <MCP_API_KEY>
+```
+
+Integrate this endpoint into any MCP-compatible system by pointing it at the URL above and passing the authorization header.
+
+## Available Tools
+
+### `retrieve_chunks`
+
+Retrieves the most relevant chunks from the vector store for a given query. Fast — no LLM call involved.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `query` | string | yes | — | The search query |
+| `top_k` | integer | no | `20` | Number of chunks to return |
+| `metadata_filters` | object | no | `null` | Filter by source metadata (e.g. `{"source_type": "jira"}`) |
+
+**Returns:** list of chunks with `source_name`, `source_type`, `url`, `title`, `text`, `score`
+
+### `rephrase_chunks`
+
+Retrieves relevant chunks and generates a concise answer using the configured LLM. Requires `inference` to be configured in `config.yaml`. Slower and uses LLM tokens.
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `query` | string | yes | — | The question to answer |
+| `top_k` | integer | no | `20` | Number of chunks to use as context |
+
+**Returns:** `answer` (LLM-generated string) + `references` list with citations
+
+> **Cost note:** `retrieve_chunks` only hits the vector store — no LLM cost. `rephrase_chunks` makes an LLM API call and counts toward your token quota.
+
+## Verify the Connection
+
+### MCP Inspector
+
+Run the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) in Docker to interactively explore and test the MCP server:
+
+```bash
+docker run --rm --name "mcp_inspector" \
+  -p 127.0.0.1:6274:6274 \
+  -p 127.0.0.1:6277:6277 \
+  -e HOST=0.0.0.0 \
+  -e MCP_AUTO_OPEN_ENABLED=false \
+  -e DANGEROUSLY_OMIT_AUTH=true \
+  --add-host="host.docker.internal:host-gateway" \
+  ghcr.io/modelcontextprotocol/inspector:latest
+```
+
+Then open [http://localhost:6274/](http://localhost:6274/) in your browser. Set the transport to **Streamable HTTP**, the URL to `http://host.docker.internal:8000/mcp/`, and add an `Authorization` header with your `MCP_API_KEY`. Click **Connect** — you should see `retrieve_chunks` and `rephrase_chunks` listed under Tools.
+
+### curl
+
+Or with curl (confirms the endpoint is reachable):
+
+```bash
+curl -i -X POST http://localhost:8000/mcp/ \
+  -H "Authorization: Bearer your-strong-random-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
+
+Expected: a JSON response listing `retrieve_chunks` and `rephrase_chunks`.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Connection refused` on port 8000 | Port not exposed in `compose.yaml` | Add `ports: - "8000:8000"` to the `api` service |
+| `401 Unauthorized` | Wrong or missing Bearer token | Check `MCP_API_KEY` in `.env.rag` matches the token used in your requests |
+| `404` on `/mcp/` | MCP not enabled | Set `MCP_ENABLE=1` and restart `api` |
+| Tools not listed | MCP failed to start | Check `docker compose logs api` for startup errors |
+| `retrieve_chunks` returns empty | No data indexed | Ensure at least one connector has run successfully |
+| `rephrase_chunks` fails | LLM not configured | Check `OPENROUTER_API_KEY` and `OPENROUTER_API_BASE` in `.env.rag` |
+| Service won't start | `MCP_API_KEY` missing | Set a non-empty `MCP_API_KEY` when `MCP_ENABLE=1` |
+
+## Configuration Reference
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `MCP_ENABLE` | no | `0` | Set to `1` to enable the MCP server |
+| `MCP_API_KEY` | when enabled | `""` | Bearer token for client authentication. Required when `MCP_ENABLE=1` — startup fails if empty |
+
+See [Environment Variables (Backend)](/configuration/backend-env) for the full `.env.rag` reference.
