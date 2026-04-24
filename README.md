@@ -2,9 +2,9 @@
 
 ![mAItion](https://github.com/WikiTeq/mAItion/blob/main/mAItion.png?raw=true)
 
-mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs, 
+mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs,
 allowing you to chat, search and interact with your data through a slick chat interface. With mAItion
-you can aggregate all your knowledge from many sources using Connectors into a central place and 
+you can aggregate all your knowledge from many sources using Connectors into a central place and
 interact with your knowledge with ease!
 
 📚 **Documentation:** [docs.maition.com](https://docs.maition.com/)
@@ -40,6 +40,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* OneDrive for Business
 
 ### 🌐 Extra connectors
 
@@ -129,7 +130,6 @@ The connector has the following configuration options:
 # config.yaml
 
 sources:
-  - 
   - type: "s3" # must be s3
     name: "account1" # arbitrary name for the connector, will be stored in metadata
     config:
@@ -140,7 +140,7 @@ sources:
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
       buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
       schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
-      
+
   - type: "s3"
     name: "account2"
     config:
@@ -152,7 +152,7 @@ sources:
       ...
 ```
 
-````dotenv
+```dotenv
 # .env.rag
 
 S3_ACCOUNT1_ENDPOINT=https://s3.amazonaws.com
@@ -162,7 +162,7 @@ S3_ACCOUNT1_REGION=us-east-1
 S3_ACCOUNT1_USE_SSL=True
 S3_ACCOUNT1_BUCKETS=bucket1,bucket2
 S3_ACCOUNT1_SCHEDULES=3600,60
-````
+```
 
 ### MediaWiki Connector
 
@@ -201,7 +201,7 @@ MEDIAWIKI1_SCHEDULES=3600
 # Only needed for private wikis requiring login:
 #MEDIAWIKI1_USERNAME=your-bot-username
 #MEDIAWIKI1_PASSWORD=your-bot-password
-````
+```
 
 ### SerpAPI Connector
 
@@ -234,7 +234,7 @@ sources:
 SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
-````
+```
 
 ### Web Connector
 
@@ -272,6 +272,41 @@ WEB1_SCHEDULES=60
 WEB2_SITEMAP_URL=https://example.com/sitemap.xml
 WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=60
+```
+
+### OneDrive Connector
+
+The OneDrive connector ingests files from Microsoft OneDrive for Business (Microsoft 365) using App
+authentication (client credentials). Only OneDrive for Business accounts are supported.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "onedrive"
+    name: "onedrive1"
+    config:
+      client_id: "${ONEDRIVE1_CLIENT_ID}"
+      client_secret: "${ONEDRIVE1_CLIENT_SECRET}"
+      tenant_id: "${ONEDRIVE1_TENANT_ID}"
+      userprincipalname: "${ONEDRIVE1_USER_PRINCIPAL_NAME}"
+      folder_path: "Documents/Reports"  # optional: hardcode directly in config
+      folder_id:                        # optional: OneDrive folder ID
+      file_ids:                         # optional: comma-separated file IDs
+      file_paths:                       # optional: comma-separated file paths
+      mime_types:                       # optional: comma-separated MIME types to filter
+      recursive: true                   # optional, default true
+      schedules: "${ONEDRIVE1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+ONEDRIVE1_CLIENT_ID=your-azure-app-client-id
+ONEDRIVE1_CLIENT_SECRET=your-azure-app-client-secret
+ONEDRIVE1_TENANT_ID=your-azure-tenant-id
+ONEDRIVE1_USER_PRINCIPAL_NAME=user@your-org.onmicrosoft.com
+ONEDRIVE1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
