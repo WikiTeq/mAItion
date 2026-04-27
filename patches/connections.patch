@@ -1,0 +1,46 @@
+diff --git build/index.html build/index.html
+--- build/index.html
++++ build/index.html
+@@ -225,2 +225,38 @@
+-	</body>
+-</html>
++	<script>
++		(function () {
++			var role = null;
++			var fetching = false;
++			function getToken() {
++				try { return localStorage.getItem('token') || ''; } catch (e) { return ''; }
++			}
++			function applyVisibility() {
++				var c = document.querySelector('#settings-tabs-container');
++				if (!c) return;
++				var btns = c.querySelectorAll('button');
++				for (var i = 0; i < btns.length; i++) {
++					var b = btns[i];
++					if (b.textContent.trim() === 'Connections') {
++						if (role !== 'admin') {
++							b.style.setProperty('display', 'none', 'important');
++						} else {
++							b.style.removeProperty('display');
++						}
++					}
++				}
++			}
++			function fetchRole() {
++				if (fetching) return;
++				var token = getToken();
++				if (!token) { role = null; applyVisibility(); return; }
++				fetching = true;
++				fetch('/api/v1/auths/', { headers: { Authorization: 'Bearer ' + token } })
++					.then(function (r) { return r && r.ok ? r.json() : null; })
++					.then(function (u) { fetching = false; role = u && u.role ? u.role : null; applyVisibility(); })
++					.catch(function () { fetching = false; role = null; applyVisibility(); });
++			}
++			new MutationObserver(fetchRole).observe(document.documentElement, { childList: true, subtree: true });
++			document.addEventListener('visibilitychange', fetchRole);
++			window.addEventListener('focus', fetchRole);
++			fetchRole();
++		})();
++	</script>
++	</body>
++</html>
