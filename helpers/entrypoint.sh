@@ -125,6 +125,13 @@ do_first_start() {
     	  -H "Authorization: Bearer ${API_KEY}" \
     	  -H "Content-Type: application/json"
 
+    	echo ""
+    	echo "[Custom entrypoint] Disabling Direct Connections for regular users"
+    	curl -s -X POST "http://localhost:8080/api/v1/configs/direct_connections" \
+    	  -H "Authorization: Bearer ${API_KEY}" \
+    	  -H "Content-Type: application/json" \
+    	  --data-raw '{"ENABLE_DIRECT_CONNECTIONS":false}'
+
     	# extra
     	if [ "$ENABLE_OPENAI_API" == "True" ]; then
     		if [ ! -z "$OPENAI_DEFAULT_MODEL" ]; then
