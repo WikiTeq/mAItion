@@ -64,6 +64,21 @@ sources:
   #    html_to_text: true
   #    schedules: "${WEB2_SCHEDULES}"
 
+  #- type: "onedrive"
+  #  name: "onedrive1"
+  #  config:
+  #    client_id: "${ONEDRIVE1_CLIENT_ID}"
+  #    client_secret: "${ONEDRIVE1_CLIENT_SECRET}"
+  #    tenant_id: "${ONEDRIVE1_TENANT_ID}"
+  #    userprincipalname: "${ONEDRIVE1_USER_PRINCIPAL_NAME}"
+  #    folder_path: "Documents/Reports"  # optional: relative folder path
+  #    folder_id:                        # optional: OneDrive folder ID
+  #    file_ids:                         # optional: comma-separated file IDs
+  #    file_paths:                       # optional: comma-separated file paths
+  #    mime_types:                       # optional: comma-separated MIME types to filter
+  #    recursive: true                   # optional, default true
+  #    schedules: "${ONEDRIVE1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
