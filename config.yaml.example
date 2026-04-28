@@ -64,6 +64,34 @@ sources:
   #    html_to_text: true
   #    schedules: "${WEB2_SCHEDULES}"
 
+  # Pipedrive CRM
+  #- type: "pipedrive"
+  #  name: "pipedrive1"
+  #  config:
+  #    api_token: "${PIPEDRIVE1_API_TOKEN}"
+  #    # Optional: which object types to load (default: all)
+  #    load_types:
+  #      - activities
+  #      - deals
+  #      - notes
+  #      - organizations
+  #      - persons
+  #      - products
+  #      - projects
+  #      - leads
+  #      - tasks
+  #      - mails
+  #    max_items: 500            # optional, per-entity limit (default: unlimited)
+  #    request_delay: 1          # seconds between API requests (default: 0)
+  #    max_retries: 3            # retry attempts on failure (default: 3)
+  #    schedules: "${PIPEDRIVE1_SCHEDULES}"
+
+  #- type: "pipedrive"
+  #  name: "pipedrive2"
+  #  config:
+  #    api_token: "${PIPEDRIVE2_API_TOKEN}"
+  #    schedules: "${PIPEDRIVE2_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
