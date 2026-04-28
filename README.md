@@ -2,9 +2,9 @@
 
 ![mAItion](https://github.com/WikiTeq/mAItion/blob/main/mAItion.png?raw=true)
 
-mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs, 
+mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs,
 allowing you to chat, search and interact with your data through a slick chat interface. With mAItion
-you can aggregate all your knowledge from many sources using Connectors into a central place and 
+you can aggregate all your knowledge from many sources using Connectors into a central place and
 interact with your knowledge with ease!
 
 📚 **Documentation:** [docs.maition.com](https://docs.maition.com/)
@@ -35,13 +35,14 @@ interact with your knowledge with ease!
 * A tool to find secret knowledge that can not be found in the other was across your scattered data
 * An entry-point into your on-premise hosted LLM models supporting evaluations and per-model settings
 
-### 🌐 Connectors included
+### Connectors included
 
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Confluence (Cloud and Server/Data Center)
 
-### 🌐 Extra connectors
+### Extra connectors
 
 Over 100 extra connectors are available at request, including the most popular ones:
 
@@ -129,7 +130,6 @@ The connector has the following configuration options:
 # config.yaml
 
 sources:
-  - 
   - type: "s3" # must be s3
     name: "account1" # arbitrary name for the connector, will be stored in metadata
     config:
@@ -140,7 +140,7 @@ sources:
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
       buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
       schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
-      
+
   - type: "s3"
     name: "account2"
     config:
@@ -201,7 +201,7 @@ MEDIAWIKI1_SCHEDULES=3600
 # Only needed for private wikis requiring login:
 #MEDIAWIKI1_USERNAME=your-bot-username
 #MEDIAWIKI1_PASSWORD=your-bot-password
-````
+```
 
 ### SerpAPI Connector
 
@@ -234,7 +234,7 @@ sources:
 SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
-````
+```
 
 ### Web Connector
 
@@ -272,6 +272,106 @@ WEB1_SCHEDULES=60
 WEB2_SITEMAP_URL=https://example.com/sitemap.xml
 WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=60
+```
+
+### Confluence Connector
+
+The Confluence connector ingests pages from Atlassian Confluence Cloud or Server/Data Center.
+It supports 5 discovery modes and 3 authentication strategies.
+
+**Discovery modes** (exactly one required):
+
+| Mode | Config key | Description |
+|------|-----------|-------------|
+| Space | `space_key` | All pages in a space |
+| Page IDs | `page_ids` | Comma-separated list of page IDs |
+| Label | `page_label` | All pages with a given label |
+| CQL | `cql` | Arbitrary CQL query |
+| Folder | `folder_id` | All pages inside a folder |
+
+**Auth strategies** (mutually exclusive):
+
+| Strategy | Keys | Use case |
+|----------|------|----------|
+| Cloud basic | `username` + `api_token` | Confluence Cloud (recommended) |
+| Server basic | `username` + `password` | Confluence Server / Data Center |
+| Bearer token | `api_token` only | Server/DC Personal Access Token |
+
+```yaml
+# config.yaml
+
+sources:
+  # mode: space_key — all pages in a space
+  - type: "confluence"
+    name: "confluence1"
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      space_key: "${CONFLUENCE1_SPACE_KEY}"
+      page_status: "current"        # optional: filter by status
+      max_pages: 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
+
+  # mode: page_ids — specific pages by ID
+  - type: "confluence"
+    name: "confluence2"
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      page_ids: "${CONFLUENCE1_PAGE_IDS}"   # comma-separated IDs
+      include_children: false               # optional: include child pages
+      max_pages: 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
+
+  # mode: page_label — pages tagged with a label
+  - type: "confluence"
+    name: "confluence3"
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      page_label: "${CONFLUENCE1_PAGE_LABEL}"
+      max_pages: 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
+
+  # mode: cql — arbitrary CQL query
+  - type: "confluence"
+    name: "confluence4"
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      cql: "${CONFLUENCE1_CQL}"
+      max_pages: 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
+
+  # mode: folder_id — all pages inside a folder
+  - type: "confluence"
+    name: "confluence5"
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      folder_id: "${CONFLUENCE1_FOLDER_ID}"
+      max_pages: 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+CONFLUENCE1_BASE_URL=https://yoursite.atlassian.net/wiki
+CONFLUENCE1_USERNAME=you@example.com
+CONFLUENCE1_API_TOKEN=your-api-token
+CONFLUENCE1_PASSWORD=your-password  # mutually exclusive with API_TOKEN
+CONFLUENCE1_SPACE_KEY=ENG
+CONFLUENCE1_PAGE_IDS=123456,789012
+CONFLUENCE1_PAGE_LABEL=meeting-notes
+CONFLUENCE1_CQL=space = 'ENG' AND type = page
+CONFLUENCE1_FOLDER_ID=12345
+CONFLUENCE1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
