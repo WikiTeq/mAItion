@@ -64,6 +64,20 @@ sources:
   #    html_to_text: true
   #    schedules: "${WEB2_SCHEDULES}"
 
+  # Jira connector (auth_type: "basic" = email + API token; "token" = Personal Access Token / PAT)
+  #- type: "jira"
+  #  name: "jira1"
+  #  config:
+  #    server_url: "${JIRA1_SERVER_URL}"
+  #    auth_type: "basic"
+  #    email: "${JIRA1_EMAIL}"
+  #    api_token: "${JIRA1_API_TOKEN}"
+  #    jql: "${JIRA1_JQL}"
+  #    max_results: 50
+  #    load_comments: false
+  #    max_comments: 10
+  #    schedules: "${JIRA1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

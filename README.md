@@ -2,9 +2,9 @@
 
 ![mAItion](https://github.com/WikiTeq/mAItion/blob/main/mAItion.png?raw=true)
 
-mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs, 
+mAItion is an all-in-one ready-to-use AI-powered tool that combines your existing knowledge with LLMs,
 allowing you to chat, search and interact with your data through a slick chat interface. With mAItion
-you can aggregate all your knowledge from many sources using Connectors into a central place and 
+you can aggregate all your knowledge from many sources using Connectors into a central place and
 interact with your knowledge with ease!
 
 📚 **Documentation:** [docs.maition.com](https://docs.maition.com/)
@@ -35,13 +35,13 @@ interact with your knowledge with ease!
 * A tool to find secret knowledge that can not be found in the other was across your scattered data
 * An entry-point into your on-premise hosted LLM models supporting evaluations and per-model settings
 
-### 🌐 Connectors included
+## 🌐 Connectors included
 
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
 
-### 🌐 Extra connectors
+## 🌐 Extra connectors
 
 Over 100 extra connectors are available at request, including the most popular ones:
 
@@ -79,8 +79,8 @@ Over 100 extra connectors are available at request, including the most popular o
 * Create `config.yaml` out of `config.yaml.example`
     * The default config works OK and is configured to:
         * Use a single S3 bucket as data source
-        * Use `openai/gpt-oss-20b:free` [model](https://openrouter.ai/openai/gpt-oss-20b:free) for rerphrase
-        * User local `sentence-transformers/all-mpnet-base-v2` [model](https://huggingface.co/sentence-transformers/all-mpnet-base-v2) for embeddings
+        * Use `openai/gpt-oss-20b:free` [model](https://openrouter.ai/openai/gpt-oss-20b:free) for rephrase
+        * Use local `sentence-transformers/all-mpnet-base-v2` [model](https://huggingface.co/sentence-transformers/all-mpnet-base-v2) for embeddings
         * You can change the values if necessary, refer to https://github.com/wikiteq/rag-of-all-trades for details
 * Create `.env` file by copying `.env.openwebui.example`
     * Set `OPENAI_API_KEY`
@@ -129,7 +129,6 @@ The connector has the following configuration options:
 # config.yaml
 
 sources:
-  - 
   - type: "s3" # must be s3
     name: "account1" # arbitrary name for the connector, will be stored in metadata
     config:
@@ -140,7 +139,7 @@ sources:
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
       buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
       schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
-      
+
   - type: "s3"
     name: "account2"
     config:
@@ -152,7 +151,7 @@ sources:
       ...
 ```
 
-````dotenv
+```dotenv
 # .env.rag
 
 S3_ACCOUNT1_ENDPOINT=https://s3.amazonaws.com
@@ -162,7 +161,7 @@ S3_ACCOUNT1_REGION=us-east-1
 S3_ACCOUNT1_USE_SSL=True
 S3_ACCOUNT1_BUCKETS=bucket1,bucket2
 S3_ACCOUNT1_SCHEDULES=3600,60
-````
+```
 
 ### MediaWiki Connector
 
@@ -201,7 +200,7 @@ MEDIAWIKI1_SCHEDULES=3600
 # Only needed for private wikis requiring login:
 #MEDIAWIKI1_USERNAME=your-bot-username
 #MEDIAWIKI1_PASSWORD=your-bot-password
-````
+```
 
 ### SerpAPI Connector
 
@@ -234,7 +233,7 @@ sources:
 SERPAPI1_KEY=xxxx
 SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
-````
+```
 
 ### Web Connector
 
@@ -272,6 +271,39 @@ WEB1_SCHEDULES=60
 WEB2_SITEMAP_URL=https://example.com/sitemap.xml
 WEB2_INCLUDE_PREFIX=/blog/
 WEB2_SCHEDULES=60
+```
+
+### Jira Connector
+
+The Jira connector ingests issues from Jira Cloud or Jira Server/Data Center.
+It supports two authentication modes: `basic` (email + API token) and `token` (Personal Access Token / PAT).
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "jira"
+    name: "jira1"
+    config:
+      server_url: "${JIRA1_SERVER_URL}"
+      auth_type: "basic"        # "basic" (email + API token) or "token" (PAT)
+      email: "${JIRA1_EMAIL}"   # required when auth_type is "basic"
+      api_token: "${JIRA1_API_TOKEN}"
+      jql: "${JIRA1_JQL}"       # JQL query to select issues
+      max_results: 50
+      load_comments: false
+      max_comments: 10
+      schedules: "${JIRA1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+JIRA1_SERVER_URL=https://your-org.atlassian.net
+JIRA1_EMAIL=your-email@example.com
+JIRA1_API_TOKEN=your-api-token
+JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
+JIRA1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
