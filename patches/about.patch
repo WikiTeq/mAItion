@@ -1,0 +1,36 @@
+diff --git build/index.html build/index.html
+--- build/index.html
++++ build/index.html
+@@ -111,6 +111,32 @@
+ 		<link rel="modulepreload" href="/_app/immutable/entry/app.C9FWDgJY.js">
+ 		<link rel="modulepreload" href="/_app/immutable/chunks/C1FmrZbK.js">
+ 		<link rel="modulepreload" href="/_app/immutable/chunks/Cdll-xsj.js">
++	<style>[data-about-stripped] a,[data-about-stripped] button{display:none}</style>
++	<script>
++		(function () {
++			var _stripped = false;
++			function stripAbout() {
++				var panels = document.querySelectorAll('.space-y-3.overflow-y-scroll');
++				for (var i = 0; i < panels.length; i++) {
++					var panel = panels[i];
++					if (panel.dataset.aboutStripped) continue;
++					var name = (window.__WEBUI_NAME__ || '');
++					var hasVersion = /\d+\.\d+\.\d+/.test(panel.textContent);
++					var hasName = name ? panel.textContent.includes(name) : panel.textContent.includes('Version');
++					if (!hasVersion || !hasName) continue;
++					Array.from(panel.children).slice(1).forEach(function (c) { c.remove(); });
++					var first = panel.children[0];
++					if (first) Array.from(first.querySelectorAll('a, button')).forEach(function (c) { c.remove(); });
++					panel.dataset.aboutStripped = '1';
++					_stripped = true;
++				}
++				if (_stripped) { _o.disconnect(); return; }
++				if (document.readyState === 'complete') console.warn('[about-patch] About panel not found');
++			}
++			var _o = new MutationObserver(stripAbout);
++			_o.observe(document.documentElement, { childList: true, subtree: true });
++		})();
++	</script>
+ 	</head>
+ 
+ 	<body data-sveltekit-preload-data="hover">
