@@ -49,11 +49,11 @@ services:
 
   # database
   postgres:
-    image: ankane/pgvector:v0.5.1
+    image: pgvector/pgvector:0.8.2-pg18-trixie
     env_file:
       - .env.rag
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./helpers/01-openwebui-init.sql:/docker-entrypoint-initdb.d/01-openwebui-init.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1" ]
