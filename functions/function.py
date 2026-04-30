@@ -193,10 +193,10 @@ Please provide a comprehensive answer based on the context above. If the context
             metadata_md = "\n".join(f"- *{k}*: {v}" for k, v in metadata_fields.items() if v is not None)
 
             # Prepend metadata before the text so the LLM has source context before reading the content
-            metadata_section = f"## Metadata\n\n{metadata_md}\n\n" if metadata_md else ""
+            metadata_section = f"## Metadata\n\n{metadata_md}" if metadata_md else ""
 
             # Build context part with actual text from raw chunks
-            context_parts.append(f"[Source: {source_name}]\n\n{metadata_section}{text}\n")
+            context_parts.append(f"[Source: {source_name}]\n\n{metadata_section}\n\n{text}\n")
 
             source_obj = {
                 "source": {"name": source_name},
