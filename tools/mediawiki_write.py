@@ -2,131 +2,80 @@
 title: MediaWiki Write Tool
 author: WikiTeq
 date: 2025-04-30
-version: 1.1
+version: 1.0
 license: MIT
 description: Allows the AI to save content as a new or updated MediaWiki page when the user asks to save something to the wiki or knowledge base.
 requirements: mwclient>=0.10.1, pydantic>=2.0.0
 """
 
 import asyncio
-import ipaddress
 import logging
-import socket
-from typing import Callable, Awaitable, Optional
-from urllib.parse import urlparse, quote
+import re
+from collections.abc import Awaitable, Callable
+from urllib.parse import quote, urlparse
+
 from pydantic import BaseModel, Field
 
 log = logging.getLogger(__name__)
 
-_PRIVATE_NETWORKS = [
-    ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("172.16.0.0/12"),
-    ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("169.254.0.0/16"),
-    ipaddress.ip_network("fe80::/10"),
-    ipaddress.ip_network("::1/128"),
-    ipaddress.ip_network("fc00::/7"),
-    ipaddress.ip_network("100.64.0.0/10"),
-    ipaddress.ip_network("::ffff:0:0/96"),
-]
-
 MAX_TITLE_LENGTH = 255
 MAX_CONTENT_LENGTH = 2_000_000  # 2 MB, MediaWiki default max
 
-_SSRF_ALLOWLIST = {"host.docker.internal", "localhost", "127.0.0.1"}
-
-_BLOCKED_NAMESPACES = {
-    "mediawiki", "template", "module", "gadget", "gadget definition",
-}
+# Characters illegal in MediaWiki page titles: #<>[]|{} plus control chars 0-31 and DEL (127)
+_ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
 
 
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     """
-    Parse a wiki URL into (host, path, scheme) for mwclient.Site.
+    Parse an api.php URL into (host, path, scheme) for mwclient.Site.
 
-    Requires a full URL with scheme (http:// or https://).
-    Accepts forms like:
-      https://example.com/w/         -> ("example.com", "/w/", "https")
-      https://example.com/wiki/      -> ("example.com", "/w/", "https")
-      https://example.com/index.php  -> ("example.com", "/", "https")
-      https://example.com            -> ("example.com", "/w/", "https")
-      http://localhost:8080          -> ("localhost:8080", "/w/", "http")
+    Requires the full URL to the api.php script, e.g.:
+      https://example.com/w/api.php   -> ("example.com", "/w/", "https")
+      http://example.com/api.php      -> ("example.com", "/", "http")
+      https://example.com/abc/api.php -> ("example.com", "/abc/", "https")
     """
     wiki_url = wiki_url.strip()
 
-    # Require explicit scheme to avoid mis-parsing bare hostnames
     if not wiki_url.startswith("http://") and not wiki_url.startswith("https://"):
-        raise ValueError(
-            "wiki_url must start with http:// or https://. "
-            "Example: https://wiki.example.com"
-        )
+        raise ValueError("wiki_url must start with http:// or https://. Example: https://wiki.example.com/w/api.php")
 
     parsed = urlparse(wiki_url)
-    scheme = parsed.scheme  # guaranteed to be http or https now
+    scheme = parsed.scheme
 
-    # Strip userinfo from netloc (user:pass@host -> host)
     netloc = parsed.hostname or ""
+    if not netloc:
+        raise ValueError("wiki_url has no host. Example: https://wiki.example.com/w/api.php")
     if parsed.port:
         netloc = f"{netloc}:{parsed.port}"
-
     host = netloc
 
-    path = parsed.path.rstrip("/") or ""
-    if path == "/wiki" or path.startswith("/wiki/"):
-        path = "/w/"
-    elif path == "/index.php" or path.startswith("/index.php/"):
+    # Strip api.php (with optional trailing slash) from path, then ensure trailing slash
+    path = parsed.path
+    # Remove trailing slash before checking for api.php suffix
+    path_stripped = path.rstrip("/")
+    if path_stripped.endswith("/api.php"):
+        path = path_stripped[: -len("/api.php")] + "/"
+    elif path_stripped == "api.php":
         path = "/"
-    elif path == "" or path == "/":
-        path = "/w/"
     else:
-        path = path.rstrip("/") + "/"
+        path = path_stripped.rstrip("/") + "/"
 
     return host, path, scheme
 
 
-def _check_ssrf(host: str) -> None:
-    """Raise ValueError if host resolves to any private/loopback address.
-
-    Checks ALL returned addresses (not just the first) to prevent bypass
-    via multi-A DNS records. localhost and host.docker.internal are
-    explicitly allowed for local dev/testing.
-    """
-    # host may include port (e.g. "localhost:8080") — strip it
-    hostname = host.rsplit(":", 1)[0].strip("[]")  # handles IPv6 [::1]:port too
-
-    if hostname in _SSRF_ALLOWLIST:
-        return
-
-    try:
-        results = socket.getaddrinfo(hostname, None)
-    except socket.gaierror:
-        raise ValueError(f"Could not resolve wiki host: {hostname!r}")
-
-    for result in results:
-        addr_str = result[4][0]
-        try:
-            ip = ipaddress.ip_address(addr_str)
-        except ValueError:
-            continue
-        # Unwrap IPv4-mapped IPv6 addresses (::ffff:x.x.x.x)
-        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
-            ip = ip.ipv4_mapped
-        for net in _PRIVATE_NETWORKS:
-            if ip in net:
-                raise ValueError(
-                    "Wiki URL resolves to a private/internal address and is not allowed."
-                )
-
-
-def _check_namespace(title: str) -> None:
-    """Raise ValueError if title targets a restricted MediaWiki namespace."""
+def _validate_title(title: str) -> None:
+    """Raise ValueError if title is invalid for NS_MAIN writes."""
     if ":" in title:
-        ns = title.split(":", 1)[0].strip().lower()
-        if ns in _BLOCKED_NAMESPACES:
-            raise ValueError(
-                f"Writing to the '{ns.capitalize()}:' namespace is not allowed."
-            )
+        raise ValueError(
+            "Page title must not contain ':'. Only NS_MAIN (main namespace) pages are supported. "
+            "Use a plain title like 'Meeting Notes 2025-04-30'."
+        )
+    m = _ILLEGAL_TITLE_CHARS.search(title)
+    if m:
+        raise ValueError(
+            f"Page title contains an illegal character: {m.group()!r}. "
+            "Titles must not contain: # < > [ ] | { } or control characters."
+        )
 
 
 def _build_page_url(scheme: str, host: str, article_path: str, title: str) -> str:
@@ -140,7 +89,7 @@ class Tools:
     class Valves(BaseModel):
         wiki_url: str = Field(
             default="",
-            description="Full URL to the MediaWiki instance, e.g. https://wiki.example.com/w/ or https://wiki.example.com. Must include http:// or https://.",
+            description="Full URL to the MediaWiki api.php script, e.g. https://wiki.example.com/w/api.php or http://wiki.example.com/api.php. Must include http:// or https://.",
         )
         username: str = Field(
             default="",
@@ -166,7 +115,7 @@ class Tools:
         self,
         title: str,
         content: str,
-        __event_emitter__: Optional[Callable[[dict], Awaitable[None]]] = None,
+        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
         Save content to a MediaWiki page. Use this tool when the user asks to:
@@ -180,6 +129,15 @@ class Tools:
         Use == Headings ==, '''bold''', ''italic'', * bullet lists, # numbered lists,
         [[Internal links]], and [https://example.com External links] as appropriate.
 
+        Title rules (MUST follow):
+        - Only main-namespace pages are supported — the title must NOT contain ':'
+        - Maximum length is 255 characters
+        - The following characters are ILLEGAL and must not appear in the title:
+          # < > [ ] | { } and any control characters (ASCII 0-31 and 127)
+
+        After this tool returns successfully, respond with only the page URL.
+        Do NOT repeat or summarise the page content.
+
         Args:
             title: The wiki page title (e.g. "Meeting Notes 2025-04-30")
             content: The page content formatted as MediaWiki markup
@@ -191,9 +149,7 @@ class Tools:
 
         async def emit(message: str, done: bool = False) -> None:
             if __event_emitter__:
-                await __event_emitter__(
-                    {"type": "status", "data": {"description": message, "done": done}}
-                )
+                await __event_emitter__({"type": "status", "data": {"description": message, "done": done}})
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
@@ -212,23 +168,16 @@ class Tools:
         if len(content.encode("utf-8")) > MAX_CONTENT_LENGTH:
             return f"Error: content exceeds maximum allowed size of {MAX_CONTENT_LENGTH // 1_000_000} MB."
 
-        # --- Namespace guard ---
+        # --- Title validation (namespace + illegal chars) ---
         try:
-            _check_namespace(title)
+            _validate_title(title)
         except ValueError as e:
             await emit(str(e), done=True)
             return f"Error: {e}"
 
-        # --- Parse and validate wiki URL ---
+        # --- Parse wiki URL ---
         try:
             host, path, scheme = _parse_wiki_url(self.valves.wiki_url)
-        except ValueError as e:
-            await emit(str(e), done=True)
-            return f"Error: {e}"
-
-        # --- SSRF check (runs in thread — getaddrinfo blocks) ---
-        try:
-            await asyncio.to_thread(_check_ssrf, host)
         except ValueError as e:
             await emit(str(e), done=True)
             return f"Error: {e}"
@@ -278,6 +227,8 @@ class Tools:
             return "Error: an unexpected error occurred. Check the server logs for details."
 
         # --- Build canonical page URL (blocking — run in thread) ---
+        await emit("Fetching page URL…")
+
         def _get_article_path():
             result = site.api("query", meta="siteinfo", siprop="general")
             return result["query"]["general"].get("articlepath", "/wiki/$1")
@@ -289,4 +240,4 @@ class Tools:
             page_url = _build_page_url(scheme, host, "/wiki/$1", title)
 
         await emit(f"Saved: {page_url}", done=True)
-        return f"Page saved successfully: {page_url}"
+        return page_url
