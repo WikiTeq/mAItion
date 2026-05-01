@@ -111,8 +111,22 @@ of the `.env` file. The default ones are:
 If you did not change the `ENABLE_OPENAI_API` you will also have LLM provider
 pre-configured with the values you have in the `.env` including the default chat model
 
-The filter function that's responsible for the RAG service communication will also be
-automatically provisioned and enabled globally. You can change these settings at the Admin panel
+The filter function that was previously responsible for RAG service communication has been replaced
+by the **ROAT Knowledge Base Search** workspace tool (`tools/roat_retrieval.py`). Unlike the filter
+(which queried ROAT on every user message), the tool lets the LLM decide when retrieval is needed,
+improving the natural conversation experience.
+
+### Activating the ROAT Tool
+
+After first boot, manually register the tool:
+
+1. **Import the tool**: Admin Panel → Workspace → Tools → click `+` → paste the contents of `tools/roat_retrieval.py` → Save.
+2. **Configure Valves**: set `rag_service_url` to your ROAT query endpoint (e.g. `http://api:8000/query`) and `rag_service_api_key` if required.
+3. **Enable on a model**: Admin Panel → Models → select a model → check the **ROAT Knowledge Base Search** checkbox under Tools → Save.
+4. **Set function calling mode**: on the same model page, open **Advanced Parameters** → set **Function Calling** to `Native`.
+5. **Per-chat activation**: when starting a new chat, click `+` at the bottom and enable the tool checkbox.
+
+> **Note**: the legacy filter (`functions/function.py`) is shipped disabled. Do not re-enable it while the tool is active — doing so will result in double context injection.
 
 ## Connectors configuration
 
