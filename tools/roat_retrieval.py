@@ -8,6 +8,7 @@ description: Searches the RAG-of-All-Trades knowledge base and returns relevant 
 requirements: requests
 """
 
+import asyncio
 import logging
 import re
 from collections.abc import Awaitable, Callable
@@ -37,7 +38,7 @@ def _call_rag_service(url: str, api_key: str, timeout: int, top_k: int, query: s
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     url = url.strip()
-    log.info("Calling ROAT for query: %s", query[:80])
+    log.info("Calling ROAT: query_length=%d", len(query))
     response = requests.post(url, json=payload, headers=headers, timeout=timeout)
     response.raise_for_status()
     return response.json()
@@ -56,7 +57,7 @@ def _format_context_and_sources(rag_result: dict) -> tuple[str, list]:
 
     for i in range(max(len(references), len(raw_chunks))):
         ref = references[i] if i < len(references) else {}
-        extras = ref.get("extras", {})
+        extras = ref.get("extras") or {}
         score = ref.get("score", 0.0)
 
         text = ref.get("text", "")
@@ -174,7 +175,8 @@ class Tools:
 
         try:
             log.info("ROAT url=%r top_k=%r timeout=%r", self.valves.rag_service_url, self.valves.top_k, self.valves.rag_service_timeout)
-            rag_result = _call_rag_service(
+            rag_result = await asyncio.to_thread(
+                _call_rag_service,
                 self.valves.rag_service_url,
                 self.valves.rag_service_api_key,
                 self.valves.rag_service_timeout,
