@@ -223,12 +223,9 @@ class Tools:
         try:
             titles = await asyncio.to_thread(_search)
         except Exception as e:
-            name = _exc_name(e)
-            log.error("Search error (%s): %s", name, e, exc_info=True)
+            log.error("Search error (%s): %s", e, exc_info=True)
             await emit("Wiki search error.", done=True)
-            if "APIError" in name:
-                return f"Error: wiki search API returned an error ({e})."
-            return f"Error: unexpected error during search ({type(e).__name__}: {e})."
+            return f"Error: unexpected error during search."
 
         if not titles:
             await emit("No results found.", done=True)
