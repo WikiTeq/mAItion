@@ -110,7 +110,14 @@ class Tools:
         )
         max_search_results: int = Field(
             default=10,
-            description="Max search results for search tool.",
+            description=f"Maximum number of search results to return (1–{MAX_SEARCH_RESULTS}).",
+        )
+        max_page_chars: int = Field(
+            default=20_000,
+            description=(
+                "Maximum characters to include per page in search results."
+                " Longer pages are truncated."
+            ),
         )
 
     def __init__(self):
@@ -156,14 +163,9 @@ class Tools:
             )
             return "Error: username and password are not configured."
 
-        async def emit(message: str, done: bool = False) -> None:
-            if __event_emitter__:
-                await __event_emitter__(
-                    {"type": "status", "data": {"description": message, "done": done}}
-                )
-
         query = query.strip()
         if not query:
+            await emit("Error: search query cannot be empty.", done=True)
             return "Error: search query cannot be empty."
 
         effective_limit = max(1, min(self.valves.max_search_results, MAX_SEARCH_RESULTS))
@@ -222,8 +224,8 @@ class Tools:
 
         try:
             titles = await asyncio.to_thread(_search)
-        except Exception as e:
-            log.error("Search error (%s): %s", e, exc_info=True)
+        except Exception:
+            log.error("Search error", exc_info=True)
             await emit("Wiki search error.", done=True)
             return f"Error: unexpected error during search."
 
@@ -235,7 +237,10 @@ class Tools:
 
         def _fetch_page(title: str) -> tuple[str, str]:
             try:
-                return title, site.pages[title].text()
+                page = site.pages[title]
+                if not page.exists:
+                    return title, "(Page not found — may have been deleted)"
+                return title, page.text()
             except Exception as e:
                 log.warning("Failed to fetch %r: %s", title, e)
                 return title, "(Content unavailable)"
@@ -245,7 +250,10 @@ class Tools:
         )
 
         sections = []
+        cap = self.valves.max_page_chars
         for i, (title, content) in enumerate(pages, start=1):
+            if len(content) > cap:
+                content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
             url = _build_page_url(scheme, host, article_path, title)
             sections.append(
                 f"=== Result {i}: {title} ===\n"
