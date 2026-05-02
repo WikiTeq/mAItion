@@ -1,5 +1,5 @@
 """
-title: ROAT Knowledge Base Search
+title: Knowledge Base Search
 author: WikiTeq
 date: 2025-05-01
 version: 1.0
@@ -12,7 +12,6 @@ import asyncio
 import logging
 import re
 from collections.abc import Awaitable, Callable
-from typing import Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -28,7 +27,7 @@ def _parse_raw_chunk(raw_text: str) -> dict:
     return {"score": 0.0, "text": raw_text.strip()}
 
 
-def _get_filename_from_extras(extras: dict) -> Optional[str]:
+def _get_filename_from_extras(extras: dict) -> str | None:
     return extras.get("key") or extras.get("filename") or extras.get("name") or None
 
 
@@ -71,18 +70,11 @@ def _format_context_and_sources(rag_result: dict) -> tuple[str, list]:
             continue
 
         filename = _get_filename_from_extras(extras)
-        source_name = (
-            ref.get("title")
-            or ref.get("source_name")
-            or filename
-            or f"Source {i + 1}"
-        )
+        source_name = ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
 
         metadata_fields = {k: v for k, v in extras.items() if k not in _internal_fields}
         metadata_fields["url"] = ref.get("url") or extras.get("url")
-        metadata_md = "\n".join(
-            f"- *{k}*: {v}" for k, v in metadata_fields.items() if v is not None
-        )
+        metadata_md = "\n".join(f"- *{k}*: {v}" for k, v in metadata_fields.items() if v is not None)
         metadata_section = f"## Metadata\n\n{metadata_md}" if metadata_md else ""
 
         context_parts.append(f"[Source: {source_name}]\n\n{metadata_section}\n\n{text}\n")
@@ -141,31 +133,20 @@ class Tools:
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
-        Search the mAItion knowledge base for information relevant to the user's question.
-
-        Use this tool when:
-        - The user asks a factual question that likely requires domain-specific knowledge
-        - The user asks about documented processes, policies, data, or internal content
-        - The user's question cannot be confidently answered from general training knowledge alone
-        - The user explicitly asks to search the knowledge base or documentation
-
-        Do NOT use this tool for:
-        - Casual greetings or small talk
-        - Simple arithmetic or general world knowledge
-        - Follow-up questions within an ongoing conversation where context was already retrieved
+        Use this tool to answer questions about this system, its data, processes,
+        or any domain-specific topics. Prefer retrieved knowledge over general
+        training knowledge when the topic may be covered in the knowledge base.
 
         Args:
             query: A concise search query derived from the user's question
 
         Returns:
-            Retrieved context passages from the knowledge base, or a message that nothing was found.
+            Retrieved document chunks and their metadata from the knowledge base, or a message indicating nothing was found.
         """
 
         async def emit(description: str, done: bool = False) -> None:
             if __event_emitter__:
-                await __event_emitter__(
-                    {"type": "status", "data": {"description": description, "done": done}}
-                )
+                await __event_emitter__({"type": "status", "data": {"description": description, "done": done}})
 
         if not self.valves.rag_service_url:
             await emit("Knowledge base URL is not configured in Tool Valves.", done=True)
@@ -174,7 +155,12 @@ class Tools:
         await emit("Searching knowledge base…")
 
         try:
-            log.info("ROAT url=%r top_k=%r timeout=%r", self.valves.rag_service_url, self.valves.top_k, self.valves.rag_service_timeout)
+            log.info(
+                "ROAT url=%r top_k=%r timeout=%r",
+                self.valves.rag_service_url,
+                self.valves.top_k,
+                self.valves.rag_service_timeout,
+            )
             rag_result = await asyncio.to_thread(
                 _call_rag_service,
                 self.valves.rag_service_url,
