@@ -202,6 +202,7 @@ Please provide a comprehensive answer based on the context above. If the context
                         "format": extras.get("format"),
                     }
                 ],
+                "distances": [score],
             }
 
             url = ref.get("url") or extras.get("url")

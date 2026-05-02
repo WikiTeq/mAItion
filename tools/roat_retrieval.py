@@ -43,7 +43,7 @@ def _call_rag_service(url: str, api_key: str, timeout: int, top_k: int, query: s
     return response.json()
 
 
-def _format_context_and_sources(rag_result: dict) -> tuple[str, list]:
+def _format_context_and_sources(rag_result: dict, max_document_preview_chars: int = 0) -> tuple[str, list]:
     references = rag_result.get("references", []) or []
     raw_chunks = rag_result.get("raw") or []
 
@@ -81,7 +81,7 @@ def _format_context_and_sources(rag_result: dict) -> tuple[str, list]:
 
         source_obj = {
             "source": {"name": source_name},
-            "document": [text[:1000] if len(text) > 1000 else text],
+            "document": [text[:max_document_preview_chars] if max_document_preview_chars > 0 else text],
             "metadata": [
                 {
                     "source": source_name,
@@ -95,6 +95,7 @@ def _format_context_and_sources(rag_result: dict) -> tuple[str, list]:
                     "format": extras.get("format"),
                 }
             ],
+            "distances": [score],
         }
         url = ref.get("url") or extras.get("url")
         if url:
@@ -122,6 +123,10 @@ class Tools:
         top_k: int = Field(
             default=20,
             description="Number of top results to retrieve from the knowledge base.",
+        )
+        max_document_preview_chars: int = Field(
+            default=0,
+            description="Maximum characters for the document preview in source citations (0 = unlimited).",
         )
 
     def __init__(self):
@@ -174,7 +179,7 @@ class Tools:
             await emit("Failed to reach the knowledge base.", done=True)
             return "Error: could not reach the knowledge base. Check the server logs for details."
 
-        context, sources = _format_context_and_sources(rag_result)
+        context, sources = _format_context_and_sources(rag_result, self.valves.max_document_preview_chars)
 
         if not context:
             await emit("No relevant information found.", done=True)
