@@ -20,8 +20,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 # Read configuration from environment variables
-# Disabled by default — retrieval has moved to the ROAT Knowledge Base Search workspace tool (tools/roat_retrieval.py)
-DEFAULT_ENABLED = os.getenv("ENABLE_CUSTOM_RAG_SERVICE", "false").lower() == "true"
+DEFAULT_ENABLED = os.getenv("ENABLE_CUSTOM_RAG_SERVICE", "true").lower() == "true"
 DEFAULT_RAG_URL = os.getenv("CUSTOM_RAG_SERVICE_URL", "")
 DEFAULT_API_KEY = os.getenv("CUSTOM_RAG_SERVICE_API_KEY", "")
 DEFAULT_TIMEOUT = int(os.getenv("CUSTOM_RAG_SERVICE_TIMEOUT", "30"))
