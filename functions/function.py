@@ -8,11 +8,12 @@ description: A function that calls the RAG service to retrieve context for chat 
 requirements: requests
 """
 
+import logging
 import os
 import re
+from collections.abc import Awaitable, Callable
+
 import requests
-import logging
-from typing import List, Optional, Callable, Awaitable
 from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ class Filter:
     class Valves(BaseModel):
         """Configuration valves for the filter"""
 
-        pipelines: List[str] = ["*"] # Apply to all pipelines
+        pipelines: list[str] = ["*"]  # Apply to all pipelines
         priority: int = 0
 
         # Custom RAG Service Configuration (defaults from environment variables)
@@ -39,7 +40,7 @@ class Filter:
         rag_service_timeout: int = DEFAULT_TIMEOUT
         top_k: int = 5
 
-         # Context injection settings
+        # Context injection settings
         inject_context: bool = True
         context_template: str = """Based on the following retrieved context, please answer the user's question.
 
@@ -57,7 +58,7 @@ Please provide a comprehensive answer based on the context above. If the context
         self.valves = self.Valves()
 
     async def on_startup(self):
-        log.info(f"Pipeline loaded")
+        log.info("Pipeline loaded")
         log.info(f"Enabled: {self.valves.enabled}")
         log.info(f"URL: {self.valves.rag_service_url}")
 
@@ -122,10 +123,7 @@ Please provide a comprehensive answer based on the context above. If the context
             # Try to parse "Score: X.XX | Text: content" format
             match = re.match(r"Score:\s*([\d.]+)\s*\|\s*Text:\s*(.*)", raw_text, re.DOTALL)
             if match:
-                return {
-                    "score": float(match.group(1)),
-                    "text": match.group(2).strip()
-                }
+                return {"score": float(match.group(1)), "text": match.group(2).strip()}
             # If format doesn't match, return the whole text
             return {"score": 0.0, "text": raw_text.strip()}
 
@@ -134,12 +132,7 @@ Please provide a comprehensive answer based on the context above. If the context
             return {"score": 0.0, "text": raw_text.strip()}
 
     def get_filename_from_extras(self, extras: dict) -> str:
-        return (
-            extras.get("key")
-            or extras.get("filename")
-            or extras.get("name")
-            or None
-        )
+        return extras.get("key") or extras.get("filename") or extras.get("name") or None
 
     def format_context_and_sources(self, rag_result: dict, query: str) -> tuple:
         references = rag_result.get("references", [])
@@ -173,12 +166,7 @@ Please provide a comprehensive answer based on the context above. If the context
             filename = self.get_filename_from_extras(extras)
 
             # Extract source information from different possible locations
-            source_name = (
-                ref.get("title")
-                or ref.get("source_name")
-                or filename
-                or f"Source {i+1}"
-            )
+            source_name = ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
 
             # Strip internal storage/ingestion fields that are not meaningful to the LLM
             # (e.g. checksums, version numbers, and low-level format hints)
@@ -214,6 +202,7 @@ Please provide a comprehensive answer based on the context above. If the context
                         "format": extras.get("format"),
                     }
                 ],
+                "distances": [score],
             }
 
             url = ref.get("url") or extras.get("url")
@@ -227,10 +216,7 @@ Please provide a comprehensive answer based on the context above. If the context
             return "", []
 
         # Use template to format final context
-        formatted_context = self.valves.context_template.format(
-            context=context,
-            query=query
-        )
+        formatted_context = self.valves.context_template.format(context=context, query=query)
         log.info(f"Formatted context with {len(sources)} sources, length: {len(formatted_context)} chars")
 
         return formatted_context, sources
@@ -238,8 +224,8 @@ Please provide a comprehensive answer based on the context above. If the context
     async def inlet(
         self,
         body: dict,
-        __user__: Optional[dict] = None,
-        __event_emitter__: Optional[Callable[[dict], Awaitable[None]]] = None,
+        __user__: dict | None = None,
+        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> dict:
         """
         Inlet filter: Process the request before it goes to the LLM
@@ -298,7 +284,7 @@ Please provide a comprehensive answer based on the context above. If the context
                 context, sources = self.format_context_and_sources(rag_result, query)
 
                 if context:
-                    log.info(f"Injecting context into messages")
+                    log.info("Injecting context into messages")
 
                     # Inject context as a system message
                     context_msg = {"role": "system", "content": context}
@@ -319,8 +305,8 @@ Please provide a comprehensive answer based on the context above. If the context
     async def outlet(
         self,
         body: dict,
-        __user__: Optional[dict] = None,
-        __event_emitter__: Optional[Callable[[dict], Awaitable[None]]] = None,
+        __user__: dict | None = None,
+        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> dict:
         """
         Outlet filter: Process the response after the LLM generates it
