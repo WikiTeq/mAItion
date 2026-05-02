@@ -1,10 +1,10 @@
 """
-title: MediaWiki Write Tool
+title: MediaWiki Search & Write Tool
 author: WikiTeq
 date: 2025-04-30
 version: 1.0
 license: MIT
-description: Allows the AI to save content as a new or updated MediaWiki page when the user asks to save something to the wiki or knowledge base.
+description: Allows the AI to save content as a new or updated MediaWiki page when the user asks to save something to the wiki or knowledge base. Allows AI to search the wiki for pages.
 requirements: mwclient>=0.10.1, pydantic>=2.0.0
 """
 
@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 MAX_TITLE_LENGTH = 255
 MAX_CONTENT_LENGTH = 2_000_000  # 2 MB, MediaWiki default max
+MAX_SEARCH_RESULTS = 20
 
 # Characters illegal in MediaWiki page titles: #<>[]|{} plus control chars 0-31 and DEL (127)
 _ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
@@ -107,9 +108,164 @@ class Tools:
             default="Saved via mAItion AI assistant",
             description="Edit summary recorded in the wiki page history.",
         )
+        max_search_results: int = Field(
+            default=10,
+            description=f"Maximum number of search results to return (1–{MAX_SEARCH_RESULTS}).",
+        )
+        max_page_chars: int = Field(
+            default=20_000,
+            description=(
+                "Maximum characters to include per page in search results."
+                " Longer pages are truncated."
+            ),
+        )
 
     def __init__(self):
         self.valves = self.Valves()
+
+    async def search_wiki(
+            self,
+            query: str,
+            __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+    ) -> str:
+        """
+        Search the MediaWiki wiki for pages matching a query and return their full wikitext content.
+
+        Use this tool when the user asks to:
+        - "search the wiki for ..." / "find wiki pages about ..."
+        - "look up ... in the knowledge base"
+        - "what does the wiki say about ..."
+
+        The tool runs a full-text search (equivalent to Special:Search) and fetches the complete
+        wikitext of each matching page, returning them as a structured block the AI can read.
+
+        Args:
+            query: The search query string.
+
+        Returns:
+            A formatted string with each result's title, URL, and full wikitext, or an error.
+        """
+        import mwclient
+
+        async def emit(message: str, done: bool = False) -> None:
+            if __event_emitter__:
+                await __event_emitter__(
+                    {"type": "status", "data": {"description": message, "done": done}}
+                )
+
+        # --- Validate configuration ---
+        if not self.valves.wiki_url:
+            await emit("MediaWiki URL is not configured in Tool Valves.", done=True)
+            return "Error: wiki_url is not configured."
+        if not self.valves.username or not self.valves.password:
+            await emit(
+                "MediaWiki credentials are not configured in Tool Valves.", done=True
+            )
+            return "Error: username and password are not configured."
+
+        query = query.strip()
+        if not query:
+            await emit("Error: search query cannot be empty.", done=True)
+            return "Error: search query cannot be empty."
+
+        effective_limit = max(1, min(self.valves.max_search_results, MAX_SEARCH_RESULTS))
+
+        # --- Parse wiki URL ---
+        try:
+            host, path, scheme = _parse_wiki_url(self.valves.wiki_url)
+        except ValueError as e:
+            await emit(str(e), done=True)
+            return f"Error: {e}"
+
+        await emit(f"Connecting to {host}…")
+
+        # --- Connect and authenticate (blocking — run in thread) ---
+        def _connect():
+            site = mwclient.Site(
+                host,
+                path=path,
+                scheme=scheme,
+                reqs={"timeout": self.valves.timeout},
+            )
+            site.login(self.valves.username, self.valves.password)
+            return site
+
+        try:
+            site = await asyncio.to_thread(_connect)
+        except mwclient.errors.LoginError:
+            await emit(
+                "Authentication failed. Check your username and password in Tool Valves.",
+                done=True,
+            )
+            return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
+        except Exception:
+            log.error("mwclient connection error", exc_info=True)
+            await emit("Could not connect to the wiki.", done=True)
+            return "Error: could not connect to the wiki. Check the wiki_url in Tool Valves."
+
+        def _get_article_path():
+            result = site.api("query", meta="siteinfo", siprop="general")
+            return result["query"]["general"].get("articlepath", "/wiki/$1")
+
+        try:
+            article_path = await asyncio.to_thread(_get_article_path)
+        except Exception:
+            article_path = "/wiki/$1"
+
+        await emit(f"Searching for '{query}'...")
+
+        def _search():
+            results = []
+            for item in site.search(query, what="text", limit=effective_limit):
+                results.append(item["title"])
+                if len(results) >= effective_limit:
+                    break
+            return results
+
+        try:
+            titles = await asyncio.to_thread(_search)
+        except Exception:
+            log.error("Search error", exc_info=True)
+            await emit("Wiki search error.", done=True)
+            return f"Error: unexpected error during search."
+
+        if not titles:
+            await emit("No results found.", done=True)
+            return f"No wiki pages found matching '{query}'."
+
+        await emit(f"Fetching content for {len(titles)} page(s)...")
+
+        def _fetch_page(title: str) -> tuple[str, str]:
+            try:
+                page = site.pages[title]
+                if not page.exists:
+                    return title, "(Page not found — may have been deleted)"
+                return title, page.text()
+            except Exception as e:
+                log.warning("Failed to fetch %r: %s", title, e)
+                return title, "(Content unavailable)"
+
+        pages: list[tuple[str, str]] = await asyncio.gather(
+            *[asyncio.to_thread(_fetch_page, t) for t in titles]
+        )
+
+        sections = []
+        cap = self.valves.max_page_chars
+        for i, (title, content) in enumerate(pages, start=1):
+            if len(content) > cap:
+                content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
+            url = _build_page_url(scheme, host, article_path, title)
+            sections.append(
+                f"=== Result {i}: {title} ===\n"
+                f"URL: {url}\n\n"
+                f"Page content: {content}\n"
+            )
+
+        await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
+        return (
+                f"Search results for '{query}' ({len(pages)} page(s)):\n\n"
+                + "\n---\n\n".join(sections)
+        )
 
     async def save_to_wiki(
         self,
