@@ -88,7 +88,8 @@ sources:
   #    filter_organizers: ""         # optional, filter by organizer email(s); comma-separated or YAML list
   #    filter_channel_id: ""         # optional, filter by channel ID
   #    max_items: 100                # optional, default 100
-  #    schedules: "60"
+  #    schedules: "${FIREFLIES_SCHEDULES}"             # hourly; free/pro tier: 50 req/day
+  #    #request_delay: 0             # optional, delay in seconds between items (default: 0)
 
   # Pipedrive CRM
   #- type: "pipedrive"
