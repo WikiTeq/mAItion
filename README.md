@@ -350,7 +350,7 @@ For GitHub App authentication, replace `personal_token` with:
 ### GitLab Connector
 
 The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
-Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_api` scope.
+Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_repository` and `read_api` scopes.
 
 ```yaml
 # config.yaml
@@ -359,28 +359,22 @@ sources:
   - type: "gitlab"
     name: "gitlab1"
     config:
-      gitlab_url: "${GITLAB1_URL}"
+      gitlab_url: "${GITLAB1_URL}"          # e.g. https://gitlab.com
       personal_token: "${GITLAB1_TOKEN}"
-      project_id: 12345678              # integer project ID (required unless group_id only)
-      #group_id: 999                    # optional, for group-level issue queries
-      ref: "main"                       # optional, branch/tag/commit, default "main"
-      #path: "docs"                     # optional, limit to sub-directory
-      #file_path: "README.md"           # optional, single file only
-      recursive: true                   # optional, default true
-      include_issues: false             # set true to also ingest issues
-      #issues_state: "opened"           # optional: opened/closed/all, default "opened"
-      #issues_labels: "bug,docs"        # optional, comma-separated
-      #issues_assignee: "username"      # optional
-      #issues_author: "username"        # optional
-      #issues_milestone: "v1.0"         # optional
-      #issues_search: "keyword"         # optional
-      #issues_get_all: false            # optional, fetch all pages, default false
-      #issues_scope: "created_by_me"    # optional: created_by_me/assigned_to_me/all
-      #issues_type: "issue"             # optional: issue/incident/test_case/task
-      #issues_confidential: false       # optional
-      #issues_iids: [1, 2, 3]           # optional, filter by specific issue IDs
-      #issues_created_after: "2024-01-01T00:00:00Z"
-      #issues_created_before: "2024-12-31T23:59:59Z"
+      project_id: 12345678                  # integer project ID (required unless group_id only)
+      #group_id: 999                        # optional, for group-level issue queries
+      ref: "main"                           # optional, branch/tag/commit, default "main"
+      #path: "docs"                         # optional, limit to sub-directory
+      recursive: true                       # optional, default true
+      files_iterator: true                  # optional, use iterator pagination to fetch all files (default true); set to false to limit to 20 files (GitLab API default page size)
+      include_issues: false                 # optional, default false
+      #issues_state: "opened"              # optional: opened/closed/all, default "opened"
+      #issues_labels: "bug,docs"           # optional, comma-separated
+      #issues_assignee: "username"         # optional
+      #issues_author: "username"           # optional
+      #issues_milestone: "v1.0"            # optional
+      #issues_search: "keyword"            # optional
+      #issues_get_all: false               # optional, fetch all pages, default false
       schedules: "${GITLAB1_SCHEDULES}"
 ```
 
