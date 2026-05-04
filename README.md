@@ -311,7 +311,7 @@ JIRA1_SCHEDULES=3600
 The Fireflies connector ingests meeting transcripts from [Fireflies.ai](https://fireflies.ai) via its
 GraphQL API. Document content is composed from the transcript summary (overview, outline/sentences, notes).
 Metadata collected per transcript includes: title, host_email, organizer_email, participants, date,
-transcript_url, audio_url, video_url, duration, meeting_link, speakers, keywords, gist, action_items.
+transcript_url, duration, meeting_link, speakers, keywords, gist, action_items.
 
 ```yaml
 # config.yaml
@@ -328,13 +328,15 @@ sources:
       filter_organizers: ""         # optional, comma-separated or YAML list
       filter_channel_id: ""         # optional, filter by channel ID
       max_items: 100                # optional, default 100
-      schedules: "60"
+      schedules: "${FIREFLIES_SCHEDULES}"             # hourly; free/pro tier: 50 req/day
+      #request_delay: 0             # optional, delay in seconds between items (default: 0)
 ```
 
 ```dotenv
 # .env.rag
 
 FIREFLIES_API_KEY=your-fireflies-api-key
+FIREFLIES_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
