@@ -172,7 +172,7 @@ do_first_start() {
     	    curl -s -X POST "http://localhost:8080/api/v1/auths/add" \
               -H "Authorization: Bearer ${API_KEY}" \
               -H "Content-Type: application/json" \
-              --data-raw "{\"name\":\"$X_WEBUI_USER_EMAIL\",\"email\":\"$X_WEBUI_USER_EMAIL\",\"password\":\"$X_WEBUI_USER_PASS\",\"role\":\"user\"}"
+              --data-raw "{\"name\":\"$X_WEBUI_USER_NAME\",\"email\":\"$X_WEBUI_USER_EMAIL\",\"password\":\"$X_WEBUI_USER_PASS\",\"role\":\"user\"}"
     	fi
 
     	#disable ollama API
