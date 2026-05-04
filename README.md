@@ -468,15 +468,7 @@ ONEDRIVE1_SCHEDULES=3600
 ### GitLab Connector
 
 The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
-Uses [LlamaIndex GitLab readers](https://llamahub.ai/l/readers/llama-index-readers-gitlab) for all
-discovery and content fetching. Supports both GitLab.com and self-hosted instances via a Personal
-Access Token with the `read_api` scope — it covers both the repository files and issues APIs that this
-connector uses.
-
-> **Known limitation:** `GitLabRepositoryReader.load_data()` re-downloads all repository file content on
-> every scheduled run; ROAT's vector checksum skip does not reduce GitLab API calls for the files
-> connector. This is a limitation of the underlying LlamaIndex reader, not this connector, for the
-> current iteration.
+Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_api` scopes.
 
 ```yaml
 # config.yaml
@@ -485,16 +477,22 @@ sources:
   - type: "gitlab"
     name: "gitlab1"
     config:
-      gitlab_url: "${GITLAB1_URL}"        # e.g. https://gitlab.com
+      gitlab_url: "${GITLAB1_URL}"          # e.g. https://gitlab.com
       personal_token: "${GITLAB1_TOKEN}"
-      project_id: 12345678               # integer project ID; required unless group_id is set, mutually exclusive with group_id
-      #group_id: 999                     # integer group ID, for group-wide issue queries (repository files not supported in group mode); mutually exclusive with project_id
-      ref: "main"                        # optional, branch/tag/commit, default "main"
-      #path: "docs"                      # optional, limit to sub-directory
-      #file_path: "README.md"            # optional, single file only
-      recursive: true                    # optional, default true
-      files_iterator: true               # optional, use iterator pagination to fetch all files (default true); set to false to limit to 20 files (GitLab API default page size)
-      include_issues: false              # optional, default false
+      project_id: 12345678                  # integer project ID (required unless group_id only)
+      #group_id: 999                        # optional, for group-level issue queries
+      ref: "main"                           # optional, branch/tag/commit, default "main"
+      #path: "docs"                         # optional, limit to sub-directory
+      recursive: true                       # optional, default true
+      files_iterator: true                  # optional, use iterator pagination to fetch all files (default true); set to false to limit to 20 files (GitLab API default page size)
+      include_issues: false                 # optional, default false
+      #issues_state: "opened"              # optional: opened/closed/all, default "opened"
+      #issues_labels: "bug,docs"           # optional, comma-separated
+      #issues_assignee: "username"         # optional
+      #issues_author: "username"           # optional
+      #issues_milestone: "v1.0"            # optional
+      #issues_search: "keyword"            # optional
+      #issues_get_all: false               # optional, fetch all pages, default false
       schedules: "${GITLAB1_SCHEDULES}"
 
   # With issue ingestion and filters:
