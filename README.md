@@ -328,15 +328,14 @@ sources:
       filter_organizers: ""         # optional, comma-separated or YAML list
       filter_channel_id: ""         # optional, filter by channel ID
       max_items: 100                # optional, default 100
-      schedules: "${FIREFLIES_SCHEDULES}"             # hourly; free/pro tier: 50 req/day
-      #request_delay: 0             # optional, delay in seconds between items (default: 0)
+      schedules: "${FIREFLIES_SCHEDULES}"             # hourly; free/pro tier: 50 req/days
 ```
 
 ```dotenv
 # .env.rag
 
 FIREFLIES_API_KEY=your-fireflies-api-key
-FIREFLIES_SCHEDULES=3600
+FIREFLIES_SCHEDULES=60
 ```
 
 ## Embeddings and Inference
