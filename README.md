@@ -795,7 +795,7 @@ sources:
 # .env.rag
 
 FIREFLIES_API_KEY=your-fireflies-api-key
-FIREFLIES_SCHEDULES=3600
+FIREFLIES_SCHEDULES=60
 ```
 
 ## Single Sign-On (SSO)
