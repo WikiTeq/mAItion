@@ -1,0 +1,22 @@
+services:
+
+  openwebui:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        required: false
+
+  api:
+    profiles:
+      - rag
+
+  celery_worker:
+    profiles:
+      - rag
+
+  celery_beat:
+    profiles:
+      - rag
