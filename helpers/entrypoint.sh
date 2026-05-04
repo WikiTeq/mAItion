@@ -199,6 +199,7 @@ do_first_start() {
 start_healthz_server
 apply_patches
 
+# this is required for speedy HF models download
 pip install hf_xet
 
 start_app
