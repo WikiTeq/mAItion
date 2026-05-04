@@ -111,7 +111,7 @@ do_first_start() {
     	curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/valves/update" \
     	  -H "Authorization: Bearer ${API_KEY}" \
     	  -H "Content-Type: application/json" \
-    	  --data-raw '{"pipelines":["*"],"priority":null,"enabled":true,"rag_service_url":"http://api:8000/api/v1/query/","rag_service_api_key":"12345","rag_service_timeout":null,"top_k":null,"inject_context":null,"context_template":null}'
+    	  --data-raw "{\"pipelines\":[\"*\"],\"priority\":null,\"enabled\":true,\"rag_service_url\":\"$ROAT_API_URL/api/v1/query/\",\"rag_service_api_key\":\"$ROAT_API_KEY\",\"rag_service_timeout\":null,\"top_k\":null,\"inject_context\":null,\"context_template\":null}"
 
     	echo ""
     	echo "[Custom entrypoint] Enabling the function"
