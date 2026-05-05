@@ -4,7 +4,7 @@ author: WikiTeq
 date: 2025-04-30
 version: 1.0
 license: MIT
-description: Allows the AI to save content as a new or updated MediaWiki page when the user asks to save something to the wiki or knowledge base. Allows AI to search the wiki for pages.
+description: Allows creating new or updating existing MediaWiki pages when the user asks to save or update something to the wiki/knowledge base. Allows AI to search the wiki for pages.
 requirements: mwclient>=0.10.1, pydantic>=2.0.0
 """
 
@@ -177,17 +177,17 @@ class Tools:
         """
         import mwclient
 
-        async def emit(message: str, done: bool = False) -> None:
+        async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
             if __event_emitter__:
-                await __event_emitter__({"type": "status", "data": {"description": message, "done": done}})
+                await __event_emitter__({"type": "status", "data": {"description": message, "done": done, "hidden": hidden}})
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
-            await emit("MediaWiki URL is not configured in Tool Valves.", done=True)
+            await emit("Error: MediaWiki URL is not configured in Tool Valves.", done=True, hidden=False)
             return "Error: wiki_url is not configured."
         query = query.strip()
         if not query:
-            await emit("Error: search query cannot be empty.", done=True)
+            await emit("Error: search query cannot be empty.", done=True, hidden=False)
             return "Error: search query cannot be empty."
 
         effective_limit = max(1, min(self.valves.max_search_results, MAX_SEARCH_RESULTS))
@@ -196,7 +196,7 @@ class Tools:
         try:
             host, path, scheme = _parse_wiki_url(self.valves.wiki_url)
         except ValueError as e:
-            await emit(str(e), done=True)
+            await emit(f"Error: {e}", done=True, hidden=False)
             return f"Error: {e}"
 
         await emit(f"Connecting to {host}…")
@@ -212,13 +212,14 @@ class Tools:
                 self.valves.password,
             )
         except mwclient.errors.LoginError:
-            await emit("Authentication failed. Check your username and password in Tool Valves.", done=True)
+            await emit("Error: authentication failed. Check your username and password in Tool Valves.", done=True, hidden=False)
             return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
         except Exception:
             log.error("mwclient connection error", exc_info=True)
-            await emit("Could not connect to the wiki.", done=True)
+            await emit("Error: could not connect to the wiki.", done=True, hidden=False)
             return "Error: could not connect to the wiki. Check the wiki_url in Tool Valves."
 
+        await emit("Fetching wiki article path…")
         article_path = await asyncio.to_thread(_get_article_path, site)
 
         await emit(f"Searching for '{query}'...")
@@ -235,18 +236,18 @@ class Tools:
             titles = await asyncio.to_thread(_search)
         except mwclient.errors.APIError as e:
             if e.code in ("readapidenied", "permissiondenied"):
-                await emit("This wiki requires login to search.", done=True)
+                await emit("Error: this wiki requires login to search.", done=True, hidden=False)
                 return "Error: this wiki requires authentication to search. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
-            await emit("Wiki search error.", done=True)
+            await emit(f"Error: wiki search failed ({e.code}).", done=True, hidden=False)
             return f"Error: wiki API returned an error ({e.code})."
         except Exception:
             log.error("Unexpected error during search", exc_info=True)
-            await emit("Wiki search error.", done=True)
+            await emit("Error: unexpected error during search.", done=True, hidden=False)
             return "Error: unexpected error during search."
 
         if not titles:
-            await emit("No results found.", done=True)
+            await emit("No results found.", done=True, hidden=False)
             return f"No wiki pages found matching '{query}'."
 
         await emit(f"Fetching content for {len(titles)} page(s)...")
@@ -301,6 +302,8 @@ class Tools:
         After this tool returns successfully, respond with only the page URL.
         Do NOT repeat or summarise the page content.
 
+        Content size limit: 2,000,000 characters maximum.
+
         Args:
             title: The wiki page title (e.g. "Meeting Notes 2025-04-30")
             content: The page content formatted as MediaWiki markup
@@ -310,13 +313,13 @@ class Tools:
         """
         import mwclient
 
-        async def emit(message: str, done: bool = False) -> None:
+        async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
             if __event_emitter__:
-                await __event_emitter__({"type": "status", "data": {"description": message, "done": done}})
+                await __event_emitter__({"type": "status", "data": {"description": message, "done": done, "hidden": hidden}})
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
-            await emit("MediaWiki URL is not configured in Tool Valves.", done=True)
+            await emit("Error: MediaWiki URL is not configured in Tool Valves.", done=True, hidden=False)
             return "Error: wiki_url is not configured."
         # --- Validate inputs ---
         title = title.strip()
@@ -331,14 +334,14 @@ class Tools:
         try:
             _validate_title(title)
         except ValueError as e:
-            await emit(str(e), done=True)
+            await emit(f"Error: {e}", done=True, hidden=False)
             return f"Error: {e}"
 
         # --- Parse wiki URL ---
         try:
             host, path, scheme = _parse_wiki_url(self.valves.wiki_url)
         except ValueError as e:
-            await emit(str(e), done=True)
+            await emit(f"Error: {e}", done=True, hidden=False)
             return f"Error: {e}"
 
         await emit(f"Connecting to {host}…")
@@ -355,11 +358,11 @@ class Tools:
                 self.valves.password,
             )
         except mwclient.errors.LoginError:
-            await emit("Authentication failed. Check your username and password in Tool Valves.", done=True)
+            await emit("Error: authentication failed. Check your username and password in Tool Valves.", done=True, hidden=False)
             return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
         except Exception:
             log.error("mwclient connection error", exc_info=True)
-            await emit("Could not connect to the wiki.", done=True)
+            await emit("Error: could not connect to the wiki.", done=True, hidden=False)
             return "Error: could not connect to the wiki. Check the wiki_url in Tool Valves."
 
         await emit(f"Saving page «{title}»…")
@@ -372,18 +375,18 @@ class Tools:
         try:
             await asyncio.to_thread(_save)
         except mwclient.errors.ProtectedPageError:
-            await emit(f"Page «{title}» is protected and cannot be edited.", done=True)
+            await emit(f"Error: page «{title}» is protected and cannot be edited.", done=True, hidden=False)
             return f"Error: page «{title}» is protected."
         except mwclient.errors.APIError as e:
             if e.code in ("writeapidenied", "permissiondenied"):
-                await emit("This wiki requires login to write.", done=True)
+                await emit("Error: this wiki requires login to write.", done=True, hidden=False)
                 return "Error: this wiki requires authentication to write. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
-            await emit("Wiki API error while saving.", done=True)
+            await emit(f"Error: wiki save failed ({e.code}).", done=True, hidden=False)
             return f"Error: wiki API returned an error ({e.code}). Check page title and permissions."
         except Exception:
             log.error("Unexpected error saving page", exc_info=True)
-            await emit("An unexpected error occurred while saving.", done=True)
+            await emit("Error: an unexpected error occurred while saving.", done=True, hidden=False)
             return "Error: an unexpected error occurred. Check the server logs for details."
 
         # --- Build canonical page URL (blocking — run in thread) ---
