@@ -111,8 +111,10 @@ of the `.env` file. The default ones are:
 If you did not change the `ENABLE_OPENAI_API` you will also have LLM provider
 pre-configured with the values you have in the `.env` including the default chat model
 
-The filter function that's responsible for the RAG service communication will also be
-automatically provisioned and enabled globally. You can change these settings at the Admin panel
+Two components handle RAG service communication:
+
+- **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
+- **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
 
 ## Connectors configuration
 
