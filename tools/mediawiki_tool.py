@@ -86,6 +86,34 @@ def _build_page_url(scheme: str, host: str, article_path: str, title: str) -> st
     return f"{scheme}://{host}{article_path.replace('$1', encoded)}"
 
 
+def _get_article_path(site) -> str:
+    try:
+        result = site.api("query", meta="siteinfo", siprop="general")
+        return result["query"]["general"].get("articlepath", "/wiki/$1")
+    except Exception:
+        log.warning("Could not fetch articlepath from siteinfo; falling back to /wiki/$1", exc_info=True)
+        return "/wiki/$1"
+
+
+def _connect_site(host: str, path: str, scheme: str, timeout: int, username: str, password: str):
+    """Connect to a MediaWiki site, logging in only when credentials are provided."""
+    # Lazy import: OWUI loads this file before installing requirements, so mwclient
+    # is not available at module load time — only at call time.
+    import mwclient
+
+    has_credentials = bool(username and password)
+    site = mwclient.Site(
+        host,
+        path=path,
+        scheme=scheme,
+        force_login=has_credentials,
+        reqs={"timeout": timeout},
+    )
+    if has_credentials:
+        site.login(username, password)
+    return site
+
+
 class Tools:
     class Valves(BaseModel):
         wiki_url: str = Field(
@@ -114,9 +142,11 @@ class Tools:
         )
         max_page_chars: int = Field(
             default=20_000,
+            ge=1,
+            le=500_000,
             description=(
                 "Maximum characters to include per page in search results."
-                " Longer pages are truncated."
+                " Longer pages are truncated. Range: 1–500,000."
             ),
         )
 
@@ -124,9 +154,9 @@ class Tools:
         self.valves = self.Valves()
 
     async def search_wiki(
-            self,
-            query: str,
-            __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+        self,
+        query: str,
+        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
         Search the MediaWiki wiki for pages matching a query and return their full wikitext content.
@@ -149,20 +179,12 @@ class Tools:
 
         async def emit(message: str, done: bool = False) -> None:
             if __event_emitter__:
-                await __event_emitter__(
-                    {"type": "status", "data": {"description": message, "done": done}}
-                )
+                await __event_emitter__({"type": "status", "data": {"description": message, "done": done}})
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
             await emit("MediaWiki URL is not configured in Tool Valves.", done=True)
             return "Error: wiki_url is not configured."
-        if not self.valves.username or not self.valves.password:
-            await emit(
-                "MediaWiki credentials are not configured in Tool Valves.", done=True
-            )
-            return "Error: username and password are not configured."
-
         query = query.strip()
         if not query:
             await emit("Error: search query cannot be empty.", done=True)
@@ -179,38 +201,25 @@ class Tools:
 
         await emit(f"Connecting to {host}…")
 
-        # --- Connect and authenticate (blocking — run in thread) ---
-        def _connect():
-            site = mwclient.Site(
-                host,
-                path=path,
-                scheme=scheme,
-                reqs={"timeout": self.valves.timeout},
-            )
-            site.login(self.valves.username, self.valves.password)
-            return site
-
         try:
-            site = await asyncio.to_thread(_connect)
-        except mwclient.errors.LoginError:
-            await emit(
-                "Authentication failed. Check your username and password in Tool Valves.",
-                done=True,
+            site = await asyncio.to_thread(
+                _connect_site,
+                host,
+                path,
+                scheme,
+                self.valves.timeout,
+                self.valves.username,
+                self.valves.password,
             )
+        except mwclient.errors.LoginError:
+            await emit("Authentication failed. Check your username and password in Tool Valves.", done=True)
             return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
         except Exception:
             log.error("mwclient connection error", exc_info=True)
             await emit("Could not connect to the wiki.", done=True)
             return "Error: could not connect to the wiki. Check the wiki_url in Tool Valves."
 
-        def _get_article_path():
-            result = site.api("query", meta="siteinfo", siprop="general")
-            return result["query"]["general"].get("articlepath", "/wiki/$1")
-
-        try:
-            article_path = await asyncio.to_thread(_get_article_path)
-        except Exception:
-            article_path = "/wiki/$1"
+        article_path = await asyncio.to_thread(_get_article_path, site)
 
         await emit(f"Searching for '{query}'...")
 
@@ -224,10 +233,17 @@ class Tools:
 
         try:
             titles = await asyncio.to_thread(_search)
-        except Exception:
-            log.error("Search error", exc_info=True)
+        except mwclient.errors.APIError as e:
+            if e.code in ("readapidenied", "permissiondenied"):
+                await emit("This wiki requires login to search.", done=True)
+                return "Error: this wiki requires authentication to search. Please configure username and password in Tool Valves."
+            log.error("MediaWiki API error: %s", e.code)
             await emit("Wiki search error.", done=True)
-            return f"Error: unexpected error during search."
+            return f"Error: wiki API returned an error ({e.code})."
+        except Exception:
+            log.error("Unexpected error during search", exc_info=True)
+            await emit("Wiki search error.", done=True)
+            return "Error: unexpected error during search."
 
         if not titles:
             await emit("No results found.", done=True)
@@ -245,9 +261,7 @@ class Tools:
                 log.warning("Failed to fetch %r: %s", title, e)
                 return title, "(Content unavailable)"
 
-        pages: list[tuple[str, str]] = await asyncio.gather(
-            *[asyncio.to_thread(_fetch_page, t) for t in titles]
-        )
+        pages: list[tuple[str, str]] = await asyncio.gather(*[asyncio.to_thread(_fetch_page, t) for t in titles])
 
         sections = []
         cap = self.valves.max_page_chars
@@ -255,17 +269,10 @@ class Tools:
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
             url = _build_page_url(scheme, host, article_path, title)
-            sections.append(
-                f"=== Result {i}: {title} ===\n"
-                f"URL: {url}\n\n"
-                f"Page content: {content}\n"
-            )
+            sections.append(f"=== Result {i}: {title} ===\nURL: {url}\n\nPage content: {content}\n")
 
         await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
-        return (
-                f"Search results for '{query}' ({len(pages)} page(s)):\n\n"
-                + "\n---\n\n".join(sections)
-        )
+        return f"Search results for '{query}' ({len(pages)} page(s)):\n\n" + "\n---\n\n".join(sections)
 
     async def save_to_wiki(
         self,
@@ -311,10 +318,6 @@ class Tools:
         if not self.valves.wiki_url:
             await emit("MediaWiki URL is not configured in Tool Valves.", done=True)
             return "Error: wiki_url is not configured."
-        if not self.valves.username or not self.valves.password:
-            await emit("MediaWiki credentials are not configured in Tool Valves.", done=True)
-            return "Error: username and password are not configured."
-
         # --- Validate inputs ---
         title = title.strip()
         if not title:
@@ -340,19 +343,17 @@ class Tools:
 
         await emit(f"Connecting to {host}…")
 
-        # --- Connect and authenticate (blocking — run in thread) ---
-        def _connect():
-            site = mwclient.Site(
-                host,
-                path=path,
-                scheme=scheme,
-                reqs={"timeout": self.valves.timeout},
-            )
-            site.login(self.valves.username, self.valves.password)
-            return site
-
+        # --- Connect and optionally authenticate (blocking — run in thread) ---
         try:
-            site = await asyncio.to_thread(_connect)
+            site = await asyncio.to_thread(
+                _connect_site,
+                host,
+                path,
+                scheme,
+                self.valves.timeout,
+                self.valves.username,
+                self.valves.password,
+            )
         except mwclient.errors.LoginError:
             await emit("Authentication failed. Check your username and password in Tool Valves.", done=True)
             return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
@@ -374,6 +375,9 @@ class Tools:
             await emit(f"Page «{title}» is protected and cannot be edited.", done=True)
             return f"Error: page «{title}» is protected."
         except mwclient.errors.APIError as e:
+            if e.code in ("writeapidenied", "permissiondenied"):
+                await emit("This wiki requires login to write.", done=True)
+                return "Error: this wiki requires authentication to write. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
             await emit("Wiki API error while saving.", done=True)
             return f"Error: wiki API returned an error ({e.code}). Check page title and permissions."
@@ -385,15 +389,8 @@ class Tools:
         # --- Build canonical page URL (blocking — run in thread) ---
         await emit("Fetching page URL…")
 
-        def _get_article_path():
-            result = site.api("query", meta="siteinfo", siprop="general")
-            return result["query"]["general"].get("articlepath", "/wiki/$1")
-
-        try:
-            article_path = await asyncio.to_thread(_get_article_path)
-            page_url = _build_page_url(scheme, host, article_path, title)
-        except Exception:
-            page_url = _build_page_url(scheme, host, "/wiki/$1", title)
+        article_path = await asyncio.to_thread(_get_article_path, site)
+        page_url = _build_page_url(scheme, host, article_path, title)
 
         await emit(f"Saved: {page_url}", done=True)
         return page_url
