@@ -18,6 +18,11 @@
 			"tagId": "GTM-MQPGSF3N"
 		}
 	},
+	"seo": {
+		"metatags": {
+			"canonical": "https://docs.maition.com"
+		}
+	},
 	"api": {
 		"openapi": "openapi.yaml",
 		"playground": {
