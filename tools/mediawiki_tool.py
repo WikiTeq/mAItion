@@ -324,11 +324,17 @@ class Tools:
         # --- Validate inputs ---
         title = title.strip()
         if not title:
-            return "Error: page title cannot be empty."
+            msg = "Error: page title cannot be empty."
+            await emit(msg, done=True, hidden=False)
+            return msg
         if len(title) > MAX_TITLE_LENGTH:
-            return f"Error: page title exceeds maximum length of {MAX_TITLE_LENGTH} characters."
+            msg = f"Error: page title exceeds maximum length of {MAX_TITLE_LENGTH} characters."
+            await emit(msg, done=True, hidden=False)
+            return msg
         if len(content.encode("utf-8")) > MAX_CONTENT_LENGTH:
-            return f"Error: content exceeds maximum allowed size of {MAX_CONTENT_LENGTH // 1_000_000} MB."
+            msg = f"Error: content exceeds maximum allowed size of {MAX_CONTENT_LENGTH // 1_000_000} MB."
+            await emit(msg, done=True, hidden=False)
+            return msg
 
         # --- Title validation (namespace + illegal chars) ---
         try:
