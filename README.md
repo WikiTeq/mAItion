@@ -308,6 +308,36 @@ JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
 JIRA1_SCHEDULES=3600
 ```
 
+### IMAP Connector
+
+The IMAP connector ingests emails from any IMAP server over SSL (Gmail, Outlook, Exchange, self-hosted, etc.).
+Each email becomes a document with subject as title, parsed body as content, and sender/recipient metadata.
+Mailboxes are auto-discovered when not specified.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "imap"
+    name: "imap1"
+    config:
+      host: "${IMAP1_HOST}"
+      port: 993                     # optional, default 993 (IMAPS)
+      username: "${IMAP1_USERNAME}"
+      password: "${IMAP1_PASSWORD}" # app-specific password for Gmail
+      mailboxes: "INBOX,Sent"       # optional, comma-separated; omit to ingest all mailboxes
+      schedules: "${IMAP1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+IMAP1_HOST=imap.example.com
+IMAP1_USERNAME=user@example.com
+IMAP1_PASSWORD=your-app-password
+IMAP1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
