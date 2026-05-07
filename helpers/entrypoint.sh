@@ -123,10 +123,10 @@ do_first_start() {
     #   -H "Authorization: Bearer ${API_KEY}" \
     #   -H "Content-Type: application/json"
 
-    TOOL_PYTHON_CODE=$(jq -Rs . < "/etc/tool.py")
+    TOOL_PYTHON_CODE=$(jq -Rs . < "/etc/roat_retrieval.py")
     TOOL_DATA_RAW=$(jq --argjson content "${TOOL_PYTHON_CODE}" \
       '.content=$content' \
-      "/etc/tool.json")
+      "/etc/roat_retrieval.json")
 
     echo ""
     echo "[Custom entrypoint] Installing ROAT search Tool"
