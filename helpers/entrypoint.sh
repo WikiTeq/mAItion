@@ -88,42 +88,59 @@ do_first_start() {
     echo ""
     echo "[Custom entrypoint] Received API_KEY.."
 
-    JSON_TEMPLATE_PATH="/etc/function.json"
-    PYTHON_FILE_PATH="/etc/function.py"
+    # Filter function replaced by ROAT search Tool — kept for reference
+    # JSON_TEMPLATE_PATH="/etc/function.json"
+    # PYTHON_FILE_PATH="/etc/function.py"
+    #
+    # PYTHON_CODE=$(jq -Rs . < "/etc/function.py")
+    # DATA_RAW=$(jq --argjson content "${PYTHON_CODE}" \
+    #   '.content=$content' \
+    #   "${JSON_TEMPLATE_PATH}")
+    #
+    # echo ""
+    # echo "[Custom entrypoint] Adding Pipe function to Open WebUI"
+    # curl -s -X POST "http://localhost:8080/api/v1/functions/create" \
+    #   -H "Authorization: Bearer ${API_KEY}" \
+    #   -H "Content-Type: application/json" \
+    #   --data-raw "${DATA_RAW}"
+    #
+    # echo ""
+    # echo "[Custom entrypoint] Configuring the function valves"
+    # curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/valves/update" \
+    #   -H "Authorization: Bearer ${API_KEY}" \
+    #   -H "Content-Type: application/json" \
+    #   --data-raw "{\"pipelines\":[\"*\"],\"priority\":null,\"enabled\":true,\"rag_service_url\":\"$ROAT_API_URL/api/v1/query/\",\"rag_service_api_key\":\"$ROAT_API_KEY\",\"rag_service_timeout\":null,\"top_k\":null,\"inject_context\":null,\"context_template\":null}"
+    #
+    # echo ""
+    # echo "[Custom entrypoint] Enabling the function"
+    # curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/toggle" \
+    #   -H "Authorization: Bearer ${API_KEY}" \
+    #   -H "Content-Type: application/json"
+    #
+    # echo ""
+    # echo "[Custom entrypoint] Enabling the function globally"
+    # curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/toggle/global" \
+    #   -H "Authorization: Bearer ${API_KEY}" \
+    #   -H "Content-Type: application/json"
 
-    # Read the Python file and escape special characters for JSON
-    PYTHON_CODE=$(jq -Rs . < "/etc/function.py")
-
-    # Read the template and replace placeholders
-    DATA_RAW=$(jq --argjson content "${PYTHON_CODE}" \
+    TOOL_PYTHON_CODE=$(jq -Rs . < "/etc/roat_retrieval.py")
+    TOOL_DATA_RAW=$(jq --argjson content "${TOOL_PYTHON_CODE}" \
       '.content=$content' \
-      "${JSON_TEMPLATE_PATH}")
+      "/etc/roat_retrieval.json")
 
     echo ""
-    echo "[Custom entrypoint] Adding Pipe function to Open WebUI"
-    curl -s -X POST "http://localhost:8080/api/v1/functions/create" \
+    echo "[Custom entrypoint] Installing ROAT search Tool"
+    curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}"
+      --data-raw "${TOOL_DATA_RAW}"
 
     echo ""
-    echo "[Custom entrypoint] Configuring the function valves"
-    curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/valves/update" \
+    echo "[Custom entrypoint] Configuring the tool valves"
+    curl -s -X POST "http://localhost:8080/api/v1/tools/id/roat_retrieval/valves/update" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
-      --data-raw "{\"pipelines\":[\"*\"],\"priority\":null,\"enabled\":true,\"rag_service_url\":\"$ROAT_API_URL/api/v1/query/\",\"rag_service_api_key\":\"$ROAT_API_KEY\",\"rag_service_timeout\":null,\"top_k\":null,\"inject_context\":null,\"context_template\":null}"
-
-    echo ""
-    echo "[Custom entrypoint] Enabling the function"
-    curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/toggle" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json"
-
-    echo ""
-    echo "[Custom entrypoint] Enabling the function globally"
-    curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/toggle/global" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json"
+      --data-raw "{\"rag_service_url\":\"$ROAT_API_URL/api/v1/query/\",\"rag_service_api_key\":\"$ROAT_API_KEY\"}"
 
     echo ""
     echo "[Custom entrypoint] Disabling Direct Connections for regular users"

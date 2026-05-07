@@ -1,0 +1,9 @@
+{
+	"id": "roat_retrieval",
+	"name": "Knowledge Base Search",
+	"content": "",
+	"meta": {
+		"description": "Searches the RAG-of-All-Trades knowledge base and returns relevant context.",
+		"manifest": {}
+	}
+}

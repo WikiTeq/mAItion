@@ -16,8 +16,8 @@ services:
       - open-webui:/app/backend/data
       - open-webui-model-cache:/app/backend/data/cache/embedding/models
       - open-webui-cache:/root/.cache
-      - ./functions/function.py:/etc/function.py
-      - ./functions/function.json:/etc/function.json
+      - ./tools/roat_retrieval.py:/etc/roat_retrieval.py
+      - ./tools/roat_retrieval.json:/etc/roat_retrieval.json
       - ./helpers/entrypoint.sh:/custom-entrypoint.sh
       - ./helpers/healthz.py:/etc/healthz.py
       - ./patches:/etc/patches
