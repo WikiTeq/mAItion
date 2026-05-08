@@ -229,11 +229,12 @@ install_mediawiki_tool() {
     echo "[Custom entrypoint] Installing MediaWiki Tool..."
 
     TOOL_CODE=$(jq -Rs . < "/etc/mediawiki_tool.py")
+    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/mediawiki_tool.json)
 
     CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
-      --data-raw "{\"id\":\"mediawiki\",\"name\":\"MediaWiki Search & Write Tool\",\"content\":${TOOL_CODE},\"meta\":{\"description\":\"Search and write MediaWiki pages\"}}")
+      --data-raw "${DATA_RAW}")
 
     TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
     if [ -z "$TOOL_ID" ]; then
