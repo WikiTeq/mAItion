@@ -9,6 +9,11 @@ set -e
 : "${HEALTHZ_PORT:?missing HEALTHZ_PORT}"
 : "${HEALTHZ_READY_FILE:?missing HEALTHZ_READY_FILE}"
 
+if [ "$TOOL_MEDIAWIKI_ENABLED" = "true" ] && [ -z "$MEDIAWIKI_API_URL" ]; then
+    echo "[Custom entrypoint] ERROR: TOOL_MEDIAWIKI_ENABLED=true but MEDIAWIKI_API_URL is not set." >&2
+    exit 1
+fi
+
 start_healthz_server() {
     # poor mans healthz server
     echo "[Custom entrypoint] Starting :$HEALTHZ_PORT/healthz endpoint.."
@@ -220,11 +225,6 @@ install_mediawiki_tool() {
         return
     fi
 
-    if [ -z "$MEDIAWIKI_API_URL" ]; then
-        echo "[Custom entrypoint] ERROR: TOOL_MEDIAWIKI_ENABLED=true but MEDIAWIKI_API_URL is not set. Skipping MediaWiki Tool install." >&2
-        return 1
-    fi
-
     echo ""
     echo "[Custom entrypoint] Installing MediaWiki Tool..."
 
@@ -247,10 +247,15 @@ install_mediawiki_tool() {
 
     echo ""
     echo "[Custom entrypoint] Configuring MediaWiki Tool valves..."
+    VALVES_JSON=$(jq -n \
+      --arg wiki "${MEDIAWIKI_API_URL}" \
+      --arg user "${MEDIAWIKI_USERNAME:-}" \
+      --arg pass "${MEDIAWIKI_PASSWORD:-}" \
+      '{wiki_url:$wiki,username:$user,password:$pass}')
     curl -s -X POST "http://localhost:8080/api/v1/tools/id/${TOOL_ID}/valves/update" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
-      --data-raw "{\"wiki_url\":\"${MEDIAWIKI_API_URL}\",\"username\":\"${MEDIAWIKI_USERNAME:-}\",\"password\":\"${MEDIAWIKI_PASSWORD:-}\"}"
+      --data-raw "${VALVES_JSON}"
 
 }
 
