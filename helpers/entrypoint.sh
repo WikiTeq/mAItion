@@ -210,7 +210,54 @@ do_first_start() {
       -H "Content-Type: application/json" \
       --data-raw "{\"suggestions\":[]}"
 
+    install_mediawiki_tool
+
     touch /app/backend/data/.first_start
+}
+
+install_mediawiki_tool() {
+    if [ "$TOOL_MEDIAWIKI_ENABLED" != "true" ]; then
+        return
+    fi
+
+    if [ -z "$MEDIAWIKI_API_URL" ]; then
+        echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_ENABLED=true but MEDIAWIKI_API_URL is not set. Skipping MediaWiki Tool install." >&2
+        return
+    fi
+
+    echo ""
+    echo "[Custom entrypoint] Installing MediaWiki Tool..."
+
+    TOOL_CODE=$(jq -Rs . < "/etc/mediawiki_tool.py")
+    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/mediawiki_tool.json)
+
+    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${DATA_RAW}")
+
+    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
+    if [ -z "$TOOL_ID" ]; then
+        echo "[Custom entrypoint] WARNING: MediaWiki Tool install failed"
+        echo "${CREATE_RESPONSE}"
+        return
+    fi
+
+    echo "[Custom entrypoint] MediaWiki Tool created with id: ${TOOL_ID}"
+
+    echo ""
+    echo "[Custom entrypoint] Configuring MediaWiki Tool valves..."
+    VALVES_JSON=$(jq -n \
+      --arg wiki "${MEDIAWIKI_API_URL}" \
+      --arg user "${MEDIAWIKI_USERNAME:-}" \
+      --arg pass "${MEDIAWIKI_PASSWORD:-}" \
+      '{wiki_url:$wiki,username:$user,password:$pass}')
+
+    curl -s -X POST "http://localhost:8080/api/v1/tools/id/${TOOL_ID}/valves/update" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${VALVES_JSON}"
+
 }
 
 start_healthz_server

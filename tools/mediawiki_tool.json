@@ -1,0 +1,9 @@
+{
+	"id": "mediawiki",
+	"name": "MediaWiki Search & Write Tool",
+	"content": "",
+	"meta": {
+		"description": "Search and write MediaWiki pages",
+		"manifest": {}
+	}
+}
