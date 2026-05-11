@@ -214,7 +214,8 @@ do_first_start() {
 }
 
 start_healthz_server
-apply_patches
+# branding is now applied directly in the maition-web-ui fork — no longer needed
+# apply_patches
 
 # this is required for speedy HF models download
 pip install hf_xet
