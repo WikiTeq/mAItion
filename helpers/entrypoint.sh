@@ -184,7 +184,7 @@ do_first_start() {
                 echo "[Custom entrypoint] Creating Workspace model"
                 WORKSPACE_MODEL_DATA=$(jq \
                   --arg base_model "$OPENAI_DEFAULT_MODEL" \
-                  '.base_model_id = $base_model' \
+                  '.[0].base_model_id = $base_model | .[0]' \
                   "/etc/wikiteqcenturion.json")
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
                   -H "Authorization: Bearer ${API_KEY}" \
