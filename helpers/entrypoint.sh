@@ -172,23 +172,25 @@ do_first_start() {
               -H "Content-Type: application/json" \
               --data-raw "{\"ui\":{\"version\":\"0.6.5\",\"models\":[\"$OPENAI_DEFAULT_MODEL\"]}}"
 
-            echo ""
-            echo "[Custom entrypoint] Making default model private"
-            curl -s -X POST "http://localhost:8080/api/v1/models/create" \
-              -H "Authorization: Bearer ${API_KEY}" \
-              -H "Content-Type: application/json" \
-              --data-raw "{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"$OPENAI_DEFAULT_MODEL\",\"base_model_id\":null,\"params\":{\"function_calling\":\"native\"},\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"access_control\":{\"read\":{\"group_ids\":[],\"user_ids\":[]},\"write\":{\"group_ids\":[],\"user_ids\":[]}},\"is_active\":true}"
+            if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "true" ]; then
+                echo ""
+                echo "[Custom entrypoint] Making default model private"
+                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
+                  -H "Authorization: Bearer ${API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  --data-raw "{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"$OPENAI_DEFAULT_MODEL\",\"base_model_id\":null,\"params\":{\"function_calling\":\"native\"},\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"access_control\":{\"read\":{\"group_ids\":[],\"user_ids\":[]},\"write\":{\"group_ids\":[],\"user_ids\":[]}},\"is_active\":true}"
 
-            echo ""
-            echo "[Custom entrypoint] Creating Workspace model"
-            WORKSPACE_MODEL_DATA=$(jq \
-              --arg base_model "$OPENAI_DEFAULT_MODEL" \
-              '.base_model_id = $base_model' \
-              "/etc/wikiteqcenturion.json")
-            curl -s -X POST "http://localhost:8080/api/v1/models/create" \
-              -H "Authorization: Bearer ${API_KEY}" \
-              -H "Content-Type: application/json" \
-              --data-raw "${WORKSPACE_MODEL_DATA}"
+                echo ""
+                echo "[Custom entrypoint] Creating Workspace model"
+                WORKSPACE_MODEL_DATA=$(jq \
+                  --arg base_model "$OPENAI_DEFAULT_MODEL" \
+                  '.base_model_id = $base_model' \
+                  "/etc/wikiteqcenturion.json")
+                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
+                  -H "Authorization: Bearer ${API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  --data-raw "${WORKSPACE_MODEL_DATA}"
+            fi
 
         fi
     fi
