@@ -172,7 +172,7 @@ do_first_start() {
               -H "Content-Type: application/json" \
               --data-raw "{\"ui\":{\"version\":\"0.6.5\",\"models\":[\"$OPENAI_DEFAULT_MODEL\"]}}"
 
-            if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "true" ]; then
+            if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "True" ]; then
                 echo ""
                 echo "[Custom entrypoint] Making default model private"
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
