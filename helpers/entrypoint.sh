@@ -186,6 +186,11 @@ do_first_start() {
                   --arg base_model "$OPENAI_DEFAULT_MODEL" \
                   '.[0].base_model_id = $base_model | .[0]' \
                   "/etc/wikiteqcenturion.json")
+
+                if [ "$TOOL_MEDIAWIKI_ENABLED" == "True" ]; then
+                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
+                      '.meta.toolIds += ["mediawiki"]')
+                fi
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
                   -H "Authorization: Bearer ${API_KEY}" \
                   -H "Content-Type: application/json" \
