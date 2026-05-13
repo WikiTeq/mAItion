@@ -217,12 +217,12 @@ do_first_start() {
 }
 
 install_mediawiki_tool() {
-    if [ "$TOOL_MEDIAWIKI_ENABLED" != "true" ]; then
+    if [ "$TOOL_MEDIAWIKI_ENABLED" != "True" ]; then
         return
     fi
 
     if [ -z "$MEDIAWIKI_API_URL" ]; then
-        echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_ENABLED=true but MEDIAWIKI_API_URL is not set. Skipping MediaWiki Tool install." >&2
+        echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_ENABLED=True but MEDIAWIKI_API_URL is not set. Skipping MediaWiki Tool install." >&2
         return
     fi
 
