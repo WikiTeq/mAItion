@@ -195,6 +195,13 @@ do_first_start() {
                   -H "Authorization: Bearer ${API_KEY}" \
                   -H "Content-Type: application/json" \
                   --data-raw "${WORKSPACE_MODEL_DATA}"
+            else
+                echo ""
+                echo "[Custom entrypoint] Making default model public"
+                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
+                  -H "Authorization: Bearer ${API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  --data-raw "{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"$OPENAI_DEFAULT_MODEL\",\"base_model_id\":null,\"params\":{\"function_calling\":\"native\"},\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"access_control\":null,\"is_active\":true}"
             fi
 
         fi
