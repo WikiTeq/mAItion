@@ -172,13 +172,37 @@ do_first_start() {
               -H "Content-Type: application/json" \
               --data-raw "{\"ui\":{\"version\":\"0.6.5\",\"models\":[\"$OPENAI_DEFAULT_MODEL\"]}}"
 
-            # rename the model and enable native functions calling
-            echo ""
-            echo "[Custom entrypoint] Renaming the model"
-            curl -s -X POST "http://localhost:8080/api/v1/models/create" \
-              -H "Authorization: Bearer ${API_KEY}" \
-              -H "Content-Type: application/json" \
-              --data-raw "{\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"wikiteq/centurion\",\"base_model_id\":null,\"params\":{ \"function_calling\": \"native\" },\"access_control\":null,\"owned_by\":\"openai\",\"openai\":{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"wikiteq/centurion\",\"owned_by\":\"openai\",\"openai\":{\"id\":\"$OPENAI_DEFAULT_MODEL\"},\"urlIdx\":0},\"urlIdx\":0,\"is_active\":true}"
+            if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "True" ]; then
+                echo ""
+                echo "[Custom entrypoint] Making default model private"
+                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
+                  -H "Authorization: Bearer ${API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  --data-raw "{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"$OPENAI_DEFAULT_MODEL\",\"base_model_id\":null,\"params\":{\"function_calling\":\"native\"},\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"access_control\":{\"read\":{\"group_ids\":[],\"user_ids\":[]},\"write\":{\"group_ids\":[],\"user_ids\":[]}},\"is_active\":true}"
+
+                echo ""
+                echo "[Custom entrypoint] Creating Workspace model"
+                WORKSPACE_MODEL_DATA=$(jq \
+                  --arg base_model "$OPENAI_DEFAULT_MODEL" \
+                  '.[0].base_model_id = $base_model | .[0]' \
+                  "/etc/wikiteqcenturion.json")
+
+                if [ "$TOOL_MEDIAWIKI_ENABLED" == "True" ]; then
+                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
+                      '.meta.toolIds += ["mediawiki"]')
+                fi
+                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
+                  -H "Authorization: Bearer ${API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  --data-raw "${WORKSPACE_MODEL_DATA}"
+            else
+                echo ""
+                echo "[Custom entrypoint] Making default model public"
+                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
+                  -H "Authorization: Bearer ${API_KEY}" \
+                  -H "Content-Type: application/json" \
+                  --data-raw "{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"$OPENAI_DEFAULT_MODEL\",\"base_model_id\":null,\"params\":{\"function_calling\":\"native\"},\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"access_control\":null,\"is_active\":true}"
+            fi
 
         fi
     fi
