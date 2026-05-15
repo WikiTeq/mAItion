@@ -40,6 +40,8 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* GitHub (repository files and issues, PAT or GitHub App auth)
+* GitLab (repository files and issues, supports GitLab.com and self-hosted)
 
 ## 🌐 Extra connectors
 
@@ -49,8 +51,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Google Drive
 * Jira
 * Slack
-* GitHub
-* Gitlab
 * Notion
 * Microsoft Teams
 * Microsoft Office 365
@@ -306,6 +306,86 @@ JIRA1_EMAIL=your-email@example.com
 JIRA1_API_TOKEN=your-api-token
 JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
 JIRA1_SCHEDULES=3600
+```
+
+### GitHub Connector
+
+The GitHub connector ingests repository files and optionally issues from a GitHub repository.
+Supports PAT and GitHub App authentication, branch or commit targeting, file extension/directory
+filters, and issue label filters.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "github"
+    name: "github1"
+    config:
+      # Auth — use one of: personal_token OR github_app_* credentials
+      personal_token: "${GITHUB1_PERSONAL_TOKEN}"
+      owner: "${GITHUB1_OWNER}"          # repository owner / org
+      repo: "${GITHUB1_REPO}"            # repository name
+      branch: "main"                     # default "main" (mutually exclusive with commit_sha)
+      include_extensions: "md,py"        # optional, comma-separated
+      include_issues: false              # set true to also ingest issues
+      concurrent_requests: 5             # optional, default 5
+      schedules: "${GITHUB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+GITHUB1_PERSONAL_TOKEN=ghp_xxxxxxxxxxxx
+GITHUB1_OWNER=your-org-or-username
+GITHUB1_REPO=your-repo-name
+GITHUB1_SCHEDULES=3600
+```
+
+For GitHub App authentication, replace `personal_token` with:
+
+```yaml
+      github_app_id: "${GITHUB1_APP_ID}"
+      github_app_installation_id: "${GITHUB1_APP_INSTALLATION_ID}"
+      github_app_private_key: "${GITHUB1_APP_PRIVATE_KEY}"
+```
+
+### GitLab Connector
+
+The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
+Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_repository` and `read_api` scopes.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "gitlab"
+    name: "gitlab1"
+    config:
+      gitlab_url: "${GITLAB1_URL}"          # e.g. https://gitlab.com
+      personal_token: "${GITLAB1_TOKEN}"
+      project_id: 12345678                  # integer project ID (required unless group_id only)
+      #group_id: 999                        # optional, for group-level issue queries
+      ref: "main"                           # optional, branch/tag/commit, default "main"
+      #path: "docs"                         # optional, limit to sub-directory
+      recursive: true                       # optional, default true
+      files_iterator: true                  # optional, use iterator pagination to fetch all files (default true); set to false to limit to 20 files (GitLab API default page size)
+      include_issues: false                 # optional, default false
+      #issues_state: "opened"              # optional: opened/closed/all, default "opened"
+      #issues_labels: "bug,docs"           # optional, comma-separated
+      #issues_assignee: "username"         # optional
+      #issues_author: "username"           # optional
+      #issues_milestone: "v1.0"            # optional
+      #issues_search: "keyword"            # optional
+      #issues_get_all: false               # optional, fetch all pages, default false
+      schedules: "${GITLAB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+GITLAB1_URL=https://gitlab.com
+GITLAB1_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+GITLAB1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
