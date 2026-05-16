@@ -355,7 +355,7 @@ sources:
 # .env.rag
 
 # PostgreSQL
-DB_POSTGRES1_CONNECTION_STRING=postgresql+psycopg://user:pass@localhost/mydb
+DB_POSTGRES1_CONNECTION_STRING=postgresql+psycopg2://user:pass@localhost/mydb
 DB_POSTGRES1_SCHEDULES=3600
 
 # MySQL
