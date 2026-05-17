@@ -348,6 +348,37 @@ PIPEDRIVE2_API_TOKEN=your-second-pipedrive-api-token
 PIPEDRIVE2_SCHEDULES=3600
 ```
 
+### Wiki.js Connector
+
+The Wiki.js connector ingests pages from a [Wiki.js](https://js.wiki) v2 instance via the GraphQL API.
+The API token must have the **read:source** permission scope to retrieve page content.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "wikijs"
+    name: "wikijs1"
+    config:
+      base_url: "${WIKIJS1_BASE_URL}"
+      api_token: "${WIKIJS1_API_TOKEN}"   # must have read:source scope
+      schedules: "${WIKIJS1_SCHEDULES}"
+      #paths:                             # optional; ingest only pages under these path prefixes
+      #  - "/engineering"
+      #  - "/product"
+      #tags: "public"                     # optional; server-side tag filter (comma-separated)
+      #locale: "en"                       # optional; server-side locale filter
+      #include_unpublished: false         # optional, default false
+```
+
+```dotenv
+# .env.rag
+
+WIKIJS1_BASE_URL=https://wiki.example.com
+WIKIJS1_API_TOKEN=your-api-token
+WIKIJS1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
