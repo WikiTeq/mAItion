@@ -308,6 +308,33 @@ JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
 JIRA1_SCHEDULES=3600
 ```
 
+### BookStack Connector
+
+The BookStack connector ingests shelves, books, chapters, and pages from a BookStack instance via the REST API.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "bookstack"
+    name: "bookstack1"
+    config:
+      base_url: "${BOOKSTACK1_BASE_URL}"
+      token_id: "${BOOKSTACK1_TOKEN_ID}"
+      token_secret: "${BOOKSTACK1_TOKEN_SECRET}"
+      item_types: "shelves,books,chapters,pages"  # optional, default: all types
+      schedules: "${BOOKSTACK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BOOKSTACK1_BASE_URL=https://wiki.example.com
+BOOKSTACK1_TOKEN_ID=your-token-id
+BOOKSTACK1_TOKEN_SECRET=your-token-secret
+BOOKSTACK1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
