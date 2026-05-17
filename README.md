@@ -674,31 +674,6 @@ CONFLUENCE1_FOLDER_ID=12345
 CONFLUENCE1_SCHEDULES=3600
 ```
 
-## Single Sign-On (SSO)
-
-mAItion inherits full SSO support from OpenWebUI. SSO is disabled by default and configured
-entirely via environment variables in `.env` (copied from `.env.openwebui.example`).
-
-### Google OAuth2 example
-
-1. Create OAuth2 credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
-   Set the authorized redirect URI to `http(s)://your-domain/oauth/google/callback`.
-2. Add to `.env`:
-
-```dotenv
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-client-secret
-ENABLE_OAUTH_SIGNUP=True
-```
-
-3. Restart the OpenWebUI service: `docker compose up -d openwebui`
-4. Visit http://localhost:3000 — a **Continue with Google** button will appear on the login page.
-
-For all supported providers (Microsoft/Azure AD, GitHub, generic OIDC, trusted header SSO),
-full configuration reference, and common gotchas, see the
-[mAItion SSO docs](https://docs.maition.com/configuration/sso) and the
-[OpenWebUI SSO troubleshooting guide](https://docs.openwebui.com/troubleshooting/sso/).
-
 ### SharePoint Connector
 
 The SharePoint connector ingests files from SharePoint document libraries or site pages.
@@ -758,6 +733,62 @@ SHAREPOINT2_CLIENT_SECRET=your-azure-app-client-secret
 SHAREPOINT2_TENANT_ID=your-azure-tenant-id
 SHAREPOINT2_SCHEDULES=3600
 ```
+
+### BookStack Connector
+
+The BookStack connector ingests shelves, books, chapters, and pages from a BookStack instance via the REST API.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "bookstack"
+    name: "bookstack1"
+    config:
+      base_url: "${BOOKSTACK1_BASE_URL}"
+      token_id: "${BOOKSTACK1_TOKEN_ID}"
+      token_secret: "${BOOKSTACK1_TOKEN_SECRET}"
+      item_types:              # optional, default: pages
+        - "shelves"
+        - "books"
+        - "chapters"
+        - "pages"
+      schedules: "${BOOKSTACK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BOOKSTACK1_BASE_URL=https://wiki.example.com
+BOOKSTACK1_TOKEN_ID=your-token-id
+BOOKSTACK1_TOKEN_SECRET=your-token-secret
+BOOKSTACK1_SCHEDULES=3600
+```
+
+## Single Sign-On (SSO)
+
+mAItion inherits full SSO support from OpenWebUI. SSO is disabled by default and configured
+entirely via environment variables in `.env` (copied from `.env.openwebui.example`).
+
+### Google OAuth2 example
+
+1. Create OAuth2 credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+   Set the authorized redirect URI to `http(s)://your-domain/oauth/google/callback`.
+2. Add to `.env`:
+
+```dotenv
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+ENABLE_OAUTH_SIGNUP=True
+```
+
+3. Restart the OpenWebUI service: `docker compose up -d openwebui`
+4. Visit http://localhost:3000 — a **Continue with Google** button will appear on the login page.
+
+For all supported providers (Microsoft/Azure AD, GitHub, generic OIDC, trusted header SSO),
+full configuration reference, and common gotchas, see the
+[mAItion SSO docs](https://docs.maition.com/configuration/sso) and the
+[OpenWebUI SSO troubleshooting guide](https://docs.openwebui.com/troubleshooting/sso/).
 
 ## Embeddings and Inference
 
