@@ -78,6 +78,14 @@ sources:
   #    max_comments: 10
   #    schedules: "${JIRA1_SCHEDULES}"
 
+  #- type: "gitbook"
+  #  name: "gitbook1"
+  #  config:
+  #    api_token: "${GITBOOK1_API_TOKEN}"
+  #    schedules: "${GITBOOK1_SCHEDULES}"
+  #    #space_ids:                   # optional; if omitted, all accessible spaces are ingested
+  #    #  - "space_abc123"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
