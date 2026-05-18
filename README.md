@@ -308,6 +308,31 @@ JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
 JIRA1_SCHEDULES=3600
 ```
 
+### GitBook Connector
+
+The GitBook connector ingests pages from GitBook spaces via the GitBook REST API.
+If `space_ids` is omitted, all spaces accessible to the token are ingested automatically.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "gitbook"
+    name: "gitbook1"
+    config:
+      api_token: "${GITBOOK1_API_TOKEN}"
+      schedules: "${GITBOOK1_SCHEDULES}"
+      #space_ids:                   # optional; if omitted, all accessible spaces are ingested
+      #  - "space_abc123"
+```
+
+```dotenv
+# .env.rag
+
+GITBOOK1_API_TOKEN=your-gitbook-api-token
+GITBOOK1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
