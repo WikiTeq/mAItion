@@ -96,7 +96,6 @@ sources:
   #      - tasks
   #      - mails
   #    max_items: 500            # optional, per-entity limit (default: unlimited)
-  #    request_delay: 1          # seconds between API requests (default: 0)
   #    max_retries: 3            # retry attempts on failure (default: 3)
   #    schedules: "${PIPEDRIVE1_SCHEDULES}"
 

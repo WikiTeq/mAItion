@@ -308,6 +308,38 @@ JIRA1_JQL=project = MYPROJECT ORDER BY updated DESC
 JIRA1_SCHEDULES=3600
 ```
 
+### Pipedrive Connector
+
+The Pipedrive connector ingests CRM records from Pipedrive via the REST API v1. Supports activities, deals, notes, organizations, persons, products, projects, leads, tasks, and mails.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "pipedrive"
+    name: "pipedrive1"
+    config:
+      api_token: "${PIPEDRIVE1_API_TOKEN}"
+      load_types:           # optional, default: all entity types
+        - deals
+        - notes
+        - persons
+        - mails
+      max_items: 500        # optional, per-entity limit (default: unlimited)
+      max_retries: 3        # optional, retry attempts on failure (default: 3)
+      filter_mail_folders:  # optional, default: [inbox]
+        - inbox
+        - sent
+      schedules: "${PIPEDRIVE1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+PIPEDRIVE1_API_TOKEN=your-pipedrive-api-token
+PIPEDRIVE1_SCHEDULES=3600
+```
+
 ## Embeddings and Inference
 
 ### Embeddings support
