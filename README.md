@@ -331,6 +331,12 @@ sources:
         - inbox
         - sent
       schedules: "${PIPEDRIVE1_SCHEDULES}"
+
+  - type: "pipedrive"
+    name: "pipedrive2"
+    config:
+      api_token: "${PIPEDRIVE2_API_TOKEN}"
+      schedules: "${PIPEDRIVE2_SCHEDULES}"
 ```
 
 ```dotenv
@@ -338,6 +344,8 @@ sources:
 
 PIPEDRIVE1_API_TOKEN=your-pipedrive-api-token
 PIPEDRIVE1_SCHEDULES=3600
+PIPEDRIVE2_API_TOKEN=your-second-pipedrive-api-token
+PIPEDRIVE2_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
