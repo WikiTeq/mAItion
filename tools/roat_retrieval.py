@@ -31,6 +31,25 @@ def _get_filename_from_extras(extras: dict) -> str | None:
     return extras.get("key") or extras.get("filename") or extras.get("name") or None
 
 
+def _find_video_url(references: list) -> tuple[str | None, str | None]:
+    """Return (video_url, source_name) from the highest-scored ref with extras.video_url."""
+
+    def score_key(ref):
+        try:
+            return float(ref.get("score") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    for ref in sorted(references, key=score_key, reverse=True):
+        extras = ref.get("extras") or {}
+        if not isinstance(extras, dict):
+            continue
+        url = extras.get("video_url", "")
+        if url and isinstance(url, str) and url.startswith("https://"):
+            return url, ref.get("title") or ref.get("source_name") or "Source"
+    return None, None
+
+
 def _call_rag_service(url: str, api_key: str, timeout: int, top_k: int, query: str) -> dict:
     payload = {"query": query, "top_k": top_k, "metadata_filters": {}}
     headers = {"Content-Type": "application/json"}
@@ -191,4 +210,10 @@ class Tools:
 
         await emit(f"Found {len(sources)} relevant source(s).", done=True)
         log.info("Returning context with %d sources (%d chars)", len(sources), len(context))
+
+        references = rag_result.get("references", []) or []
+        video_url, _ = _find_video_url(references)
+        if video_url:
+            log.info("Embedding video marker for %s", video_url[:80])
+            return f"<!--VIDEO:{video_url}-->\n\n{context}"
         return context

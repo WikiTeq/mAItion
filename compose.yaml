@@ -20,6 +20,8 @@ services:
       - ./tools/roat_retrieval.json:/etc/roat_retrieval.json
       - ./tools/mediawiki_tool.py:/etc/mediawiki_tool.py
       - ./tools/mediawiki_tool.json:/etc/mediawiki_tool.json
+      - ./functions/video_inject.py:/etc/video_inject.py
+      - ./functions/video_inject.json:/etc/video_inject.json
       - ./models/wikiteqcenturion.json:/etc/wikiteqcenturion.json:ro
       - ./helpers/entrypoint.sh:/custom-entrypoint.sh
       - ./helpers/healthz.py:/etc/healthz.py

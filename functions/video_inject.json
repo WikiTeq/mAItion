@@ -1,0 +1,9 @@
+{
+  "id": "video_inject",
+  "name": "Video Inject Filter",
+  "type": "filter",
+  "meta": {
+    "description": "Reads VIDEO markers from tool messages and prepends an inline video player to the assistant response."
+  },
+  "content": ""
+}

@@ -236,6 +236,7 @@ do_first_start() {
       --data-raw "{\"suggestions\":[]}"
 
     install_mediawiki_tool
+    install_video_inject_filter
 
     touch /app/backend/data/.first_start
 }
@@ -283,6 +284,40 @@ install_mediawiki_tool() {
       -H "Content-Type: application/json" \
       --data-raw "${VALVES_JSON}"
 
+}
+
+install_video_inject_filter() {
+    echo ""
+    echo "[Custom entrypoint] Installing Video Inject Filter..."
+
+    FILTER_CODE=$(jq -Rs . < "/etc/video_inject.py")
+    DATA_RAW=$(jq --argjson content "${FILTER_CODE}" '.content=$content' /etc/video_inject.json)
+
+    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/functions/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${DATA_RAW}")
+
+    FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
+    if [ -z "$FILTER_ID" ]; then
+        echo "[Custom entrypoint] WARNING: Video Inject Filter install failed"
+        echo "${CREATE_RESPONSE}"
+        return
+    fi
+
+    echo "[Custom entrypoint] Video Inject Filter created with id: ${FILTER_ID}"
+
+    echo ""
+    echo "[Custom entrypoint] Enabling Video Inject Filter..."
+    curl -s -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json"
+
+    echo ""
+    echo "[Custom entrypoint] Enabling Video Inject Filter globally..."
+    curl -s -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json"
 }
 
 start_healthz_server
