@@ -291,6 +291,11 @@ apply_patches
 # this is required for speedy HF models download
 pip install hf_xet
 
+# Tool Python requirements must be installed before the server starts.
+# OWUI's runtime pip install (install_frontmatter_requirements) runs inside the server
+# process; packages installed into a running Python process are not importable until restart.
+pip install "mwclient>=0.10.1"
+
 start_app
 wait_for_app
 #copy_statics
