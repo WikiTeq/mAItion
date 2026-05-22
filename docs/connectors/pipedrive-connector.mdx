@@ -1,0 +1,105 @@
+---
+title: "Pipedrive"
+description: "Configure the mAItion Pipedrive connector to ingest CRM data from Pipedrive into the knowledge base."
+keywords:
+  - mAItion
+  - Pipedrive connector
+  - Pipedrive CRM
+  - connectors
+---
+
+Use the Pipedrive Connector to ingest CRM records from [Pipedrive](https://www.pipedrive.com/) into the mAItion knowledge base.
+
+## What It Does
+
+- fetches deals, notes, persons, organizations, activities, products, projects, leads, tasks, and mail threads from Pipedrive
+- converts each record to Markdown for indexing
+- supports per-entity filters to narrow ingestion scope
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `PIPEDRIVE1_API_TOKEN`: Pipedrive API token (find it under Settings → Personal preferences → API)
+- `PIPEDRIVE1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "pipedrive"
+    name: "pipedrive1"
+    config:
+      api_token: "${PIPEDRIVE1_API_TOKEN}"
+      # Optional: which object types to load (default: all)
+      load_types:
+        - activities
+        - deals
+        - notes
+        - organizations
+        - persons
+        - products
+        - projects
+        - leads
+        - tasks
+        - mails
+      max_items: 500            # optional, per-entity limit (default: unlimited)
+      max_retries: 3            # optional, retry attempts on failure (default: 3)
+      schedules: "${PIPEDRIVE1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+PIPEDRIVE1_API_TOKEN=your-api-token-here
+PIPEDRIVE1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `api_token` | yes | — | Pipedrive API token |
+| `load_types` | no | all 10 types | List of entity types to ingest. Valid values: `activities`, `deals`, `notes`, `organizations`, `persons`, `products`, `projects`, `leads`, `tasks`, `mails` |
+| `max_items` | no | unlimited | Maximum number of records to fetch per entity type |
+| `max_retries` | no | `3` | Number of retry attempts on API failure |
+| `filter_mail_folders` | no | `[inbox]` | Mail folders to include. Example: `[inbox, sent]` |
+| `filter_activities_updated_since` | no | — | ISO date string; only fetch activities updated after this date |
+| `filter_deals_updated_since` | no | — | ISO date string; only fetch deals updated after this date |
+| `filter_deals_stages_ids` | no | — | List of Pipedrive stage IDs to restrict deal ingestion |
+| `filter_activities_filter_id` | no | — | Pipedrive saved filter ID for activities |
+| `filter_deals_filter_id` | no | — | Pipedrive saved filter ID for deals |
+| `filter_organizations_filter_id` | no | — | Pipedrive saved filter ID for organizations |
+| `filter_persons_filter_id` | no | — | Pipedrive saved filter ID for persons |
+| `filter_products_filter_id` | no | — | Pipedrive saved filter ID for products |
+| `filter_projects_filter_id` | no | — | Pipedrive saved filter ID for projects |
+| `filter_leads_filter_id` | no | — | Pipedrive saved filter ID for leads |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Pipedrive Sources
+
+Add more `sources` entries (`pipedrive2`, `pipedrive3`, etc.) with separate env vars per source:
+
+```yaml
+sources:
+  - type: "pipedrive"
+    name: "pipedrive1"
+    config:
+      api_token: "${PIPEDRIVE1_API_TOKEN}"
+      schedules: "${PIPEDRIVE1_SCHEDULES}"
+
+  - type: "pipedrive"
+    name: "pipedrive2"
+    config:
+      api_token: "${PIPEDRIVE2_API_TOKEN}"
+      schedules: "${PIPEDRIVE2_SCHEDULES}"
+```
+
+```dotenv
+PIPEDRIVE1_API_TOKEN=your-first-api-token
+PIPEDRIVE1_SCHEDULES=3600
+
+PIPEDRIVE2_API_TOKEN=your-second-api-token
+PIPEDRIVE2_SCHEDULES=7200
+```
