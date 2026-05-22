@@ -291,6 +291,11 @@ apply_patches
 # this is required for speedy HF models download
 pip install hf_xet
 
+# Tool Python requirements must be installed here because runtime pip install
+# (ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS) is disabled — it is incompatible
+# with multi-worker deployments and unreliable across container restarts.
+pip install "mwclient>=0.10.1"
+
 start_app
 wait_for_app
 #copy_statics
