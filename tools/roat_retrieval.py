@@ -138,15 +138,26 @@ class Tools:
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
-        Use this tool to answer questions about this system, its data, processes,
-        or any domain-specific topics. Prefer retrieved knowledge over general
-        training knowledge when the topic may be covered in the knowledge base.
+        Search the organizational knowledge base to answer questions about company
+        data, internal processes, documentation, or domain-specific topics that may
+        not be in the model's training data.
+
+        ALWAYS call this tool when the user asks about:
+        - Internal documents, wikis, or knowledge articles
+        - Company processes, policies, or procedures
+        - Project-specific data, tickets, or reports
+        - Topics specific to this organization that general training data would not cover
+
+        Do NOT call this tool for general knowledge questions (math, programming
+        syntax, public facts) that do not require internal documents.
 
         Args:
-            query: A concise search query derived from the user's question
+            query: A concise, keyword-rich search query derived from the user's question.
+                   Use specific nouns and avoid filler words.
 
         Returns:
-            Retrieved document chunks and their metadata from the knowledge base, or a message indicating nothing was found.
+            Retrieved document chunks with source metadata, or a message indicating
+            nothing relevant was found.
         """
 
         async def emit(description: str, done: bool = False) -> None:
