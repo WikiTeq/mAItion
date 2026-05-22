@@ -51,6 +51,7 @@ services:
       - USER_PERMISSIONS_CHAT_CONTROLS=False
       - USER_PERMISSIONS_CHAT_VALVES=False
       - ENABLE_DIRECT_CONNECTIONS=False
+      - ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS=False
     healthcheck:
       test: [ "CMD-SHELL", "curl -fsS http://localhost:${HEALTHZ_PORT:-8081}/healthz || exit 1" ]
       interval: 5s
