@@ -1,0 +1,301 @@
+---
+title: "Single Sign-On (SSO)"
+description: "Configure Google, Microsoft/Azure AD, GitHub, generic OIDC, and trusted header SSO for mAItion."
+keywords:
+  - mAItion
+  - SSO
+  - OAuth2
+  - OIDC
+  - Google
+  - Microsoft
+  - authentication
+---
+
+<Note>
+  Verified against OpenWebUI **open-webui:0.6.5**. If you upgrade the image version in
+  `compose.yaml`, re-verify env var names against the new version before enabling SSO —
+  variable names can change between releases. Check the OpenWebUI changelog and update
+  this doc accordingly.
+</Note>
+
+mAItion inherits OpenWebUI's SSO support. Authentication is configured via environment
+variables in your `.env` file (copied from `.env.openwebui.example`). No application code
+changes are needed.
+
+Supported providers: Google OAuth2, Microsoft/Azure AD, GitHub, any generic OIDC provider
+(Okta, Keycloak, Auth0, etc.), and trusted header SSO.
+
+## Quick Start (Google OAuth2)
+
+The fastest path to working SSO — under 5 minutes.
+
+**Step 1 — Create OAuth2 credentials**
+
+In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an
+OAuth 2.0 Client ID (application type: Web). Add your authorized redirect URI:
+
+```
+http(s)://your-domain/oauth/google/callback
+```
+
+For local development: `http://localhost:3000/oauth/google/callback`
+
+**Step 2 — Add vars to `.env`**
+
+```dotenv
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+ENABLE_OAUTH_SIGNUP=True
+```
+
+**Step 3 — Restart**
+
+```bash
+docker compose up -d openwebui
+```
+
+**Step 4 — Verify**
+
+Visit `http://localhost:3000`. A **Continue with Google** button should appear on the
+login page.
+
+**Step 5 — Harden (optional)**
+
+Once SSO is confirmed working, you can disable new local account signups:
+
+```dotenv
+ENABLE_SIGNUP=False
+```
+
+Do not set `ENABLE_LOGIN_FORM=False` until you have read the [Safe Bootstrap Sequence](#safe-bootstrap-sequence).
+
+---
+
+## Google OAuth2
+
+### Prerequisites
+
+- A Google Cloud project with the OAuth consent screen configured
+- Authorized redirect URI: `https://your-domain/oauth/google/callback`
+
+### Environment Variables
+
+```dotenv
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+ENABLE_OAUTH_SIGNUP=True
+OAUTH_MERGE_ACCOUNTS_BY_EMAIL=True   # optional — see Common Gotchas
+```
+
+---
+
+## Microsoft / Azure AD
+
+### Prerequisites
+
+- An Azure AD app registration with redirect URI: `https://your-domain/oauth/microsoft/callback`
+- Client secret generated under **Certificates & Secrets**
+- Tenant ID from the Azure portal (use `common` for multi-tenant apps)
+
+### Environment Variables
+
+```dotenv
+MICROSOFT_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MICROSOFT_CLIENT_SECRET=your-client-secret
+MICROSOFT_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ENABLE_OAUTH_SIGNUP=True
+```
+
+---
+
+## GitHub OAuth
+
+### Prerequisites
+
+- A GitHub OAuth App registered at **Settings → Developer settings → OAuth Apps**
+- Authorization callback URL: `https://your-domain/oauth/github/callback`
+
+### Environment Variables
+
+```dotenv
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+ENABLE_OAUTH_SIGNUP=True
+```
+
+---
+
+## Generic OIDC Provider
+
+Works with any OIDC-compliant provider: Okta, Keycloak, Auth0, Authentik, Dex, etc.
+
+### Prerequisites
+
+- OIDC discovery endpoint (usually `https://your-idp.example.com/.well-known/openid-configuration`)
+- Client ID and secret from your IdP
+- Redirect URI registered with your IdP: `https://your-domain/oauth/oidc/callback`
+
+### Environment Variables
+
+```dotenv
+OAUTH_CLIENT_ID=your-client-id
+OAUTH_CLIENT_SECRET=your-client-secret
+OPENID_PROVIDER_URL=https://your-idp.example.com
+OAUTH_PROVIDER_NAME=MySSO
+OAUTH_SCOPES=openid email profile
+ENABLE_OAUTH_SIGNUP=True
+# Required when running behind a reverse proxy or on a non-root path:
+OPENID_REDIRECT_URI=https://your-domain/oauth/oidc/callback
+```
+
+---
+
+## Trusted Header SSO
+
+<Warning>
+  **Security risk — read before enabling.**
+
+  Trusted header SSO authenticates users based on HTTP headers forwarded by a reverse
+  proxy (e.g., nginx, Traefik, Authelia). If port 3000 is reachable directly — bypassing
+  the proxy — any client can forge these headers and **authenticate as any user, including
+  admins**. This is an account-takeover vector.
+
+  Only enable trusted header SSO if:
+  - Port 3000 is firewalled and not reachable from the public internet
+  - Your reverse proxy strips these headers from all inbound public requests
+  - Headers are set exclusively by the internal proxy, never by the client
+
+  When in doubt, use OAuth2/OIDC instead.
+</Warning>
+
+### Environment Variables
+
+```dotenv
+WEBUI_AUTH_TRUSTED_EMAIL_HEADER=X-Auth-Request-Email
+WEBUI_AUTH_TRUSTED_NAME_HEADER=X-Auth-Request-User
+```
+
+The header names must match exactly what your reverse proxy sets. If the header is missing
+or misnamed, users will see a generic login error with no indication of the cause. To
+diagnose: `docker compose logs openwebui | grep -i header`
+
+---
+
+## Safe Bootstrap Sequence
+
+SSO configuration involves variables that can lock you out of your own instance if
+applied in the wrong order. Follow this sequence:
+
+1. **Enable SSO vars** — add your chosen provider's variables to `.env`
+2. **Keep `ENABLE_LOGIN_FORM=True`** and **`ENABLE_SIGNUP=True`** during initial setup
+3. **Restart:** `docker compose up -d openwebui`
+4. **Verify SSO works** — log in successfully via the SSO button at least once
+5. **Optionally** set `ENABLE_SIGNUP=False` to block new local-account signups
+6. **Only then** consider setting `ENABLE_LOGIN_FORM=False` if you want SSO-only login
+
+<Warning>
+  Setting `ENABLE_LOGIN_FORM=False` disables all password-based logins, including the
+  admin account. If SSO is misconfigured at this point, no one can log in.
+
+  **Recovery:** Set `ENABLE_LOGIN_FORM=True` in `.env` and restart:
+  ```bash
+  docker compose up -d openwebui
+  ```
+</Warning>
+
+---
+
+## Configuration Reference
+
+All variables verified against **open-webui:0.6.5**.
+
+| Variable | Required | Default | Description | Provider |
+|---|---|---|---|---|
+| `GOOGLE_CLIENT_ID` | yes | — | OAuth client ID from Google Cloud Console | Google |
+| `GOOGLE_CLIENT_SECRET` | yes | — | OAuth client secret | Google |
+| `MICROSOFT_CLIENT_ID` | yes | — | App registration client ID | Microsoft |
+| `MICROSOFT_CLIENT_SECRET` | yes | — | Client secret | Microsoft |
+| `MICROSOFT_TENANT_ID` | yes | — | Azure AD tenant ID (`common` for multi-tenant) | Microsoft |
+| `GITHUB_CLIENT_ID` | yes | — | GitHub OAuth App client ID | GitHub |
+| `GITHUB_CLIENT_SECRET` | yes | — | GitHub OAuth App client secret | GitHub |
+| `OAUTH_CLIENT_ID` | yes | — | OIDC client ID | Generic OIDC |
+| `OAUTH_CLIENT_SECRET` | yes | — | OIDC client secret | Generic OIDC |
+| `OPENID_PROVIDER_URL` | yes | — | OIDC issuer base URL (discovery doc at `/.well-known/openid-configuration`) | Generic OIDC |
+| `OAUTH_PROVIDER_NAME` | no | `SSO` | Label shown on the login button | Generic OIDC |
+| `OAUTH_SCOPES` | no | `openid email profile` | Space-separated OIDC scopes to request | Generic OIDC |
+| `OPENID_REDIRECT_URI` | when behind proxy | — | Full callback URL; required when running behind a reverse proxy or on a non-root path | All OAuth/OIDC |
+| `ENABLE_OAUTH_SIGNUP` | no | `False` | Allow new users to register via OAuth. Must be `True` for a user's first SSO login | All OAuth/OIDC |
+| `OAUTH_MERGE_ACCOUNTS_BY_EMAIL` | no | `False` | Merge an OAuth login with an existing local account that has the same email. One-way — cannot be undone per account | All OAuth/OIDC |
+| `ENABLE_SIGNUP` | no | `True` | Allow any new account creation (local or OAuth). Must be `True` for first SSO login | All |
+| `ENABLE_LOGIN_FORM` | no | `True` | Show the username/password login form. Set to `False` for SSO-only — see Safe Bootstrap Sequence | All |
+| `WEBUI_AUTH_TRUSTED_EMAIL_HEADER` | yes | — | HTTP header name that the reverse proxy sets to the authenticated user's email | Trusted Header |
+| `WEBUI_AUTH_TRUSTED_NAME_HEADER` | no | — | HTTP header name for the user's display name | Trusted Header |
+
+---
+
+## Troubleshooting
+
+**SSO button doesn't appear**
+Verify the client ID variable is uncommented and set correctly in `.env`. Then check logs:
+```bash
+docker compose logs openwebui | grep -i oauth
+```
+
+**Redirect URI mismatch error from IdP**
+Each provider has its own callback path — register the correct one in your IdP:
+- Google: `https://your-domain/oauth/google/callback`
+- GitHub: `https://your-domain/oauth/github/callback`
+- Microsoft: `https://your-domain/oauth/microsoft/callback`
+- Keycloak/Okta/other OIDC: `https://your-domain/oauth/oidc/callback`
+
+No trailing slashes. For non-standard deployments, set `OPENID_REDIRECT_URI` explicitly.
+
+**New users can't sign in for the first time**
+Both `ENABLE_OAUTH_SIGNUP=True` and `ENABLE_SIGNUP=True` must be set for a user's first
+OAuth login. After accounts exist, you can set `ENABLE_SIGNUP=False`.
+
+**SSO silently fails / no error shown**
+Wrong client ID/secret causes a silent failure at the OAuth callback stage. Check:
+```bash
+docker compose logs openwebui | grep -i "oauth\|error\|callback"
+```
+
+**Locked out — can't log in**
+Add `ENABLE_LOGIN_FORM=True` to `.env` and restart:
+```bash
+docker compose up -d openwebui
+```
+
+**Trusted header SSO not working**
+Verify the header name matches exactly (case-sensitive in some proxies). Check what
+headers OpenWebUI is receiving:
+```bash
+docker compose logs openwebui | grep -i header
+```
+
+---
+
+## Common Gotchas
+
+**`ENABLE_SIGNUP` vs `ENABLE_OAUTH_SIGNUP`**
+These are two separate variables with different scopes:
+- `ENABLE_SIGNUP` — controls whether *any* new account can be created (local or OAuth). Default: `True`
+- `ENABLE_OAUTH_SIGNUP` — controls whether OAuth-authenticated users can self-register. Default: `False`
+
+For a new user's first SSO login, **both must be `True`**. After accounts are created,
+you can set `ENABLE_SIGNUP=False` to block local-account signups while keeping
+`ENABLE_OAUTH_SIGNUP=True` for continued SSO registration.
+
+**`OAUTH_MERGE_ACCOUNTS_BY_EMAIL` is a one-way door**
+Once enabled and a user logs in via OAuth, their OAuth identity is linked to any existing
+local account with the same email. Disabling this variable later does not un-link accounts
+already merged. Plan accordingly before enabling in production.
+
+**Disabling the login form**
+Only set `ENABLE_LOGIN_FORM=False` after you have confirmed SSO works end-to-end and you
+have a documented recovery path. See [Safe Bootstrap Sequence](#safe-bootstrap-sequence).
+
+**Reverse proxy and cookie domains**
+If mAItion is behind a reverse proxy, ensure your proxy passes the `Host` header correctly
+and that `WEBUI_URL` in `.env` matches the public URL. Cookie domain mismatches cause
+sessions to drop silently after login.
