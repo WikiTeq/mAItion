@@ -293,7 +293,7 @@ install_video_inject_filter() {
     FILTER_CODE=$(jq -Rs . < "/etc/video_inject.py")
     DATA_RAW=$(jq --argjson content "${FILTER_CODE}" '.content=$content' /etc/video_inject.json)
 
-    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/functions/create" \
+    CREATE_RESPONSE=$(curl -fsS -X POST "http://localhost:8080/api/v1/functions/create" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
       --data-raw "${DATA_RAW}")
@@ -309,13 +309,13 @@ install_video_inject_filter() {
 
     echo ""
     echo "[Custom entrypoint] Enabling Video Inject Filter..."
-    curl -s -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
+    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json"
 
     echo ""
     echo "[Custom entrypoint] Enabling Video Inject Filter globally..."
-    curl -s -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
+    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json"
 }
