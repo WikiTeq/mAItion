@@ -29,7 +29,7 @@ class Filter:
         log.info("video_inject outlet called, %d messages", len(messages))
 
         video_url = None
-        for msg in messages:
+        for msg in reversed(messages):
             role = msg.get("role")
             content = msg.get("content", "")
             if isinstance(content, list):
