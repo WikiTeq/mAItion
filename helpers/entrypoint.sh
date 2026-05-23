@@ -300,9 +300,9 @@ install_video_inject_filter() {
 
     FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
     if [ -z "$FILTER_ID" ]; then
-        echo "[Custom entrypoint] WARNING: Video Inject Filter install failed"
-        echo "${CREATE_RESPONSE}"
-        return
+        echo "[Custom entrypoint] ERROR: Video Inject Filter install failed" >&2
+        echo "${CREATE_RESPONSE}" >&2
+        exit 1
     fi
 
     echo "[Custom entrypoint] Video Inject Filter created with id: ${FILTER_ID}"
