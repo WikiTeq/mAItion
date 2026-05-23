@@ -3,7 +3,7 @@
   "name": "Video Inject Filter",
   "type": "filter",
   "meta": {
-    "description": "Reads VIDEO markers from tool messages and prepends an inline video player to the assistant response."
+    "description": "Reads VIDEO markers from tool messages and appends an inline video player after the assistant response."
   },
   "content": ""
 }

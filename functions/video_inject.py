@@ -39,7 +39,7 @@ class Filter:
                 )
             if not isinstance(content, str):
                 continue
-            log.info("video_inject role=%s content=%s", role, content[:300])
+            log.debug("video_inject role=%s content_len=%d", role, len(content))
             m = re.search(r"<!--VIDEO:(https://[^\s>]+)-->", unescape(content))
             if m:
                 video_url = m.group(1)
