@@ -172,7 +172,7 @@ services:
       - caddy_config:/config
     environment:
       - DOMAIN=${DOMAIN:?DOMAIN must be set in .env to use the caddy profile}
-      - ACME_EMAIL=${ACME_EMAIL:-}
+      - ACME_EMAIL=${ACME_EMAIL:?ACME_EMAIL must be set in .env to use the caddy profile}
     depends_on:
       openwebui:
         condition: service_healthy

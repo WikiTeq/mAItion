@@ -132,6 +132,7 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
    ```bash
    DOMAIN=maition.example.com
    ACME_EMAIL=admin@example.com
+   WEBUI_URL=https://maition.example.com
    ```
 
 2. When using Caddy, bind OpenWebUI's plain HTTP port to loopback only to prevent unintended cleartext access:
