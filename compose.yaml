@@ -73,8 +73,6 @@ services:
       retries: 10
       timeout: 5s
       start_period: 5s
-    ports:
-      - "5432:5432"
 
   # redis
   redis:
