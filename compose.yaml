@@ -73,6 +73,8 @@ services:
       retries: 10
       timeout: 5s
       start_period: 5s
+    ports:
+      - "5432:5432"
 
   # redis
   redis:
@@ -157,6 +159,26 @@ services:
       bash -c "celery -A celery_app beat --loglevel=info"
     restart: unless-stopped
 
+  # caddy reverse proxy (optional, requires --profile caddy)
+  caddy:
+    image: caddy:2-alpine
+    profiles:
+      - caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN:?DOMAIN must be set in .env to use the caddy profile}
+      - ACME_EMAIL=${ACME_EMAIL:-}
+    depends_on:
+      openwebui:
+        condition: service_healthy
+
 volumes:
   open-webui:
   open-webui-cache:
@@ -164,3 +186,5 @@ volumes:
   postgres_data:
   redis_data:
   api-modesl-cache:
+  caddy_data:
+  caddy_config:

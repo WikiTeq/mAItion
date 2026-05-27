@@ -1,0 +1,33 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	reverse_proxy openwebui:8080
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+	}
+
+	log {
+		output stdout
+	}
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# DNS-01 challenge (for environments where port 80 is not publicly reachable,
+# e.g. behind NAT, corporate firewall, or Cloudflare proxy):
+#
+# DNS-01 requires a custom Caddy build with a DNS provider module (xcaddy).
+# See: https://caddyserver.com/docs/automatic-https#dns-challenge
+#
+# Example for Cloudflare (after building with caddy-dns/cloudflare module):
+#   {$DOMAIN} {
+#     tls {
+#       dns cloudflare {$CLOUDFLARE_API_TOKEN}
+#     }
+#     reverse_proxy openwebui:8080
+#   }
+# ──────────────────────────────────────────────────────────────────────────────

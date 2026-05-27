@@ -116,6 +116,50 @@ Two components handle RAG service communication:
 - **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
 
+## HTTPS with Caddy
+
+mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery.
+
+### Requirements
+
+- A public domain (A/AAAA record pointing to your server)
+- Ports **80** and **443** open and publicly reachable (required for the LetsEncrypt HTTP-01 challenge)
+
+### Setup
+
+1. Add the following to your `.env` file:
+
+   ```bash
+   DOMAIN=maition.example.com
+   ACME_EMAIL=admin@example.com
+   ```
+
+2. When using Caddy, bind OpenWebUI's plain HTTP port to loopback only to prevent unintended cleartext access:
+
+   ```bash
+   # in .env
+   HTTP_WEB_PORT=127.0.0.1:3000
+   ```
+
+3. Start the stack with the `caddy` profile:
+
+   ```bash
+   docker compose --profile caddy up -d
+   ```
+
+   Caddy will automatically obtain and renew a TLS certificate. HTTP requests are redirected to HTTPS automatically.
+
+### Troubleshooting
+
+- **Certificate not issued** — check that ports 80 and 443 are reachable from the public internet and your DNS record is pointing to this server. Run `docker compose logs caddy` to see the ACME challenge output.
+- **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it or change Caddy to use different ports.
+- **Behind NAT or Cloudflare proxy** — HTTP-01 challenge may not work. DNS-01 is the alternative but requires a custom Caddy build with a DNS provider module. See the comments in `Caddyfile` for details.
+- **Testing before going live** — avoid LetsEncrypt rate limits by temporarily setting `acme_ca` to the staging endpoint in the Caddyfile global block, then switch to production for your final deployment.
+
+### Certificate persistence
+
+TLS certificates are stored in the `caddy_data` Docker volume. They survive `docker compose down` but are removed by `docker compose down -v`. Do not use `-v` if you want to preserve certificates.
+
 ## Connectors configuration
 
 The service supports multiple data sources, including multiple data sources of the same type, each with its own
