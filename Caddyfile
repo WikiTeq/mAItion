@@ -1,9 +1,49 @@
 {
 	email {$ACME_EMAIL}
+	order cache before rewrite
+	cache {
+		ttl 8766h
+		default_cache_control public, max-age=31536000
+		mode bypass
+		redis {
+			url redis-caddy:6379
+		}
+	}
 }
 
 {$DOMAIN} {
-	reverse_proxy openwebui:8080
+	@static {
+		path *.jpg *.jpeg *.png *.webp *.gif *.ico *.svg
+		path *.css *.js *.woff *.woff2 *.ttf *.map
+	}
+
+	@manifest {
+		path /manifest.json
+	}
+
+	handle @static {
+		cache
+		reverse_proxy openwebui:8080 {
+			header_down -Cache-Control
+			header_down -Set-Cookie
+			header_down +Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+
+	handle @manifest {
+		cache
+		reverse_proxy openwebui:8080 {
+			header_down -Cache-Control
+			header_down -Set-Cookie
+			header_down Cache-Control "public, max-age=86400"
+		}
+	}
+
+	handle {
+		reverse_proxy openwebui:8080 {
+			flush_interval -1
+		}
+	}
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -18,16 +58,17 @@
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DNS-01 challenge (for environments where port 80 is not publicly reachable,
-# e.g. behind NAT, corporate firewall, or Cloudflare proxy):
+# e.g. behind NAT or Cloudflare proxy):
 #
-# DNS-01 requires a custom Caddy build with a DNS provider module (xcaddy).
-# See: https://caddyserver.com/docs/automatic-https#dns-challenge
+# The included image (melonsmasher/caddy-cloudflare-cache:2) already bundles
+# the caddy-dns/cloudflare module. To use DNS-01, replace the site block with:
 #
-# Example for Cloudflare (after building with caddy-dns/cloudflare module):
 #   {$DOMAIN} {
 #     tls {
 #       dns cloudflare {$CLOUDFLARE_API_TOKEN}
 #     }
-#     reverse_proxy openwebui:8080
+#     # ... rest of the handles unchanged
 #   }
+#
+# Set CLOUDFLARE_API_TOKEN in your .env file.
 # ──────────────────────────────────────────────────────────────────────────────

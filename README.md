@@ -118,7 +118,7 @@ Two components handle RAG service communication:
 
 ## HTTPS with Caddy
 
-mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery.
+mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery. The `caddy` profile also starts a dedicated `redis-caddy` sidecar that Caddy uses as a cache backend: static assets (images, CSS, JS, fonts) are cached for one year with immutable headers, and `manifest.json` is cached for 24 hours. Dynamic chat and API requests bypass the cache entirely and are streamed directly to the browser.
 
 ### Requirements
 
@@ -154,7 +154,7 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
 
 - **Certificate not issued** — check that ports 80 and 443 are reachable from the public internet and your DNS record is pointing to this server. Run `docker compose logs caddy` to see the ACME challenge output.
 - **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it or change Caddy to use different ports.
-- **Behind NAT or Cloudflare proxy** — HTTP-01 challenge may not work. DNS-01 is the alternative but requires a custom Caddy build with a DNS provider module. See the comments in `Caddyfile` for details.
+- **Behind NAT or Cloudflare proxy** — HTTP-01 challenge may not work. DNS-01 is the alternative; the included Caddy image (`melonsmasher/caddy-cloudflare-cache:2`) already bundles the Cloudflare DNS module. Add `dns cloudflare {$CLOUDFLARE_API_TOKEN}` inside a `tls` block in your `Caddyfile` and set `CLOUDFLARE_API_TOKEN` in `.env`.
 - **Testing before going live** — avoid LetsEncrypt rate limits by temporarily setting `acme_ca` to the staging endpoint in the Caddyfile global block, then switch to production for your final deployment.
 
 ### Certificate persistence

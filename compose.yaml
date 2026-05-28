@@ -159,7 +159,7 @@ services:
 
   # caddy reverse proxy (optional, requires --profile caddy)
   caddy:
-    image: caddy:2-alpine
+    image: melonsmasher/caddy-cloudflare-cache:2
     profiles:
       - caddy
     restart: unless-stopped
@@ -176,6 +176,23 @@ services:
     depends_on:
       openwebui:
         condition: service_healthy
+      redis-caddy:
+        condition: service_started
+
+  # dedicated Redis for Caddy static-asset cache (optional, requires --profile caddy)
+  redis-caddy:
+    image: redis:7.4.0-alpine3.20
+    profiles:
+      - caddy
+    command:
+      - redis-server
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - allkeys-lru
+    restart: unless-stopped
+    tmpfs:
+      - /data
 
 volumes:
   open-webui:
