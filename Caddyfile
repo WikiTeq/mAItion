@@ -44,31 +44,4 @@
 			flush_interval -1
 		}
 	}
-
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options nosniff
-		X-Frame-Options SAMEORIGIN
-	}
-
-	log {
-		output stdout
-	}
 }
-
-# ──────────────────────────────────────────────────────────────────────────────
-# DNS-01 challenge (for environments where port 80 is not publicly reachable,
-# e.g. behind NAT or Cloudflare proxy):
-#
-# The included image (melonsmasher/caddy-cloudflare-cache:2) already bundles
-# the caddy-dns/cloudflare module. To use DNS-01, replace the site block with:
-#
-#   {$DOMAIN} {
-#     tls {
-#       dns cloudflare {$CLOUDFLARE_API_TOKEN}
-#     }
-#     # ... rest of the handles unchanged
-#   }
-#
-# Set CLOUDFLARE_API_TOKEN in your .env file.
-# ──────────────────────────────────────────────────────────────────────────────
