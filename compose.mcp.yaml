@@ -1,0 +1,4 @@
+services:
+  api:
+    ports:
+      - "8000:8000"
