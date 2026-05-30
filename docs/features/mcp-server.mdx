@@ -11,16 +11,6 @@ keywords:
 
 The mAItion MCP server exposes the retrieval API as a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint. This lets any MCP-compatible system — agents, orchestration frameworks, or custom integrations — call mAItion's retrieval tools programmatically.
 
-## Why use MCP instead of the REST API?
-
-The REST API is HTTP-based and requires manual integration. MCP is a structured protocol designed for AI systems: tools are self-describing, inputs and outputs are schema-validated, and any MCP-aware runtime can discover and call them without custom wiring.
-
-What makes mAItion's MCP useful:
-
-- Results come from **your private connector data** (Jira, MediaWiki, S3, etc.) — not the public internet
-- Every response includes **source citations** for attribution
-- Data stays **fresh** via scheduled connector ingestion
-
 ## Prerequisites
 
 - mAItion is running (`docker compose up -d`) and healthy
@@ -39,7 +29,7 @@ MCP_API_KEY=your-strong-random-key   # generate: openssl rand -hex 32
 Then restart the API service:
 
 ```bash
-docker compose restart api
+docker compose up -d api --force-recreate
 ```
 
 Verify it started:
@@ -50,23 +40,15 @@ docker compose logs api | grep -i mcp
 ```
 
 > **Security:** `MCP_API_KEY` is required when `MCP_ENABLE=1` — the service will refuse to start without it. Use a strong random value and never commit it to version control. Your `.env.rag` file is already gitignored.
+>
+> The underlying REST API can also be protected with `API_KEY`. Set `API_KEY=your-strong-random-key` in `.env.rag` to require Bearer token authentication on all `/api/` endpoints. This is recommended when exposing port 8000 outside the Docker network.
 
 ## Expose the API Port
 
-By default, the `api` service is internal to the Docker network. MCP clients running on your host machine need port `8000` exposed. Add a `ports` entry to the `api` service in `compose.yaml`:
-
-```yaml
-  api:
-    image: ghcr.io/wikiteq/rag-of-all-trades:latest
-    ports:
-      - "8000:8000"   # add this line
-    # ... rest of service config
-```
-
-Then restart:
+By default, the `api` service is internal to the Docker network. MCP clients running on your host machine need port `8000` exposed. Use the provided `compose.mcp.yaml` override — this avoids editing `compose.yaml` directly:
 
 ```bash
-docker compose restart api
+docker compose -f compose.yaml -f compose.mcp.yaml up -d api --force-recreate
 ```
 
 > **Production note:** Do not expose port 8000 publicly without a reverse proxy and TLS. The MCP endpoint is protected by Bearer token auth, but network-level exposure should still be controlled.
@@ -150,7 +132,7 @@ Expected: a JSON response listing `retrieve_chunks` and `rephrase_chunks`.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Connection refused` on port 8000 | Port not exposed in `compose.yaml` | Add `ports: - "8000:8000"` to the `api` service |
+| `Connection refused` on port 8000 | Port not exposed | Use `compose.mcp.yaml` override to expose port 8000 |
 | `401 Unauthorized` | Wrong or missing Bearer token | Check `MCP_API_KEY` in `.env.rag` matches the token used in your requests |
 | `404` on `/mcp/` | MCP not enabled | Set `MCP_ENABLE=1` and restart `api` |
 | Tools not listed | MCP failed to start | Check `docker compose logs api` for startup errors |
@@ -163,6 +145,7 @@ Expected: a JSON response listing `retrieve_chunks` and `rephrase_chunks`.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `MCP_ENABLE` | no | `0` | Set to `1` to enable the MCP server |
-| `MCP_API_KEY` | when enabled | `""` | Bearer token for client authentication. Required when `MCP_ENABLE=1` — startup fails if empty |
+| `MCP_API_KEY` | when enabled | `""` | Bearer token for MCP client authentication. Required when `MCP_ENABLE=1` — startup fails if empty |
+| `API_KEY` | no | `""` | Bearer token to protect the REST API (`/api/` endpoints). Recommended when exposing port 8000 outside Docker |
 
 See [Environment Variables (Backend)](/configuration/backend-env) for the full `.env.rag` reference.
