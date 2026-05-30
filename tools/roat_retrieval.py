@@ -215,5 +215,5 @@ class Tools:
         video_url, _ = _find_video_url(references)
         if video_url:
             log.info("Embedding video marker for %s", video_url[:80])
-            return f"<!--VIDEO:{video_url}-->\n\n{context}"
+            return f"<!--VIDEO:{video_url}-->{context}"
         return context
