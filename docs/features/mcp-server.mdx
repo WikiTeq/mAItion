@@ -123,6 +123,7 @@ Or with curl (confirms the endpoint is reachable):
 curl -i -X POST http://localhost:8000/mcp \
   -H "Authorization: Bearer your-strong-random-key" \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
