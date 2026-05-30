@@ -58,7 +58,7 @@ docker compose -f compose.yaml -f compose.mcp.yaml up -d api --force-recreate
 The MCP server uses **streamable HTTP** transport (stateless, no session header required). The endpoint is:
 
 ```
-http://<host>:8000/mcp/
+http://<host>:8000/mcp
 ```
 
 All requests must include a Bearer token:
@@ -113,14 +113,14 @@ docker run --rm --name "mcp_inspector" \
   ghcr.io/modelcontextprotocol/inspector:latest
 ```
 
-Then open [http://localhost:6274/](http://localhost:6274/) in your browser. Set the transport to **Streamable HTTP**, the URL to `http://host.docker.internal:8000/mcp/`, and add an `Authorization` header with your `MCP_API_KEY`. Click **Connect** — you should see `retrieve_chunks` and `rephrase_chunks` listed under Tools.
+Then open [http://localhost:6274/](http://localhost:6274/) in your browser. Set the transport to **Streamable HTTP**, the URL to `http://host.docker.internal:8000/mcp`, and add an `Authorization` header with your `MCP_API_KEY`. Click **Connect** — you should see `retrieve_chunks` and `rephrase_chunks` listed under Tools.
 
 ### curl
 
 Or with curl (confirms the endpoint is reachable):
 
 ```bash
-curl -i -X POST http://localhost:8000/mcp/ \
+curl -i -X POST http://localhost:8000/mcp \
   -H "Authorization: Bearer your-strong-random-key" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
@@ -134,7 +134,7 @@ Expected: a JSON response listing `retrieve_chunks` and `rephrase_chunks`.
 |---|---|---|
 | `Connection refused` on port 8000 | Port not exposed | Use `compose.mcp.yaml` override to expose port 8000 |
 | `401 Unauthorized` | Wrong or missing Bearer token | Check `MCP_API_KEY` in `.env.rag` matches the token used in your requests |
-| `404` on `/mcp/` | MCP not enabled | Set `MCP_ENABLE=1` and restart `api` |
+| `404` on `/mcp` | MCP not enabled | Set `MCP_ENABLE=1` and restart `api` |
 | Tools not listed | MCP failed to start | Check `docker compose logs api` for startup errors |
 | `retrieve_chunks` returns empty | No data indexed | Ensure at least one connector has run successfully |
 | `rephrase_chunks` fails | LLM not configured | Check `OPENROUTER_API_KEY` and `OPENROUTER_API_BASE` in `.env.rag` |
