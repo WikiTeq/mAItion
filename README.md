@@ -362,7 +362,11 @@ sources:
       base_url: "${BOOKSTACK1_BASE_URL}"
       token_id: "${BOOKSTACK1_TOKEN_ID}"
       token_secret: "${BOOKSTACK1_TOKEN_SECRET}"
-      item_types: "shelves,books,chapters,pages"  # optional, default: all types
+      item_types:              # optional, default: pages
+        - "shelves"
+        - "books"
+        - "chapters"
+        - "pages"
       schedules: "${BOOKSTACK1_SCHEDULES}"
 ```
 
