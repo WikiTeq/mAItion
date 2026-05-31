@@ -106,16 +106,60 @@ sources:
   #    schedules: "${PIPEDRIVE2_SCHEDULES}"
 
   # Box cloud storage
+  # Box connector — CCG auth, folder-based ingestion
   #- type: "box"
   #  name: "box1"
   #  config:
+  #    auth_type: "ccg"                      # optional: "ccg" (default) or "jwt"
   #    box_client_id: "${BOX1_CLIENT_ID}"
   #    box_client_secret: "${BOX1_CLIENT_SECRET}"
   #    box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
-  #    folder_id: "0"           # optional: Box folder ID ("0" = root)
-  #    is_recursive: true       # optional: traverse subfolders, default false
-  #    # file_ids: "123,456"    # optional: comma-separated file IDs (mutually exclusive with folder_id)
-  #    # box_user_id: "${BOX1_USER_ID}"  # optional: user ID for user-level CCG access
+  #    box_user_id: "${BOX1_USER_ID}"        # optional: user ID for user-level CCG access
+  #    folder_id: "0"                        # optional: Box folder ID ("0" = root)
+  #    is_recursive: true                    # optional: traverse subfolders, default false
+  #    file_ids: "123,456"                   # optional: comma-separated file IDs
+  #    # folder_id and file_ids can be combined — both are ingested
+  #    schedules: "${BOX1_SCHEDULES}"
+
+  # Box connector — JWT auth, file-ID ingestion
+  #- type: "box"
+  #  name: "box2"
+  #  config:
+  #    auth_type: "jwt"
+  #    box_client_id: "${BOX2_CLIENT_ID}"
+  #    box_client_secret: "${BOX2_CLIENT_SECRET}"
+  #    box_jwt_key_id: "${BOX2_JWT_KEY_ID}"
+  #    box_private_key: "${BOX2_PRIVATE_KEY}"
+  #    box_private_key_passphrase: "${BOX2_PRIVATE_KEY_PASSPHRASE}"
+  #    box_enterprise_id: "${BOX2_ENTERPRISE_ID}"  # optional for JWT
+  #    file_ids: "${BOX2_FILE_IDS}"                # comma-separated file IDs
+  #    schedules: "${BOX2_SCHEDULES}"
+
+  # Box connector — full-text content search
+  #- type: "box"
+  #  name: "box-search"
+  #  config:
+  #    auth_type: "ccg"
+  #    box_client_id: "${BOX1_CLIENT_ID}"
+  #    box_client_secret: "${BOX1_CLIENT_SECRET}"
+  #    box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
+  #    search_query: "quarterly report"             # required for search mode
+  #    search_file_extensions: "pdf,docx"           # optional: filter by extension
+  #    search_ancestor_folder_ids: "0"              # optional: scope to folder(s)
+  #    schedules: "${BOX1_SCHEDULES}"
+
+  # Box connector — metadata search
+  #- type: "box"
+  #  name: "box-meta"
+  #  config:
+  #    auth_type: "ccg"
+  #    box_client_id: "${BOX1_CLIENT_ID}"
+  #    box_client_secret: "${BOX1_CLIENT_SECRET}"
+  #    box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
+  #    metadata_template: "enterprise_12345.myTemplate"  # required for metadata search
+  #    metadata_ancestor_folder_id: "0"                  # required for metadata search
+  #    metadata_query: "status = :status"                # optional
+  #    metadata_query_params: "status=active"            # optional: key=value pairs
   #    schedules: "${BOX1_SCHEDULES}"
 
 embedding:

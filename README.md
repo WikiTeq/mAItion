@@ -348,7 +348,6 @@ sources:
 BOX1_CLIENT_ID=your-box-app-client-id
 BOX1_CLIENT_SECRET=your-box-app-client-secret
 BOX1_ENTERPRISE_ID=your-box-enterprise-id
-BOX1_USER_ID=
 BOX1_SCHEDULES=3600
 ```
 
