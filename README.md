@@ -44,6 +44,7 @@ interact with your knowledge with ease!
 * OneDrive for Business
 * SharePoint
 * GitHub (repository files and issues, PAT or GitHub App auth)
+* Notion
 
 ## 🌐 Extra connectors
 
@@ -53,7 +54,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Google Drive
 * Jira
 * Gitlab
-* Notion
 * Microsoft Teams
 * Microsoft Office 365
 * Dropbox
@@ -455,7 +455,7 @@ sources:
 NOTION1_INTEGRATION_TOKEN=secret_your-notion-integration-token
 NOTION1_PAGE_IDS=page-id-1,page-id-2
 NOTION1_DATABASE_IDS=database-id-1
-NOTION1_SCHEDULES=60
+NOTION1_SCHEDULES=3600
 ```
 
 ### IMAP Connector
