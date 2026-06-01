@@ -42,6 +42,7 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
+* Notion
 
 ## 🌐 Extra connectors
 
@@ -409,7 +410,7 @@ sources:
 NOTION1_INTEGRATION_TOKEN=secret_your-notion-integration-token
 NOTION1_PAGE_IDS=page-id-1,page-id-2
 NOTION1_DATABASE_IDS=database-id-1
-NOTION1_SCHEDULES=60
+NOTION1_SCHEDULES=3600
 ```
 
 ### IMAP Connector
