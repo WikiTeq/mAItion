@@ -335,8 +335,8 @@ sources:
     config:
       box_client_id: "${BOX1_CLIENT_ID}"
       box_client_secret: "${BOX1_CLIENT_SECRET}"
-      box_enterprise_id: "${BOX1_ENTERPRISE_ID}"  # required unless box_user_id is set
-      # box_user_id: "${BOX1_USER_ID}"            # optional: user-level CCG access
+      box_enterprise_id: "${BOX1_ENTERPRISE_ID}"  # required
+      # box_user_id: "${BOX1_USER_ID}"            # optional: act as a specific user
       folder_id: "0"       # ingest root folder
       is_recursive: true   # optional, default false
       schedules: "${BOX1_SCHEDULES}"
