@@ -3,7 +3,7 @@
 	"name": "Knowledge Base Search",
 	"content": "",
 	"meta": {
-		"description": "Searches the RAG-of-All-Trades knowledge base and returns relevant context.",
+		"description": "Searches the organizational knowledge base for internal documents, company processes, and domain-specific information. Use for questions about internal or organization-specific topics; skip for general knowledge questions.",
 		"manifest": {}
 	}
 }
