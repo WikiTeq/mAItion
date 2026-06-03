@@ -118,7 +118,7 @@ Two components handle RAG service communication:
 
 ## HTTPS with Caddy
 
-mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery. The `caddy` profile also starts a dedicated `redis-caddy` sidecar that Caddy uses as a cache backend: static assets (images, CSS, JS, fonts) are cached for one year with immutable headers, and `manifest.json` is cached for 24 hours. Dynamic chat and API requests bypass the cache entirely and are streamed directly to the browser.
+mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery. The `compose.caddy.yaml` overlay also starts a dedicated `redis-caddy` sidecar that Caddy uses as a cache backend: static assets (images, CSS, JS, fonts) are cached for one year with immutable headers, and `manifest.json` is cached for 24 hours. Dynamic chat and API requests bypass the cache entirely and are streamed directly to the browser.
 
 ### Requirements
 
@@ -135,17 +135,17 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
    WEBUI_URL=https://maition.example.com
    ```
 
-2. When using Caddy, bind OpenWebUI's plain HTTP port to loopback only to prevent unintended cleartext access:
+2. Start the stack with the Caddy overlay — it clears OpenWebUI's host port binding so only Caddy is externally reachable:
 
    ```bash
-   # in .env
-   HTTP_WEB_PORT=127.0.0.1:3000
+   docker compose -f compose.yaml -f compose.caddy.yaml up -d
    ```
 
-3. Start the stack with the `caddy` profile:
+   Or set the environment variable once so plain `docker compose` picks it up:
 
    ```bash
-   docker compose --profile caddy up -d
+   export COMPOSE_FILE=compose.yaml:compose.caddy.yaml
+   docker compose up -d
    ```
 
    Caddy will automatically obtain and renew a TLS certificate. HTTP requests are redirected to HTTPS automatically.

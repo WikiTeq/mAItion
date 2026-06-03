@@ -157,43 +157,6 @@ services:
       bash -c "celery -A celery_app beat --loglevel=info"
     restart: unless-stopped
 
-  # caddy reverse proxy (optional, requires --profile caddy)
-  caddy:
-    image: melonsmasher/caddy-cloudflare-cache:2
-    profiles:
-      - caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    environment:
-      - DOMAIN=${DOMAIN:?DOMAIN must be set in .env to use the caddy profile}
-      - ACME_EMAIL=${ACME_EMAIL:?ACME_EMAIL must be set in .env to use the caddy profile}
-    depends_on:
-      openwebui:
-        condition: service_healthy
-      redis-caddy:
-        condition: service_started
-
-  # dedicated Redis for Caddy static-asset cache (optional, requires --profile caddy)
-  redis-caddy:
-    image: redis:7.4.0-alpine3.20
-    profiles:
-      - caddy
-    command:
-      - redis-server
-      - --maxmemory
-      - 64mb
-      - --maxmemory-policy
-      - allkeys-lru
-    restart: unless-stopped
-    tmpfs:
-      - /data
-
 volumes:
   open-webui:
   open-webui-cache:
@@ -201,5 +164,3 @@ volumes:
   postgres_data:
   redis_data:
   api-modesl-cache:
-  caddy_data:
-  caddy_config:
