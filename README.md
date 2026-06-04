@@ -348,6 +348,31 @@ PIPEDRIVE2_API_TOKEN=your-second-pipedrive-api-token
 PIPEDRIVE2_SCHEDULES=3600
 ```
 
+## Single Sign-On (SSO)
+
+mAItion inherits full SSO support from OpenWebUI. SSO is disabled by default and configured
+entirely via environment variables in `.env` (copied from `.env.openwebui.example`).
+
+### Google OAuth2 example
+
+1. Create OAuth2 credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+   Set the authorized redirect URI to `http(s)://your-domain/oauth/google/callback`.
+2. Add to `.env`:
+
+```dotenv
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+ENABLE_OAUTH_SIGNUP=True
+```
+
+3. Restart the OpenWebUI service: `docker compose up -d openwebui`
+4. Visit http://localhost:3000 — a **Continue with Google** button will appear on the login page.
+
+For all supported providers (Microsoft/Azure AD, GitHub, generic OIDC, trusted header SSO),
+full configuration reference, and common gotchas, see the
+[mAItion SSO docs](https://docs.maition.com/configuration/sso) and the
+[OpenWebUI SSO troubleshooting guide](https://docs.openwebui.com/troubleshooting/sso/).
+
 ## Embeddings and Inference
 
 ### Embeddings support
