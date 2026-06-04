@@ -31,8 +31,8 @@ def _get_filename_from_extras(extras: dict) -> str | None:
     return extras.get("key") or extras.get("filename") or extras.get("name") or None
 
 
-def _find_video_url(references: list) -> tuple[str | None, str | None]:
-    """Return (video_url, source_name) from the highest-scored ref with extras.video_url."""
+def _find_video_url(references: list, field: str = "video_url") -> tuple[str | None, str | None]:
+    """Return (video_url, source_name) from the highest-scored ref with extras.<field>."""
 
     def score_key(ref):
         try:
@@ -44,7 +44,7 @@ def _find_video_url(references: list) -> tuple[str | None, str | None]:
         extras = ref.get("extras") or {}
         if not isinstance(extras, dict):
             continue
-        url = extras.get("video_url", "")
+        url = extras.get(field, "")
         if url and isinstance(url, str) and url.startswith("https://"):
             return url, ref.get("title") or ref.get("source_name") or "Source"
     return None, None
@@ -147,6 +147,10 @@ class Tools:
             default=0,
             description="Maximum characters for the document preview in source citations (0 = unlimited).",
         )
+        video_metadata_field: str = Field(
+            default="video_url",
+            description="Metadata field name in retrieved sources that contains the video URL.",
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -212,7 +216,7 @@ class Tools:
         log.info("Returning context with %d sources (%d chars)", len(sources), len(context))
 
         references = rag_result.get("references", []) or []
-        video_url, _ = _find_video_url(references)
+        video_url, _ = _find_video_url(references, field=self.valves.video_metadata_field)
         if video_url:
             log.info("Embedding video marker for %s", video_url[:80])
             return f"<!--VIDEO:{video_url}-->{context}"
