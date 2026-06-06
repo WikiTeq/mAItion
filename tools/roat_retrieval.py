@@ -10,6 +10,7 @@ requirements: requests
 
 import asyncio
 import logging
+import os
 import re
 from collections.abc import Awaitable, Callable
 
@@ -226,9 +227,10 @@ class Tools:
         await emit(f"Found {len(sources)} relevant source(s).", done=True)
         log.info("Returning context with %d sources (%d chars)", len(sources), len(context))
 
-        references = rag_result.get("references", []) or []
-        video_url, _ = _find_video_url(references, field=self.valves.video_metadata_field)
-        if video_url:
-            log.info("Embedding video marker for %s", video_url[:80])
-            return f"<!--VIDEO:{video_url}-->{context}"
+        if os.environ.get("FUNCTION_VIDEO_INJECT_ENABLED", "").lower() == "true":
+            references = rag_result.get("references", []) or []
+            video_url, _ = _find_video_url(references, field=self.valves.video_metadata_field)
+            if video_url:
+                log.info("Embedding video marker for %s", video_url[:80])
+                return f"<!--VIDEO:{video_url}-->{context}"
         return context

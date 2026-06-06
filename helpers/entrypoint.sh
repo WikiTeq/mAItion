@@ -287,6 +287,10 @@ install_mediawiki_tool() {
 }
 
 install_video_inject_filter() {
+    if [ "$FUNCTION_VIDEO_INJECT_ENABLED" != "True" ]; then
+        return
+    fi
+
     echo ""
     echo "[Custom entrypoint] Installing Video Inject Filter..."
 
