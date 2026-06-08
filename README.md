@@ -124,8 +124,9 @@ in the `.env.rag` file.
 
 ### S3 Connector
 
-The S3 connector ingests documents from S3 buckets and converts them to Markdown format.
-The connector has the following configuration options:
+The S3 connector ingests documents from an S3 bucket and converts them to Markdown format.
+Each connector instance targets a single bucket. To ingest multiple buckets, define multiple
+connector instances.
 
 ```yaml
 # config.yaml
@@ -139,8 +140,8 @@ sources:
       secret_key: "${S3_ACCOUNT1_SECRET_KEY}" # s3 secret key
       region: "${S3_ACCOUNT1_REGION}" # s3 region
       use_ssl: "${S3_ACCOUNT1_USE_SSL}" # use ssl for s3 connection, can be True or False
-      buckets: "${S3_ACCOUNT1_BUCKETS}" # single entry or comma-separated list i.e. bucket1,bucket2
-      schedules: "${S3_ACCOUNT1_SCHEDULES}" # single entry or comma-separated list i.e. 3600,60
+      bucket: "${S3_ACCOUNT1_BUCKET}" # bucket name
+      schedules: "${S3_ACCOUNT1_SCHEDULES}" # ingestion interval in seconds i.e. 3600
 
   - type: "s3"
     name: "account2"
@@ -161,8 +162,8 @@ S3_ACCOUNT1_ACCESS_KEY=xxx
 S3_ACCOUNT1_SECRET_KEY=xxx
 S3_ACCOUNT1_REGION=us-east-1
 S3_ACCOUNT1_USE_SSL=True
-S3_ACCOUNT1_BUCKETS=bucket1,bucket2
-S3_ACCOUNT1_SCHEDULES=3600,60
+S3_ACCOUNT1_BUCKET=my-bucket
+S3_ACCOUNT1_SCHEDULES=3600
 ```
 
 ### MediaWiki Connector
