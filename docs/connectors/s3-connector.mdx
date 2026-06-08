@@ -12,7 +12,7 @@ Use S3 Connector to ingest documents from [S3](https://aws.amazon.com/s3/-compat
 
 ## What It Does
 
-- reads files from one or more buckets
+- reads files from a single bucket per connector instance
 - converts content to Markdown for indexing
 - runs ingestion on configurable schedules
 
@@ -25,8 +25,8 @@ Set these in `.env.rag`:
 - `S3_ACCOUNT1_SECRET_KEY`: secret key
 - `S3_ACCOUNT1_REGION`: bucket region
 - `S3_ACCOUNT1_USE_SSL`: `True` or `False`
-- `S3_ACCOUNT1_BUCKETS`: bucket name(s), comma-separated for multiple
-- `S3_ACCOUNT1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+- `S3_ACCOUNT1_BUCKET`: bucket name
+- `S3_ACCOUNT1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
 
 ## `config.yaml` Example
 
@@ -40,7 +40,7 @@ sources:
       secret_key: "${S3_ACCOUNT1_SECRET_KEY}"
       region: "${S3_ACCOUNT1_REGION}"
       use_ssl: "${S3_ACCOUNT1_USE_SSL}"
-      buckets: "${S3_ACCOUNT1_BUCKETS}"
+      bucket: "${S3_ACCOUNT1_BUCKET}"
       schedules: "${S3_ACCOUNT1_SCHEDULES}"
 ```
 
@@ -53,10 +53,11 @@ sources:
 | `secret_key` | yes | — | Secret access key |
 | `region` | yes | — | Bucket region |
 | `use_ssl` | no | `True` | Whether to use HTTPS |
-| `buckets` | yes | — | Bucket name(s), comma-separated |
+| `bucket` | yes | — | Bucket name |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
 | `request_delay` | no | `0` | Seconds to wait between API requests. Increase to avoid rate-limiting (e.g. `0.1`) |
 
-## Multiple S3 Accounts
+## Multiple S3 Buckets or Accounts
 
-Add more `sources` entries (`account2`, `account3`, etc) with separate env vars per account.
+Each connector instance targets a single bucket. To ingest multiple buckets, add more `sources`
+entries (`account2`, `account3`, etc) with separate env vars per instance.

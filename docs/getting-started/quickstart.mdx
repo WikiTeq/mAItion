@@ -25,8 +25,8 @@ Create `.env.rag` from `.env.rag.example`:
 - `S3_ACCOUNT1_ACCESS_KEY`: access key ID used to read bucket objects
 - `S3_ACCOUNT1_SECRET_KEY`: secret key paired with the access key
 - `S3_ACCOUNT1_REGION`: bucket region (example: `us-east-1`)
-- `S3_ACCOUNT1_BUCKETS`: one bucket or comma-separated bucket names
-- `S3_ACCOUNT1_SCHEDULES`: ingestion interval in seconds (or comma-separated intervals, default is `3600`)
+- `S3_ACCOUNT1_BUCKET`: bucket name
+- `S3_ACCOUNT1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
 - `S3_ACCOUNT1_USE_SSL`: enable TLS for S3 connection (default is `True`)
 - `OPENROUTER_API_KEY`: API key for OpenRouter model calls (optional, only used for rephrase)
 
