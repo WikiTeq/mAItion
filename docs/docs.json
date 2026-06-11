@@ -78,7 +78,8 @@
 						"pages": [
 							"configuration/config-reference",
 							"configuration/frontend-env",
-							"configuration/backend-env"
+							"configuration/backend-env",
+							"configuration/caddy"
 						]
 					}
 				]
