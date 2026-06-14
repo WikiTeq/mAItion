@@ -354,8 +354,8 @@ The Outlook connector ingests emails from a Microsoft 365 mailbox via the Micros
 Uses the [LlamaIndex OutlookEmailReader](https://llamahub.ai/l/readers/llama-index-readers-microsoft-outlook-emails)
 for authentication and email fetching.
 
-> **Note:** Only **Microsoft 365 / Entra ID (Business)** accounts are supported.
-> Personal Microsoft accounts are not supported (client credentials flow limitation).
+> **Note:** Client credentials authentication (app-only flow) is only supported for
+> **Microsoft 365 / Entra ID work or school accounts**. Personal Microsoft accounts are not supported.
 > Requires an Azure app registration with `Mail.Read` application permission and admin consent.
 
 ```yaml
@@ -371,6 +371,7 @@ sources:
       user_email: "${OUTLOOK1_USER_EMAIL}"
       folder: "Inbox"           # optional, default Inbox; display names like "My Folder" are supported
       num_mails: 100            # optional, default 10
+      html_to_text: true        # optional, default true; set to false to keep raw HTML email bodies
       schedules: "${OUTLOOK1_SCHEDULES}"
 ```
 
