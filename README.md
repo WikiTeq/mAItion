@@ -372,7 +372,9 @@ It supports 5 discovery modes and 3 authentication strategies.
 |----------|------|----------|
 | Cloud basic | `username` + `api_token` | Confluence Cloud (recommended) |
 | Server basic | `username` + `password` | Confluence Server / Data Center |
-| Bearer token | `api_token` only | Server/DC Personal Access Token |
+| Bearer token | `api_token` only | Server/DC PAT — requires `cloud: false` |
+| OAuth2 | `oauth2`: `{client_id: "...", token: {access_token: "...", token_type: "..."}}` | Atlassian OAuth 2.0 |
+| Cookies | `cookies`: browser session cookies dict (e.g. from `atlassian.utils.parse_cookie_file()`) | Session-based auth |
 
 ```yaml
 # config.yaml
