@@ -5,7 +5,7 @@ date: 2025-05-01
 version: 1.0
 license: MIT
 description: Searches the RAG-of-All-Trades knowledge base and returns relevant context for the user's query.
-requirements: requests
+requirements: requests, pyyaml
 """
 
 import asyncio
@@ -14,6 +14,7 @@ import os
 import re
 from collections.abc import Awaitable, Callable
 
+import yaml
 import requests
 from pydantic import BaseModel, Field
 
@@ -93,15 +94,26 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
         source_name = ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
 
         metadata_fields = {"title": source_name}
-        metadata_fields.update({k: v for k, v in extras.items() if k not in _internal_fields and v is not None})
+        metadata_fields.update(
+            {
+                k: v
+                for k, v in extras.items()
+                if k not in _internal_fields and k != "url" and v is not None
+            }
+        )
         url = ref.get("url") or extras.get("url")
         if url:
             metadata_fields["url"] = url
-        frontmatter = "---\n" + "\n".join(f"{k}: {v}" for k, v in metadata_fields.items()) + "\n---"
-
+        frontmatter_body = yaml.safe_dump(
+            metadata_fields,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        ).strip()
+        frontmatter = f"---\n{frontmatter_body}\n---"
         context_parts.append(
             f'<document index="{i + 1}" score="{score:.2f}" format="markdown+frontmatter">\n'
-            f"{frontmatter}\n\n{text}\n"
+            f"{frontmatter}\n\n<content>\n{text}\n</content>\n"
             f"</document>"
         )
 
