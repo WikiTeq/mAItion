@@ -187,6 +187,18 @@ do_first_start() {
                   '.[0].base_model_id = $base_model | .[0]' \
                   "/etc/wikiteqcenturion.json")
 
+                if [ -n "$OWUI_MODEL_PROMPT" ]; then
+                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
+                      --arg prompt "$OWUI_MODEL_PROMPT" \
+                      '.params.system = $prompt')
+                fi
+
+                if [ -n "$OWUI_MODEL_PROMPT_APPEND" ]; then
+                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
+                      --arg append "$OWUI_MODEL_PROMPT_APPEND" \
+                      '.params.system = (.params.system + "\n\n" + $append)')
+                fi
+
                 if [ "$TOOL_MEDIAWIKI_ENABLED" == "True" ]; then
                     WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
                       '.meta.toolIds += ["mediawiki"]')
