@@ -350,9 +350,11 @@ PIPEDRIVE2_SCHEDULES=3600
 
 ### Slack Connector
 
-The Slack connector ingests messages from Slack channels. Each message (with its thread replies concatenated) becomes a separate document in the vector store.
+The Slack connector ingests messages from Slack channels. Each message and each thread reply becomes a separate document in the vector store.
 
 Channels can be specified directly by ID or resolved dynamically via name patterns or regex.
+
+Authentication requires a Slack bot token with the following scopes: `channels:history`, `groups:history`, `channels:read`, `groups:read`, `users:read`. Invite the bot to each target channel (`/invite @YourBot`).
 
 ```yaml
 # config.yaml
