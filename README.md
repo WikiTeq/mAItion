@@ -40,6 +40,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Notion
 
 ## 🌐 Extra connectors
 
@@ -346,6 +347,35 @@ PIPEDRIVE1_API_TOKEN=your-pipedrive-api-token
 PIPEDRIVE1_SCHEDULES=3600
 PIPEDRIVE2_API_TOKEN=your-second-pipedrive-api-token
 PIPEDRIVE2_SCHEDULES=3600
+```
+
+### Notion Connector
+
+The Notion connector ingests pages from a Notion workspace. Each page becomes a separate document in the vector store.
+
+Three modes are supported: explicit `page_ids`, `database_ids`, or load-all (when neither is set — fetches all pages the integration has access to).
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "notion"
+    name: "notion1"
+    config:
+      integration_token: "${NOTION1_INTEGRATION_TOKEN}"  # Notion integration token (secret_...)
+      page_ids: "${NOTION1_PAGE_IDS}"                    # optional: comma-separated page IDs
+      database_ids: "${NOTION1_DATABASE_IDS}"            # optional: comma-separated database IDs
+      request_delay: 0.3                                 # optional: delay between API calls in seconds
+      schedules: "${NOTION1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+NOTION1_INTEGRATION_TOKEN=secret_your-notion-integration-token
+NOTION1_PAGE_IDS=page-id-1,page-id-2
+NOTION1_DATABASE_IDS=database-id-1
+NOTION1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
