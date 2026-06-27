@@ -111,9 +111,10 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
             sort_keys=False,
         ).strip()
         frontmatter = f"---\n{frontmatter_body}\n---"
+        safe_text = text.replace("</document>", "<\\/document>")
         context_parts.append(
             f'<document index="{i + 1}" score="{score:.2f}" format="markdown+frontmatter">\n'
-            f"{frontmatter}\n\n<content>\n{text}\n</content>\n"
+            f"{frontmatter}\n\n{safe_text}\n"
             f"</document>"
         )
 
