@@ -40,6 +40,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Wiki.js
 
 ## 🌐 Extra connectors
 
