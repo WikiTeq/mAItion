@@ -54,6 +54,7 @@ interact with your knowledge with ease!
 * GitLab (repository files and issues, supports GitLab.com and self-hosted)
 * Trello (cards from configured boards or all boards, with optional comment ingestion)
 * Database (MySQL + PostgreSQL via SQL SELECT query)
+* Wiki.js
 
 ## 🌐 Extra connectors
 
