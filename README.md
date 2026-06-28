@@ -55,6 +55,7 @@ interact with your knowledge with ease!
 * Trello (cards from configured boards or all boards, with optional comment ingestion)
 * Database (MySQL + PostgreSQL via SQL SELECT query)
 * Fireflies
+* Wiki.js
 
 ## 🌐 Extra connectors
 
