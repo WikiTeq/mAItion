@@ -105,6 +105,20 @@ sources:
   #    api_token: "${PIPEDRIVE2_API_TOKEN}"
   #    schedules: "${PIPEDRIVE2_SCHEDULES}"
 
+  # Wiki.js connector (API token must have read:pages and read:source scopes)
+  #- type: "wikijs"
+  #  name: "wikijs1"
+  #  config:
+  #    base_url: "${WIKIJS1_BASE_URL}"
+  #    api_token: "${WIKIJS1_API_TOKEN}"
+  #    schedules: "${WIKIJS1_SCHEDULES}"
+  #    #paths:                             # optional; ingest only pages under these path prefixes
+  #    #  - "/engineering"
+  #    #  - "/product"
+  #    #tags: "public"                     # optional; server-side tag filter (comma-separated)
+  #    #locale: "en"                       # optional; server-side locale filter
+  #    #include_unpublished: false         # optional, default false
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

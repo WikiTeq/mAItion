@@ -40,6 +40,7 @@ interact with your knowledge with ease!
 * S3 (any AWS compatible Object Storage including AWS, Contabo, B2, Cloudflare R2, OVH, etc)
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
+* Wiki.js
 
 ## 🌐 Extra connectors
 
@@ -346,6 +347,43 @@ PIPEDRIVE1_API_TOKEN=your-pipedrive-api-token
 PIPEDRIVE1_SCHEDULES=3600
 PIPEDRIVE2_API_TOKEN=your-second-pipedrive-api-token
 PIPEDRIVE2_SCHEDULES=3600
+```
+
+### Wiki.js Connector
+
+The Wiki.js connector ingests pages from a [Wiki.js](https://js.wiki) v2 instance via the GraphQL API.
+Both `markdown` and `html` content types are handled; HTML is automatically converted to Markdown.
+Metadata collected per page includes: page_id, path, locale, title, url, updated_at, tags, is_published.
+
+The API token requires two permission scopes:
+
+- `read:pages` — required for page discovery and metadata
+- `read:source` — required for page content; without it the content field is returned empty with no error
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "wikijs"
+    name: "wikijs1"
+    config:
+      base_url: "${WIKIJS1_BASE_URL}"
+      api_token: "${WIKIJS1_API_TOKEN}"   # must have read:pages and read:source scopes
+      schedules: "${WIKIJS1_SCHEDULES}"
+      #paths:                             # optional; ingest only pages under these path prefixes
+      #  - "/engineering"
+      #  - "/product"
+      #tags: "public"                     # optional; server-side tag filter (comma-separated)
+      #locale: "en"                       # optional; server-side locale filter
+      #include_unpublished: false         # optional, default false
+```
+
+```dotenv
+# .env.rag
+
+WIKIJS1_BASE_URL=https://wiki.example.com
+WIKIJS1_API_TOKEN=your-api-token
+WIKIJS1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
