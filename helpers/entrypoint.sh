@@ -334,6 +334,7 @@ pip install hf_xet
 # (ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS) is disabled — it is incompatible
 # with multi-worker deployments and unreliable across container restarts.
 pip install "mwclient>=0.10.1"
+pip install "pyyaml>=6.0"
 
 start_app
 wait_for_app
