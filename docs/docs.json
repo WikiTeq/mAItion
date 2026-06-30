@@ -24,7 +24,7 @@
 		}
 	},
 	"api": {
-		"openapi": "openapi.yaml",
+		"openapi": "https://raw.githubusercontent.com/WikiTeq/rag-of-all-trades/refs/heads/main/openapi.yaml",
 		"playground": {
 			"display": "none"
 		}
@@ -85,7 +85,7 @@
 			},
 			{
 				"tab": "API reference",
-				"openapi": "openapi.yaml"
+				"openapi": "https://raw.githubusercontent.com/WikiTeq/rag-of-all-trades/refs/heads/main/openapi.yaml"
 			}
 		]
 	}
