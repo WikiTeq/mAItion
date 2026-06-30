@@ -116,6 +116,51 @@ Two components handle RAG service communication:
 - **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
 
+## HTTPS with Caddy
+
+mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery. The `compose.caddy.yaml` overlay also starts a dedicated `redis-caddy` sidecar that Caddy uses as a cache backend: static assets (images, CSS, JS, fonts) are cached for one year with immutable headers, and `manifest.json` is cached for 24 hours. Dynamic chat and API requests bypass the cache entirely and are streamed directly to the browser.
+
+### Requirements
+
+- A public domain (A/AAAA record pointing to your server)
+- Ports **80** and **443** open and publicly reachable (required for the LetsEncrypt HTTP-01 challenge)
+
+### Setup
+
+1. Add the following to your `.env` file:
+
+   ```bash
+   DOMAIN=maition.example.com
+   ACME_EMAIL=admin@example.com
+   WEBUI_URL=https://maition.example.com
+   ```
+
+2. Start the stack with the Caddy overlay — it clears OpenWebUI's host port binding so only Caddy is externally reachable:
+
+   ```bash
+   docker compose -f compose.yaml -f compose.caddy.yaml up -d
+   ```
+
+   Or set the environment variable once so plain `docker compose` picks it up:
+
+   ```bash
+   export COMPOSE_FILE=compose.yaml:compose.caddy.yaml
+   docker compose up -d
+   ```
+
+   Caddy will automatically obtain and renew a TLS certificate. HTTP requests are redirected to HTTPS automatically.
+
+### Troubleshooting
+
+- **Certificate not issued** — check that ports 80 and 443 are reachable from the public internet and your DNS record is pointing to this server. Run `docker compose logs caddy` to see the ACME challenge output.
+- **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it or change Caddy to use different ports.
+- **Behind NAT or Cloudflare proxy** — HTTP-01 challenge may not work. DNS-01 is the alternative; the included Caddy image (`melonsmasher/caddy-cloudflare-cache:2`) already bundles the Cloudflare DNS module. Add `dns cloudflare {$CLOUDFLARE_API_TOKEN}` inside a `tls` block in your `Caddyfile` and set `CLOUDFLARE_API_TOKEN` in `.env`.
+- **Testing before going live** — avoid LetsEncrypt rate limits by temporarily setting `acme_ca` to the staging endpoint in the Caddyfile global block, then switch to production for your final deployment.
+
+### Certificate persistence
+
+TLS certificates are stored in the `caddy_data` Docker volume. They survive `docker compose down` but are removed by `docker compose down -v`. Do not use `-v` if you want to preserve certificates.
+
 ## Connectors configuration
 
 The service supports multiple data sources, including multiple data sources of the same type, each with its own
