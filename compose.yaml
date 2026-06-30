@@ -25,7 +25,6 @@ services:
       - ./models/wikiteqcenturion.json:/etc/wikiteqcenturion.json:ro
       - ./helpers/entrypoint.sh:/custom-entrypoint.sh
       - ./helpers/healthz.py:/etc/healthz.py
-      - ./patches:/etc/patches
       - ./static:/app/build/static:ro
       - ./static/favicon.png:/app/build/favicon.png:ro
     entrypoint: /custom-entrypoint.sh
