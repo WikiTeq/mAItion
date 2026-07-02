@@ -41,6 +41,7 @@ sources:
   # URLs mode — scrape a fixed list of pages
   - type: "web"
     name: "web1"
+    enabled: true  # optional, default: true
     config:
       urls: "${WEB1_URLS}"
       html_to_text: true
@@ -73,6 +74,7 @@ WEB2_SCHEDULES=3600
 
 | Field | Required | Default | Description |
 |---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `urls` | yes (URLs mode) | — | Comma-separated list of URLs to scrape |
 | `sitemap_url` | yes (sitemap mode) | — | URL of the `sitemap.xml` to parse |
 | `include_prefix` | no | — | Only ingest URLs with this path prefix (mutually exclusive with `exclude_prefix`) |

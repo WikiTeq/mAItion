@@ -470,6 +470,7 @@ sources: # holds the list of sources to ingest from (Connectors)
 
   - type: # type of the connector (s3, mediawiki, serpapi)
     name: # arbitrary name for the connector, will be stored in metadata
+    enabled: true # optional, set to false to skip this source entirely (default: true)
     config:
       # connector specific configuration
       schedules: "${S3_ACCOUNT1_SCHEDULES}"

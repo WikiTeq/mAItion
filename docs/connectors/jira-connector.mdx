@@ -42,6 +42,7 @@ Set these in `.env.rag`:
 sources:
   - type: "jira"
     name: "jira1"
+    enabled: true  # optional, default: true
     config:
       server_url: "${JIRA1_SERVER_URL}"
       auth_type: "basic"
@@ -75,6 +76,7 @@ sources:
 
 | Field | Required | Default | Description |
 |---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `server_url` | yes | — | Base URL of your Jira instance |
 | `auth_type` | yes | — | `basic` or `token` |
 | `email` | when `auth_type=basic` | — | Jira account email |

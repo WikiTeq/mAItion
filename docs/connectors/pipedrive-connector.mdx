@@ -30,6 +30,7 @@ Set these in `.env.rag`:
 sources:
   - type: "pipedrive"
     name: "pipedrive1"
+    enabled: true  # optional, default: true
     config:
       api_token: "${PIPEDRIVE1_API_TOKEN}"
       # Optional: which object types to load (default: all)
@@ -60,6 +61,7 @@ PIPEDRIVE1_SCHEDULES=3600
 
 | Field | Required | Default | Description |
 |---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `api_token` | yes | — | Pipedrive API token |
 | `load_types` | no | all 10 types | List of entity types to ingest. Valid values: `activities`, `deals`, `notes`, `organizations`, `persons`, `products`, `projects`, `leads`, `tasks`, `mails` |
 | `max_items` | no | unlimited | Maximum number of records to fetch per entity type |
