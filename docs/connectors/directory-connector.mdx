@@ -37,6 +37,7 @@ Use the same container path (e.g. `/data/docs`) as the `path` value in `config.y
 sources:
   - type: "directory"
     name: "local_docs"
+    enabled: true  # optional, default: true
     config:
       path: "/data/docs"            # required, path inside the container
       recursive: true               # optional, default true
@@ -52,6 +53,7 @@ sources:
 
 | Field | Required | Default | Description |
 |---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `path` | yes | — | Absolute path to the directory inside the container |
 | `recursive` | no | `true` | Whether to recurse into subdirectories |
 | `required_exts` | no | — | Comma-separated file extensions to include (e.g. `txt,md,pdf`). All files are included when omitted. |

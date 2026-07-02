@@ -1,6 +1,7 @@
 sources:
   - type: "s3"
     name: "account1"
+    enabled: true  # optional, applies to all connector types below; set false to skip this source entirely (default: true)
     config:
       endpoint: "${S3_ACCOUNT1_ENDPOINT}"
       access_key: "${S3_ACCOUNT1_ACCESS_KEY}"

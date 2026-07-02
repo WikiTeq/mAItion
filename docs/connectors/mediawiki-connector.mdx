@@ -43,6 +43,7 @@ Set these in `.env.rag`:
 sources:
   - type: "mediawiki"
     name: "wiki1"
+    enabled: true  # optional, default: true
     config:
       host: "${MEDIAWIKI1_HOST}"
       path: "/w/"          # optional, default /w/
@@ -60,6 +61,7 @@ sources:
 
 | Field | Required | Default | Description |
 |---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `host` | yes | — | Hostname of the MediaWiki instance (e.g. `en.wikipedia.org`) |
 | `path` | no | `/w/` | Path to the MediaWiki API root |
 | `scheme` | no | `https` | URL scheme (`http` or `https`) |
