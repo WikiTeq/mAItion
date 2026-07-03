@@ -30,6 +30,7 @@ Set these in `.env.rag`:
 sources:
   - type: "serpapi"
     name: "serp_ingestion1"
+    enabled: true  # optional, default: true
     config:
       api_key: "${SERPAPI1_KEY}"
       queries: "${SERPAPI1_QUERIES}"
@@ -40,6 +41,7 @@ sources:
 
 | Field | Required | Default | Description |
 |---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `api_key` | yes | — | SerpAPI API key |
 | `queries` | yes | — | One query or comma-separated list of queries |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
