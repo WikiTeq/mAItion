@@ -51,13 +51,22 @@ def _find_video_url(references: list, field: str = "video_url") -> tuple[str | N
     return None, None
 
 
-def _call_rag_service(url: str, api_key: str, timeout: int, top_k: int, query: str) -> dict:
-    payload = {"query": query, "top_k": top_k, "metadata_filters": {}}
+def _call_rag_service(
+    url: str,
+    api_key: str,
+    timeout: int,
+    top_k: int,
+    query: str,
+    metadata_filters: list[dict] | None = None,
+) -> dict:
+    payload = {"query": query, "top_k": top_k}
+    if metadata_filters:
+        payload["metadata_filters"] = metadata_filters
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     url = url.strip()
-    log.info("Calling ROAT: query_length=%d", len(query))
+    log.info("Calling ROAT: query_length=%d has_filters=%s", len(query), bool(metadata_filters))
     response = requests.post(url, json=payload, headers=headers, timeout=timeout)
     response.raise_for_status()
     return response.json()
@@ -159,6 +168,7 @@ class Tools:
     async def search_knowledge_base(
         self,
         query: str,
+        metadata_filters: list[dict] = [],
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
@@ -178,6 +188,14 @@ class Tools:
         Args:
             query: A concise, keyword-rich search query derived from the user's question.
                    Use specific nouns and avoid filler words.
+            metadata_filters: Optional list of metadata filters to narrow the search,
+                   only use fields the user or conversation has already mentioned —
+                   do not guess field names. Each filter is a dict with "name",
+                   "operator", and "value". Scalar operators (single value):
+                   EQ, NE, GT, GTE, LT, LTE, TEXT_MATCH. List operators (value is a
+                   list): IN, NIN. Example:
+                   [{"name": "project", "operator": "EQ", "value": "MAIT"},
+                    {"name": "tags", "operator": "IN", "value": ["A", "B"]}]
 
         Returns:
             Retrieved document chunks with source metadata, or a message indicating
@@ -196,10 +214,11 @@ class Tools:
 
         try:
             log.info(
-                "ROAT url=%r top_k=%r timeout=%r",
+                "ROAT url=%r top_k=%r timeout=%r has_filters=%s",
                 self.valves.rag_service_url,
                 self.valves.top_k,
                 self.valves.rag_service_timeout,
+                bool(metadata_filters),
             )
             rag_result = await asyncio.to_thread(
                 _call_rag_service,
@@ -208,7 +227,13 @@ class Tools:
                 self.valves.rag_service_timeout,
                 self.valves.top_k,
                 query,
+                metadata_filters,
             )
+        except requests.HTTPError as e:
+            log.error("ROAT request failed: %s", e, exc_info=True)
+            await emit("The knowledge base rejected this request.", done=True)
+            detail = e.response.text[:500] if e.response is not None else str(e)
+            return f"Error: the knowledge base rejected this request: {detail}"
         except Exception as e:
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("Failed to reach the knowledge base.", done=True)
