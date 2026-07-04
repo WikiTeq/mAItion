@@ -232,8 +232,7 @@ class Tools:
         except requests.HTTPError as e:
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("The knowledge base rejected this request.", done=True)
-            detail = e.response.text[:500] if e.response is not None else str(e)
-            return f"Error: the knowledge base rejected this request: {detail}"
+            return "Error: the knowledge base rejected this request. Check the server logs for details."
         except Exception as e:
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("Failed to reach the knowledge base.", done=True)
