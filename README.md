@@ -48,6 +48,7 @@ interact with your knowledge with ease!
 * Dropbox (files and folders with flexible path, extension, and directory filters)
 * Confluence (Cloud and Server/Data Center)
 * BookStack
+* Fireflies
 
 ## 🌐 Extra connectors
 
