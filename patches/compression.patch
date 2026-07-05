@@ -13,7 +13,7 @@ index 56ea17fa1..1111111 100644
  from starlette.exceptions import HTTPException as StarletteHTTPException
  from starlette.middleware.base import BaseHTTPMiddleware
  from starlette.middleware.sessions import SessionMiddleware
-@@ -859,6 +863,135 @@ class SPAStaticFiles(StaticFiles):
+@@ -859,6 +863,154 @@ class SPAStaticFiles(StaticFiles):
 
  app.state.MODELS = {}
 
@@ -49,7 +49,10 @@ index 56ea17fa1..1111111 100644
 +
 +
 +def _negotiate_encoding(accept_encoding: str) -> str | None:
-+    accepted = set()
++    # name -> client q-value (higher wins). "*" carries its own q-value and
++    # is applied as a fallback for any encoder not explicitly named.
++    qvalues: dict[str, float] = {}
++    wildcard_q: float | None = None
 +    for part in accept_encoding.split(","):
 +        piece = part.strip()
 +        if not piece:
@@ -64,12 +67,25 @@ index 56ea17fa1..1111111 100644
 +                    qvalue = float(value.strip())
 +                except ValueError:
 +                    qvalue = 1.0
-+        if name and qvalue > 0:
-+            accepted.add(name)
-+    for candidate in RESPONSE_ENCODERS:
-+        if candidate in accepted:
-+            return candidate
-+    return None
++        if name == "*":
++            wildcard_q = qvalue
++        elif name:
++            qvalues[name] = qvalue
++
++    # Fixed zstd > br > gzip preference is only a tie-breaker; the client's
++    # explicit q-value ranking always wins.
++    preference = {name: i for i, name in enumerate(RESPONSE_ENCODERS)}
++    best_name = None
++    best_key = None
++    for name in RESPONSE_ENCODERS:
++        q = qvalues.get(name, wildcard_q if wildcard_q is not None else 0.0)
++        if q <= 0:
++            continue
++        key = (q, -preference[name])
++        if best_key is None or key > best_key:
++            best_key = key
++            best_name = name
++    return best_name
 +
 +
 +class ResponseCompressionMiddleware(BaseHTTPMiddleware):
@@ -96,16 +112,19 @@ index 56ea17fa1..1111111 100644
 +        size = 0
 +        too_large = False
 +        async for chunk in response.body_iterator:
++            # Append before checking the cap — body_iterator has already
++            # handed us this chunk, so dropping it here would silently
++            # truncate the replayed response by one chunk.
++            chunks.append(chunk)
 +            size += len(chunk)
 +            if size > RESPONSE_COMPRESSION_MAX_BYTES:
 +                too_large = True
 +                break
-+            chunks.append(chunk)
 +
 +        if too_large:
-+            # Body exceeded the cap; nothing consumed it downstream, so
-+            # replay what we already read followed by the rest of the
-+            # stream, uncompressed, rather than holding it all in memory.
++            # Body exceeded the cap; replay everything read so far followed
++            # by the rest of the stream, uncompressed, rather than holding
++            # the whole thing in memory.
 +            async def replay():
 +                for chunk in chunks:
 +                    yield chunk
@@ -149,7 +168,7 @@ index 56ea17fa1..1111111 100644
 
  class RedirectMiddleware(BaseHTTPMiddleware):
      async def dispatch(self, request: Request, call_next):
-@@ -985,6 +1118,11 @@ if audit_level != AuditLevel.NONE:
+@@ -985,6 +1137,11 @@ if audit_level != AuditLevel.NONE:
          excluded_paths=AUDIT_EXCLUDED_PATHS,
          max_body_size=MAX_BODY_LOG_SIZE,
      )
