@@ -1,0 +1,163 @@
+diff --git backend/open_webui/main.py backend/open_webui/main.py
+index 56ea17fa1..1111111 100644
+--- backend/open_webui/main.py
++++ backend/open_webui/main.py
+@@ -39,6 +39,10 @@
+ from fastapi.responses import JSONResponse, RedirectResponse
+ from fastapi.staticfiles import StaticFiles
+
++import brotli
++import gzip
++import zstandard
++
+ from starlette.exceptions import HTTPException as StarletteHTTPException
+ from starlette.middleware.base import BaseHTTPMiddleware
+ from starlette.middleware.sessions import SessionMiddleware
+@@ -859,6 +863,135 @@ class SPAStaticFiles(StaticFiles):
+
+ app.state.MODELS = {}
+
++# Smallest body worth spending CPU cycles compressing.
++RESPONSE_COMPRESSION_MIN_BYTES = 1024
++
++# Largest body worth buffering in memory to compress. Above this, skip
++# compression and pass the original streaming response through untouched —
++# bounds worst-case per-request memory for large exports/search results.
++RESPONSE_COMPRESSION_MAX_BYTES = 10 * 1024 * 1024
++
++# Only buffer+compress response types we know are single-shot bodies.
++# Deliberately excludes text/event-stream and other streaming content so
++# chat SSE responses are never buffered or delayed by this middleware.
++RESPONSE_COMPRESSION_MEDIA_TYPES = {
++    "application/json",
++    "text/plain",
++    "text/html",
++    "text/css",
++    "text/javascript",
++    "application/javascript",
++    "image/svg+xml",
++}
++
++# Preference order when a client's Accept-Encoding accepts more than one.
++# zstd gives the best ratio/speed tradeoff, brotli next, gzip as the
++# universally-supported fallback.
++RESPONSE_ENCODERS = {
++    "zstd": lambda data: zstandard.ZstdCompressor().compress(data),
++    "br": lambda data: brotli.compress(data),
++    "gzip": lambda data: gzip.compress(data),
++}
++
++
++def _negotiate_encoding(accept_encoding: str) -> str | None:
++    accepted = set()
++    for part in accept_encoding.split(","):
++        piece = part.strip()
++        if not piece:
++            continue
++        name, _, params = piece.partition(";")
++        name = name.strip().lower()
++        qvalue = 1.0
++        for param in params.split(";"):
++            key, _, value = param.strip().partition("=")
++            if key.strip().lower() == "q":
++                try:
++                    qvalue = float(value.strip())
++                except ValueError:
++                    qvalue = 1.0
++        if name and qvalue > 0:
++            accepted.add(name)
++    for candidate in RESPONSE_ENCODERS:
++        if candidate in accepted:
++            return candidate
++    return None
++
++
++class ResponseCompressionMiddleware(BaseHTTPMiddleware):
++    """0.6.5 sends every response uncompressed; negotiate a single best
++    encoding from Accept-Encoding and compress the body in one pass rather
++    than layering a separate middleware per algorithm."""
++
++    async def dispatch(self, request: Request, call_next):
++        response = await call_next(request)
++
++        # call_next() always hands back Starlette's internal
++        # _StreamingResponse, which never sets media_type — the real
++        # Content-Type only lives in the header at this point.
++        content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
++        encoding = _negotiate_encoding(request.headers.get("accept-encoding", ""))
++        if (
++            encoding is None
++            or content_type not in RESPONSE_COMPRESSION_MEDIA_TYPES
++            or "content-encoding" in response.headers
++        ):
++            return response
++
++        chunks = []
++        size = 0
++        too_large = False
++        async for chunk in response.body_iterator:
++            size += len(chunk)
++            if size > RESPONSE_COMPRESSION_MAX_BYTES:
++                too_large = True
++                break
++            chunks.append(chunk)
++
++        if too_large:
++            # Body exceeded the cap; nothing consumed it downstream, so
++            # replay what we already read followed by the rest of the
++            # stream, uncompressed, rather than holding it all in memory.
++            async def replay():
++                for chunk in chunks:
++                    yield chunk
++                async for chunk in response.body_iterator:
++                    yield chunk
++
++            return StreamingResponse(
++                replay(),
++                status_code=response.status_code,
++                headers=dict(response.headers),
++                media_type=content_type,
++            )
++
++        body = b"".join(chunks)
++
++        if len(body) < RESPONSE_COMPRESSION_MIN_BYTES:
++            return Response(
++                content=body,
++                status_code=response.status_code,
++                headers=dict(response.headers),
++                media_type=content_type,
++            )
++
++        compressed = RESPONSE_ENCODERS[encoding](body)
++        headers = dict(response.headers)
++        headers["content-encoding"] = encoding
++        headers["content-length"] = str(len(compressed))
++        existing_vary = headers.get("vary", "")
++        vary_values = [v.strip() for v in existing_vary.split(",") if v.strip()]
++        if "Accept-Encoding" not in vary_values:
++            vary_values.append("Accept-Encoding")
++        headers["vary"] = ", ".join(vary_values)
++
++        return Response(
++            content=compressed,
++            status_code=response.status_code,
++            headers=headers,
++            media_type=content_type,
++        )
++
+
+ class RedirectMiddleware(BaseHTTPMiddleware):
+     async def dispatch(self, request: Request, call_next):
+@@ -985,6 +1118,11 @@ if audit_level != AuditLevel.NONE:
+         excluded_paths=AUDIT_EXCLUDED_PATHS,
+         max_body_size=MAX_BODY_LOG_SIZE,
+     )
++
++# Registered last (wraps outermost) so it sees the response after
++# AuditLoggingMiddleware/CORSMiddleware have already read/annotated it —
++# audit logs capture the original body, not compressed bytes.
++app.add_middleware(ResponseCompressionMiddleware)
+ ##################################
+ #
+ # Chat Endpoints

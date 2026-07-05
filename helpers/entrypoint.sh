@@ -347,6 +347,13 @@ pip install hf_xet
 # with multi-worker deployments and unreliable across container restarts.
 pip install "mwclient>=0.10.1"
 
+# Compression support for the response compression middleware
+# (patches/compression.patch). zstandard is already a transitive OpenWebUI
+# dependency but pinned explicitly here so a future base-image bump can't
+# silently drop it; brotli is not present in the base image at all; gzip is
+# stdlib.
+pip install "brotli>=1.1.0" "zstandard>=0.23.0"
+
 start_app
 wait_for_app
 #copy_statics
