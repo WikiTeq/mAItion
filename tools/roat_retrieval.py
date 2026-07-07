@@ -186,12 +186,30 @@ class Tools:
         syntax, public facts) that do not require internal documents.
 
         Args:
-            query: A concise, keyword-rich search query derived from the user's question.
-                   Use specific nouns and avoid filler words.
-            metadata_filters: Optional list of metadata filters to narrow the search,
-                   only use fields the user or conversation has already mentioned —
-                   do not guess field names. Each filter is a dict with "name",
-                   "operator", and "value". Scalar operators (single value):
+            query: A concise, keyword-rich search query for the free-text/semantic part
+                   of the question only. Do NOT stuff field-specific values (status,
+                   project, assignee, dates, tags, etc.) into this string — put those
+                   in metadata_filters instead, even if that means query ends up short
+                   or generic. Use specific nouns and avoid filler words.
+            metadata_filters: Optional list of metadata filters to narrow the search.
+                   Use this proactively, without being asked: results include a
+                   "## Metadata" section per source listing the fields available on
+                   that source (e.g. project, assignee, tags, status, last_modified).
+                   If an earlier search in this conversation returned sources with a
+                   metadata field relevant to the user's current question, filter on
+                   it directly — do not wait for the user to name the field or ask
+                   for "a metadata filter" explicitly, and do not fall back to typing
+                   the value into query instead.
+                   Example: after a search returns tickets with "## Metadata" showing
+                   "status: To Do" / "status: Done", if the user then asks "which are
+                   done?" or "what's still in progress?", call this tool again with
+                   query="tickets" and
+                   metadata_filters=[{"name": "status", "operator": "EQ", "value": "Done"}]
+                   — do NOT call it with query="tickets status:Done".
+                   Only use field names you have seen in a "## Metadata" section or
+                   that the user has stated; never invent a field name you haven't
+                   observed. Each filter is a dict with "name", "operator", and
+                   "value". Scalar operators (single value):
                    EQ, NE, GT, GTE, LT, LTE, TEXT_MATCH. List operators (value is a
                    list): IN, NIN. Example:
                    [{"name": "project", "operator": "EQ", "value": "MAIT"},
