@@ -51,13 +51,22 @@ def _find_video_url(references: list, field: str = "video_url") -> tuple[str | N
     return None, None
 
 
-def _call_rag_service(url: str, api_key: str, timeout: int, top_k: int, query: str) -> dict:
-    payload = {"query": query, "top_k": top_k, "metadata_filters": {}}
+def _call_rag_service(
+    url: str,
+    api_key: str,
+    timeout: int,
+    top_k: int,
+    query: str,
+    metadata_filters: list[dict] | None = None,
+) -> dict:
+    payload = {"query": query, "top_k": top_k}
+    if metadata_filters:
+        payload["metadata_filters"] = metadata_filters
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     url = url.strip()
-    log.info("Calling ROAT: query_length=%d", len(query))
+    log.info("Calling ROAT: query_length=%d has_filters=%s", len(query), bool(metadata_filters))
     response = requests.post(url, json=payload, headers=headers, timeout=timeout)
     response.raise_for_status()
     return response.json()
@@ -159,6 +168,7 @@ class Tools:
     async def search_knowledge_base(
         self,
         query: str,
+        metadata_filters: list[dict] = [],
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
@@ -176,8 +186,34 @@ class Tools:
         syntax, public facts) that do not require internal documents.
 
         Args:
-            query: A concise, keyword-rich search query derived from the user's question.
-                   Use specific nouns and avoid filler words.
+            query: A concise, keyword-rich search query for the free-text/semantic part
+                   of the question only. Do NOT stuff field-specific values (status,
+                   project, assignee, dates, tags, etc.) into this string — put those
+                   in metadata_filters instead, even if that means query ends up short
+                   or generic. Use specific nouns and avoid filler words.
+            metadata_filters: Optional list of metadata filters to narrow the search.
+                   Use this proactively, without being asked: results include a
+                   "## Metadata" section per source listing the fields available on
+                   that source (e.g. project, assignee, tags, status, last_modified).
+                   If an earlier search in this conversation returned sources with a
+                   metadata field relevant to the user's current question, filter on
+                   it directly — do not wait for the user to name the field or ask
+                   for "a metadata filter" explicitly, and do not fall back to typing
+                   the value into query instead.
+                   Example: after a search returns tickets with "## Metadata" showing
+                   "status: To Do" / "status: Done", if the user then asks "which are
+                   done?" or "what's still in progress?", call this tool again with
+                   query="tickets" and
+                   metadata_filters=[{"name": "status", "operator": "EQ", "value": "Done"}]
+                   — do NOT call it with query="tickets status:Done".
+                   Only use field names you have seen in a "## Metadata" section or
+                   that the user has stated; never invent a field name you haven't
+                   observed. Each filter is a dict with "name", "operator", and
+                   "value". Scalar operators (single value):
+                   EQ, NE, GT, GTE, LT, LTE, TEXT_MATCH. List operators (value is a
+                   list): IN, NIN. Example:
+                   [{"name": "project", "operator": "EQ", "value": "MAIT"},
+                    {"name": "tags", "operator": "IN", "value": ["A", "B"]}]
 
         Returns:
             Retrieved document chunks with source metadata, or a message indicating
@@ -196,10 +232,11 @@ class Tools:
 
         try:
             log.info(
-                "ROAT url=%r top_k=%r timeout=%r",
+                "ROAT url=%r top_k=%r timeout=%r has_filters=%s",
                 self.valves.rag_service_url,
                 self.valves.top_k,
                 self.valves.rag_service_timeout,
+                bool(metadata_filters),
             )
             rag_result = await asyncio.to_thread(
                 _call_rag_service,
@@ -208,7 +245,12 @@ class Tools:
                 self.valves.rag_service_timeout,
                 self.valves.top_k,
                 query,
+                metadata_filters,
             )
+        except requests.HTTPError as e:
+            log.error("ROAT request failed: %s", e, exc_info=True)
+            await emit("The knowledge base rejected this request.", done=True)
+            return "Error: the knowledge base rejected this request. Check the server logs for details."
         except Exception as e:
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("Failed to reach the knowledge base.", done=True)
