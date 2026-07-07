@@ -21,6 +21,15 @@ from pydantic import BaseModel, Field
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
+_CLOSING_DOCUMENT_TAG_RE = re.compile(r"</document\s*>", re.IGNORECASE)
+_OPENING_DOCUMENT_TAG_RE = re.compile(r"<document\b", re.IGNORECASE)
+
+
+def _escape_document_tags(text: str) -> str:
+    text = _CLOSING_DOCUMENT_TAG_RE.sub(lambda m: "<\\/document>", text)
+    text = _OPENING_DOCUMENT_TAG_RE.sub(lambda m: "<\\document", text)
+    return text
+
 
 def _parse_raw_chunk(raw_text: str) -> dict:
     match = re.match(r"Score:\s*([\d.]+)\s*\|\s*Text:\s*(.*)", raw_text, re.DOTALL)
@@ -120,7 +129,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
             sort_keys=False,
         ).strip()
         frontmatter = f"---\n{frontmatter_body}\n---"
-        safe_text = text.replace("</document>", "<\\/document>")
+        safe_text = _escape_document_tags(text)
         context_parts.append(
             f'<document index="{i + 1}" score="{score:.2f}" format="markdown+frontmatter">\n'
             f"{frontmatter}\n\n{safe_text}\n"
