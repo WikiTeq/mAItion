@@ -9,11 +9,12 @@ requirements: mwclient>=0.10.1, pydantic>=2.0.0, markdownify>=0.13.1
 """
 
 import asyncio
+import functools
 import hashlib
+import inspect
 import logging
 import re
 from collections.abc import Awaitable, Callable
-from typing import Literal
 from urllib.parse import quote, urljoin, urlparse
 
 from pydantic import BaseModel, Field
@@ -58,6 +59,97 @@ def to_source_id(text: str) -> str:
     if slug:
         return f"{slug}-{digest}"
     return f"src-{digest}"
+
+
+def _insert_before_args(docstring: str, hint: str) -> str:
+    """
+    Insert `hint` into `docstring` right before the `Args:` section.
+
+    OWUI's own docstring parsing (parse_description/parse_docstring in
+    open_webui/utils/tools.py, and the middleware's `:param`/`:return` regex
+    split) treats everything before `Args:`/`:param` as the tool description
+    and the rest as per-parameter docs. Appending the hint after `Returns:`
+    would risk it being dropped or bleeding into parsed return-value text, so
+    it must land in the description portion instead.
+    """
+    if not hint:
+        return docstring
+    marker = "\n\n        Args:"
+    idx = docstring.find(marker)
+    if idx == -1:
+        return docstring + hint
+    return docstring[:idx] + hint + docstring[idx:]
+
+
+class _DynamicDocMethod:
+    """
+    Descriptor that makes a method's __doc__ computed live from the owning
+    instance's `valves`, instead of a fixed string.
+
+    OWUI rebuilds this tool's function-calling spec on every chat request by
+    reading `callable.__doc__` off the live, cached module instance (after
+    reassigning valves to it) — see open_webui/utils/tools.py::get_tools().
+    A plain docstring is a shared function/class attribute, so it can't
+    reflect per-instance valve values.
+
+    An earlier version of this fix renamed the method to a private "_impl"
+    variant and monkeypatched `self.search_wiki` in the valves setter. That
+    broke in practice: OWUI's get_functions_from_tool() only filters names
+    starting with "__" (true dunders), not a single underscore — and Python's
+    own name-mangling for double-underscore-prefixed methods still produces a
+    single-underscore name at the dir()-visible level. So any second callable
+    on the instance (however it's named) gets picked up as an extra, spurious
+    tool with an empty/wrong description. This descriptor avoids that
+    entirely: `dir(instance)` still reports exactly one name — the same
+    `search_wiki`/`save_to_wiki` as before — with __doc__ computed on access.
+    """
+
+    def __init__(self, func, doc_builder):
+        self._func = func
+        self._doc_builder = doc_builder
+        functools.update_wrapper(self, func)
+        # Signature with `self` stripped, matching what a normal bound method
+        # exposes to inspect.signature(). Computed once: the parameter SHAPE
+        # never changes, only the __doc__ text does.
+        sig = inspect.signature(func)
+        self._bound_signature = sig.replace(parameters=[p for name, p in sig.parameters.items() if name != "self"])
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self._func  # class-level access, e.g. Tools.search_wiki
+
+        func = self._func
+        doc = self._doc_builder(instance)
+        bound_signature = self._bound_signature
+
+        @functools.wraps(func)
+        async def bound(*args, **kwargs):
+            return await func(instance, *args, **kwargs)
+
+        bound.__doc__ = doc
+        bound.__signature__ = bound_signature
+        return bound
+
+
+def _dynamic_doc(doc_builder):
+    """Class-body decorator: `doc_builder(instance) -> str` computes __doc__ per-access."""
+
+    def decorator(func):
+        return _DynamicDocMethod(func, doc_builder)
+
+    return decorator
+
+
+def _wiki_hint(valves: "Tools.Valves") -> str:
+    wiki_url = valves.wiki_url.strip()
+    if not wiki_url:
+        return ""
+    return f"\n\nAny URL starting with {wiki_url} belongs to this wiki — use this tool for it."
+
+
+def _wiki_hinted_doc(template: str):
+    """Doc builder: splice the current wiki_url hint into `template` before its Args: section."""
+    return lambda instance: _insert_before_args(template, _wiki_hint(instance.valves))
 
 
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
@@ -242,15 +334,10 @@ class Tools:
     def __init__(self):
         self.valves = self.Valves()
 
-    async def search_wiki(
-        self,
-        query: str,
-        content_format: Literal["wikitext", "html", "markdown"] = "wikitext",
-        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
-        __request__=None,
-    ) -> str:
-        """
-        Search the MediaWiki wiki for pages matching a query and return their page content.
+    @_dynamic_doc(
+        _wiki_hinted_doc(
+            """
+        Search the MediaWiki wiki for pages matching a query and return their full wikitext content.
 
         Use this tool when the user asks to:
         - "search the wiki for ..." / "find wiki pages about ..."
@@ -273,6 +360,13 @@ class Tools:
         Returns:
             A formatted string with each result's title, URL, and page content, or an error.
         """
+        )
+    )
+    async def search_wiki(
+        self,
+        query: str,
+        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+    ) -> str:
         import mwclient
 
         async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
@@ -472,13 +566,9 @@ class Tools:
         await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
         return f"Search results for '{query}' ({len(pages)} page(s)):\n\n" + "\n---\n\n".join(sections)
 
-    async def save_to_wiki(
-        self,
-        title: str,
-        content: str,
-        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
-    ) -> str:
-        """
+    @_dynamic_doc(
+        _wiki_hinted_doc(
+            """
         Save content to a MediaWiki page. Use this tool when the user asks to:
         - "save into wiki" / "save into knowledge base"
         - "write to wiki" / "create a wiki page"
@@ -508,6 +598,14 @@ class Tools:
         Returns:
             A URL to the created or updated wiki page, or an error message.
         """
+        )
+    )
+    async def save_to_wiki(
+        self,
+        title: str,
+        content: str,
+        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+    ) -> str:
         import mwclient
 
         async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
