@@ -40,6 +40,7 @@ services:
       - ENABLE_WEBSOCKET_SUPPORT=true
       - WEBSOCKET_MANAGER=redis
       - WEBSOCKET_REDIS_URL=redis://redis:6379/2
+      - 'WEBSOCKET_REDIS_OPTIONS={"socket_connect_timeout": 5, "socket_timeout": null}'
       - REDIS_KEY_PREFIX="open-webui"
       - DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/$POSTGRES_DB
       - DATABASE_ENABLE_SESSION_SHARING=True
