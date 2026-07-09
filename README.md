@@ -243,6 +243,13 @@ The Slab connector ingests posts from a [Slab](https://slab.com/) knowledge base
 When `topic_ids` is configured, only posts belonging to those topics are ingested.
 When omitted, all organisation posts are fetched using cursor-based pagination.
 
+> **Plan requirement:** Slab's API and webhooks are only available on the Business or Enterprise plan
+> ([Slab developer tools docs](https://help.slab.com/en/articles/6545629-developer-tools-api-webhooks)).
+> On the Free plan, this connector cannot be used. Instead, use Slab's
+> [full export](https://help.slab.com/en/articles/2271952-export-or-download-your-content) feature to
+> download all pages as Markdown, then ingest the exported files with the Directory connector
+> (see the [rag-of-all-trades README](https://github.com/WikiTeq/rag-of-all-trades#directory-connector)).
+
 ```yaml
 # config.yaml
 
