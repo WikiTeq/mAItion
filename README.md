@@ -41,6 +41,7 @@ interact with your knowledge with ease!
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
 * Slack
+* GitHub (repository files and issues, PAT or GitHub App auth)
 
 ## 🌐 Extra connectors
 
@@ -50,6 +51,7 @@ Over 100 extra connectors are available at request, including the most popular o
 * Google Drive
 * Jira
 * GitHub
+* Slack
 * Gitlab
 * Notion
 * Microsoft Teams
@@ -379,6 +381,52 @@ SLACK1_TOKEN=xoxb-your-bot-token
 SLACK1_CHANNEL_IDS=C1234567890,C0987654321
 SLACK1_CHANNEL_PATTERNS=general,^dev.*
 SLACK1_SCHEDULES=3600
+```
+
+### GitHub Connector
+
+The GitHub connector ingests repository files and optionally issues from a GitHub repository.
+Supports PAT and GitHub App authentication, branch or commit targeting, file extension/directory
+filters, and issue label filters.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "github"
+    name: "github1"
+    config:
+      personal_token: "${GITHUB1_PERSONAL_TOKEN}"
+      # GitHub App auth (mutually exclusive with personal_token):
+      #github_app_id: "${GITHUB1_APP_ID}"
+      #github_app_installation_id: "${GITHUB1_APP_INSTALLATION_ID}"
+      #github_app_private_key: "${GITHUB1_APP_PRIVATE_KEY}"
+      owner: "${GITHUB1_OWNER}"
+      repo: "${GITHUB1_REPO}"
+      branch: "main"                    # optional, default "main" (mutually exclusive with commit_sha)
+      #commit_sha: ""                   # optional (mutually exclusive with branch)
+      include_extensions: "md,py"       # optional, comma-separated (mutually exclusive with exclude_extensions)
+      #exclude_extensions: ""           # optional (mutually exclusive with include_extensions)
+      #include_directories: ""          # optional, comma-separated (mutually exclusive with exclude_directories)
+      #exclude_directories: ""          # optional (mutually exclusive with include_directories)
+      include_issues: false             # optional, default false
+      #include_issues_labels: ""        # optional, comma-separated (mutually exclusive with exclude_issues_labels)
+      #exclude_issues_labels: ""        # optional (mutually exclusive with include_issues_labels)
+      concurrent_requests: 5            # optional, default 5
+      schedules: "${GITHUB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+GITHUB1_PERSONAL_TOKEN=your-personal-access-toke
+# GitHub App auth (alternative to personal token):
+#GITHUB1_APP_ID=
+#GITHUB1_APP_INSTALLATION_ID=
+#GITHUB1_APP_PRIVATE_KEY=
+GITHUB1_OWNER=your-org-or-username
+GITHUB1_REPO=your-repo-name
+GITHUB1_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
