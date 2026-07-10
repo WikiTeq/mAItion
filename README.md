@@ -383,9 +383,13 @@ SLACK1_SCHEDULES=3600
 
 ### IMAP Connector
 
-The IMAP connector ingests emails from any IMAP server over SSL (Gmail, Outlook, Exchange, self-hosted, etc.).
-Each email becomes a document with subject as title, parsed body as content, and sender/recipient metadata.
-Mailboxes are auto-discovered when not specified.
+The IMAP connector ingests emails from any IMAP server over implicit TLS or STARTTLS (Gmail, Outlook,
+Exchange, self-hosted, etc.). Each email becomes a document with subject as title, parsed body as
+content, and sender/recipient metadata (including Cc/Bcc). Mailboxes are auto-discovered when not
+specified.
+
+Server certificates are always verified (hostname + trust chain) — self-signed certificates will be
+rejected unless the server's CA is trusted by the environment running the connector.
 
 ```yaml
 # config.yaml
@@ -395,10 +399,12 @@ sources:
     name: "imap1"
     config:
       host: "${IMAP1_HOST}"
-      port: 993                     # optional, default 993 (IMAPS)
+      port: 993                     # optional, default 993 (IMAPS), or 143 when use_starttls is set
       username: "${IMAP1_USERNAME}"
       password: "${IMAP1_PASSWORD}" # app-specific password for Gmail
       mailboxes: "${IMAP1_MAILBOXES}" # optional, comma-separated; remove this line (not just the env var) to ingest all mailboxes
+      since: "2024-01-01"            # optional, only ingest messages on or after this date (YYYY-MM-DD)
+      use_starttls: false            # optional, default false; connect plaintext then upgrade via STARTTLS instead of implicit TLS
       schedules: "${IMAP1_SCHEDULES}"
 ```
 
