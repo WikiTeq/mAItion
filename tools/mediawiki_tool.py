@@ -267,18 +267,20 @@ class Tools:
         sections = []
         sources = []
         cap = self.valves.max_page_chars
+        _fetch_errors = {"(Page not found — may have been deleted)", "(Content unavailable)"}
         for i, (title, content) in enumerate(pages, start=1):
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
             url = _build_page_url(scheme, host, article_path, title)
             sections.append(f"=== Result {i}: {title} ===\nURL: {url}\n\nPage content: {content}\n")
-            sources.append(
-                {
-                    "source": {"name": title, "url": url},
-                    "document": [content],
-                    "metadata": [{"source": title, "url": url}],
-                }
-            )
+            if content not in _fetch_errors:
+                sources.append(
+                    {
+                        "source": {"name": title, "url": url},
+                        "document": [content],
+                        "metadata": [{"source": title, "url": url}],
+                    }
+                )
 
         if __event_emitter__:
             for src in sources:
