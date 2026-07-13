@@ -19,11 +19,12 @@ ALPHA_MODES = {"RGBA", "LA", "PA"}
 
 
 def resize_images_in_messages(messages, max_dimension=768):
+    resized_ids = set()
     for message in messages:
         for item in message.get("content", []):
             if not (isinstance(item, dict) and item.get("type") == "image_url"):
                 continue
-            if item.get("_resized"):
+            if id(item) in resized_ids:
                 continue
 
             image_url = item.get("image_url")
@@ -59,7 +60,7 @@ def resize_images_in_messages(messages, max_dimension=768):
                     new_data_url = f"data:{image_mime_type};base64,{img_str}"
                     image_url["url"] = new_data_url
 
-                item["_resized"] = True
+                resized_ids.add(id(item))
             except Exception as e:
                 log.warning(
                     "image_resizer: failed to process image (mime=%s): %s",
