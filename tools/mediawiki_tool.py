@@ -265,12 +265,26 @@ class Tools:
         pages: list[tuple[str, str]] = await asyncio.gather(*[asyncio.to_thread(_fetch_page, t) for t in titles])
 
         sections = []
+        sources = []
         cap = self.valves.max_page_chars
+        _fetch_errors = {"(Page not found — may have been deleted)", "(Content unavailable)"}
         for i, (title, content) in enumerate(pages, start=1):
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
             url = _build_page_url(scheme, host, article_path, title)
             sections.append(f"=== Result {i}: {title} ===\nURL: {url}\n\nPage content: {content}\n")
+            if content not in _fetch_errors:
+                sources.append(
+                    {
+                        "source": {"name": title, "url": url},
+                        "document": [content],
+                        "metadata": [{"source": title, "url": url}],
+                    }
+                )
+
+        if __event_emitter__:
+            for src in sources:
+                await __event_emitter__({"type": "source", "data": src})
 
         await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
         return f"Search results for '{query}' ({len(pages)} page(s)):\n\n" + "\n---\n\n".join(sections)
