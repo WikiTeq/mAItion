@@ -245,7 +245,30 @@ class Tools:
 
         Returns:
             Retrieved document chunks with source metadata, or a message indicating
-            nothing relevant was found.
+            nothing relevant was found. Response uses the following format to present
+            multiple documents found:
+
+            <document index="1" score="0.63" format="markdown+frontmatter">
+            ---
+            title: FileTitle.txt
+            source: source-data-connector-name
+            last_modified: '2026-06-17 13:43:31.051046'
+            ---
+
+            Content of the document or document chunk
+            </document>
+
+            <document index="2" score="0.55" format="markdown+frontmatter">
+            ---
+            title: AnotherFileTitle.txt
+            source: source-data-connector-name
+            last_modified: '2026-06-18 15:23:11.071035'
+            ---
+
+            Content of another document or document chunk
+            </document>
+
+            ...
         """
 
         async def emit(description: str, done: bool = False) -> None:
