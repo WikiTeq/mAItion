@@ -38,7 +38,8 @@ def _truncate(text: str, limit: int = MAX_ERROR_DETAIL_CHARS) -> str:
     text = text.strip()
     if len(text) <= limit:
         return text
-    return text[:limit] + "... (truncated)"
+    suffix = "... (truncated)"
+    return text[: limit - len(suffix)] + suffix
 
 
 def _extract_http_error_detail(err: requests.HTTPError) -> str:

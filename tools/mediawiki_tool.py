@@ -28,7 +28,8 @@ def _truncate(text: str, limit: int = MAX_ERROR_DETAIL_CHARS) -> str:
     text = text.strip()
     if len(text) <= limit:
         return text
-    return text[:limit] + "... (truncated)"
+    suffix = "... (truncated)"
+    return text[: limit - len(suffix)] + suffix
 
 
 # Characters illegal in MediaWiki page titles: #<>[]|{} plus control chars 0-31 and DEL (127)
