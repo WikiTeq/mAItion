@@ -189,7 +189,14 @@ class Tools:
         async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
             if __event_emitter__:
                 await __event_emitter__(
-                    {"type": "status", "data": {"description": message, "done": done, "hidden": hidden}}
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": message,
+                            "done": done,
+                            "hidden": hidden,
+                        },
+                    }
                 )
 
         # --- Validate configuration ---
@@ -231,7 +238,7 @@ class Tools:
             return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
         except Exception as e:
             log.error("mwclient connection error", exc_info=True)
-            await emit(f"Error: could not connect to the wiki: {e}", done=True, hidden=False)
+            await emit("Error: could not connect to the wiki.", done=True, hidden=False)
             return (
                 f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
             )
@@ -260,7 +267,7 @@ class Tools:
             return f"Error: wiki API returned an error ({e.code})."
         except Exception as e:
             log.error("Unexpected error during search: %s", e, exc_info=True)
-            await emit(f"Error: unexpected error during search: {e}", done=True, hidden=False)
+            await emit("Error: unexpected error during search.", done=True, hidden=False)
             return f"Error: unexpected error during search. Details: {_truncate(str(e))}"
 
         if not titles:
@@ -347,7 +354,14 @@ class Tools:
         async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
             if __event_emitter__:
                 await __event_emitter__(
-                    {"type": "status", "data": {"description": message, "done": done, "hidden": hidden}}
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": message,
+                            "done": done,
+                            "hidden": hidden,
+                        },
+                    }
                 )
 
         # --- Validate configuration ---
@@ -405,7 +419,11 @@ class Tools:
             return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
         except Exception as e:
             log.error("mwclient connection error", exc_info=True)
-            await emit(f"Error: could not connect to the wiki: {e}", done=True, hidden=False)
+            await emit(
+                "Error: could not connect to the wiki.",
+                done=True,
+                hidden=False,
+            )
             return (
                 f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
             )
@@ -431,7 +449,7 @@ class Tools:
             return f"Error: wiki API returned an error ({e.code}). Check page title and permissions."
         except Exception as e:
             log.error("Unexpected error saving page: %s", e, exc_info=True)
-            await emit(f"Error: unexpected error while saving: {e}", done=True, hidden=False)
+            await emit("Error: an unexpected error occurred while saving.", done=True, hidden=False)
             return f"Error: an unexpected error occurred while saving. Details: {_truncate(str(e))}"
 
         # --- Build canonical page URL (blocking — run in thread) ---
