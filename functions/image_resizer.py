@@ -1,6 +1,6 @@
 """
 title: Image Resizer
-author: EaV Solution
+author: EaV Solution, WikiTeq
 version: 0.2
 description: Downscales oversized images in chat messages before they reach the model.
 """
@@ -9,22 +9,26 @@ import base64
 import io
 import logging
 
-from pydantic import BaseModel, Field
 from PIL import Image
+from pydantic import BaseModel, Field
 
 log = logging.getLogger(__name__)
 
-# JPEG can't encode an alpha channel; flatten onto a white background first.
-ALPHA_MODES = {"RGBA", "LA", "PA"}
+# Reject implausibly large encoded payloads before decoding, so a malicious
+# or oversized attachment can't force a large in-memory decode.
+MAX_ENCODED_BYTES = 25 * 1024 * 1024
 
 
 def resize_images_in_messages(messages, max_dimension=768):
-    resized_ids = set()
+    # No cross-turn cache: OpenWebUI resends a fresh copy of history each
+    # request, so every historical image is still base64-decoded and
+    # re-opened every turn. Only the encode+save step is skipped once an
+    # image is already at/under max_dimension.
     for message in messages:
         for item in message.get("content", []):
-            if not (isinstance(item, dict) and item.get("type") == "image_url"):
+            if not isinstance(item, dict):
                 continue
-            if id(item) in resized_ids:
+            if item.get("type") != "image_url":
                 continue
 
             image_url = item.get("image_url")
@@ -35,32 +39,32 @@ def resize_images_in_messages(messages, max_dimension=768):
                 continue
 
             try:
-                header, encoded = image_data_url.split(",", 1)
-                image_mime_type = header.split(":")[1].split(";")[0]
+                _, encoded = image_data_url.split(",", 1)
+                if len(encoded) > MAX_ENCODED_BYTES:
+                    raise ValueError(f"encoded payload too large ({len(encoded)} bytes)")
 
                 image_data = base64.b64decode(encoded)
                 image = Image.open(io.BytesIO(image_data))
                 width, height = image.size
-                # Pillow detects the real format from the decoded bytes,
-                # which is more reliable than trusting the mime type string.
-                image_format = image.format or image_mime_type.split("/")[1].upper()
+                # Trust Pillow's own detection of the decoded bytes over the
+                # declared mime type. If Pillow can't identify the format,
+                # treat it as corrupted and bail out via the except below.
+                if image.format is None:
+                    raise ValueError("could not determine image format")
+                image_format = image.format
 
                 if max(width, height) > max_dimension:
                     scaling_factor = max_dimension / max(width, height)
-                    new_width = int(width * scaling_factor)
-                    new_height = int(height * scaling_factor)
+                    new_width = max(1, int(width * scaling_factor))
+                    new_height = max(1, int(height * scaling_factor))
                     image = image.resize((new_width, new_height), Image.LANCZOS)
-
-                    if image_format == "JPEG" and image.mode in ALPHA_MODES:
-                        image = image.convert("RGB")
 
                     buffered = io.BytesIO()
                     image.save(buffered, format=image_format)
                     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-                    new_data_url = f"data:{image_mime_type};base64,{img_str}"
+                    out_mime = Image.MIME.get(image_format, f"image/{image_format.lower()}")
+                    new_data_url = f"data:{out_mime};base64,{img_str}"
                     image_url["url"] = new_data_url
-
-                resized_ids.add(id(item))
             except Exception as e:
                 log.warning(
                     "image_resizer: failed to process image (mime=%s): %s",
@@ -83,7 +87,7 @@ class Filter:
         self.valves = self.Valves()
 
     def inlet(self, body: dict, __user__=None) -> dict:
-        messages = body["messages"]
+        messages = body.get("messages", [])
         messages = resize_images_in_messages(messages, self.valves.max_dimension)
         body["messages"] = messages
         return body
