@@ -18,6 +18,11 @@ log = logging.getLogger(__name__)
 # or oversized attachment can't force a large in-memory decode.
 MAX_ENCODED_BYTES = 25 * 1024 * 1024
 
+# Reject decoded images with an implausible pixel count, independent of how
+# small the encoded payload is (guards against decompression-bomb style
+# inputs where a tiny file expands into a huge pixel grid).
+MAX_PIXELS = 64_000_000  # e.g. an 8000x8000 image
+
 
 def resize_images_in_messages(messages, max_dimension=768):
     # No cross-turn cache: OpenWebUI resends a fresh copy of history each
@@ -46,6 +51,10 @@ def resize_images_in_messages(messages, max_dimension=768):
                 image_data = base64.b64decode(encoded)
                 image = Image.open(io.BytesIO(image_data))
                 width, height = image.size
+                if width * height > MAX_PIXELS:
+                    raise ValueError(
+                        f"decoded image too large ({width}x{height} pixels)"
+                    )
                 # Trust Pillow's own detection of the decoded bytes over the
                 # declared mime type. If Pillow can't identify the format,
                 # treat it as corrupted and bail out via the except below.
@@ -78,7 +87,9 @@ def resize_images_in_messages(messages, max_dimension=768):
 
 class Filter:
     class Valves(BaseModel):
-        max_dimension: int = Field(default=768, description="Maximum image dimension.")
+        max_dimension: int = Field(
+            default=768, ge=1, description="Maximum image dimension."
+        )
 
     class UserValves(BaseModel):
         pass
