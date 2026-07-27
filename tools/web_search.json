@@ -1,0 +1,9 @@
+{
+	"id": "web_search",
+	"name": "Web Search",
+	"content": "",
+	"meta": {
+		"description": "Search the web using the Tavily search API",
+		"manifest": {}
+	}
+}

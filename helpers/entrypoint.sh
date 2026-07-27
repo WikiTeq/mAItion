@@ -248,6 +248,7 @@ do_first_start() {
       --data-raw "{\"suggestions\":[]}"
 
     install_mediawiki_tool
+    install_web_search_tool
     install_video_inject_filter
 
     touch /app/backend/data/.first_start
@@ -295,6 +296,34 @@ install_mediawiki_tool() {
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
       --data-raw "${VALVES_JSON}"
+
+}
+
+install_web_search_tool() {
+    if [ "$TOOL_WEB_SEARCH_ENABLED" != "True" ]; then
+        return
+    fi
+
+    echo ""
+    echo "[Custom entrypoint] Installing Web Search Tool..."
+
+    TOOL_CODE=$(jq -Rs . < "/etc/web_search.py")
+    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/web_search.json)
+
+    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${DATA_RAW}")
+
+    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
+    if [ -z "$TOOL_ID" ]; then
+        echo "[Custom entrypoint] WARNING: Web Search Tool install failed"
+        echo "${CREATE_RESPONSE}"
+        return
+    fi
+
+    echo "[Custom entrypoint] Web Search Tool created with id: ${TOOL_ID}"
+    echo "[Custom entrypoint] Set the tavily_api_key valve from Workspace -> Tools in the UI."
 
 }
 
@@ -347,6 +376,7 @@ pip install hf_xet
 # with multi-worker deployments and unreliable across container restarts.
 pip install "mwclient>=0.10.1"
 pip install "pyyaml>=6.0"
+pip install "tavily-python>=0.5.0"
 
 start_app
 wait_for_app
