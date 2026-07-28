@@ -55,7 +55,12 @@ def _extract_http_error_detail(err: requests.HTTPError) -> str:
 
 
 def to_source_id(text: str) -> str:
-    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase."""
+    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase.
+
+    Duplicated verbatim in mediawiki_tool.py — OWUI loads each tool's source
+    as an independent module (no shared import path between tools), so keep
+    both copies in sync if this changes.
+    """
     text_with_hyphens = text.replace(" ", "-")
     return re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
 
@@ -91,7 +96,10 @@ def _find_video_url(references: list, field: str = "video_url") -> tuple[str | N
 
 
 def _store_turn_sources(request, sources: list) -> None:
-    """Append sources to __request__.state._wikiteq_sources for get_sources tool."""
+    """Append sources to __request__.state._wikiteq_sources for get_sources tool.
+
+    Duplicated verbatim in mediawiki_tool.py — see to_source_id() above for why.
+    """
     if not request or not sources:
         return
     try:
