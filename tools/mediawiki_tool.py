@@ -26,6 +26,23 @@ MAX_SEARCH_RESULTS = 20
 # Characters illegal in MediaWiki page titles: #<>[]|{} plus control chars 0-31 and DEL (127)
 _ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
 
+_SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
+_EVENT_HANDLER_ATTR_RE = re.compile(r'\s+on[a-z]+\s*=\s*(".*?"|\'.*?\'|[^\s>]+)', re.IGNORECASE | re.DOTALL)
+
+
+def _sanitize_html(html: str) -> str:
+    """Strip <script> tags and inline event-handler attributes from MediaWiki parse output.
+
+    content_format="html" returns raw MediaWiki parse output as-is (unlike
+    "markdown", which never carries script/style content through markdownify's
+    conversion). A wiki page's wikitext can embed raw HTML via extensions
+    (or arbitrary <script>/on*= attributes if the wiki allows it), so strip
+    those here rather than exposing them under the "html" contract.
+    """
+    html = _SCRIPT_TAG_RE.sub("", html)
+    html = _EVENT_HANDLER_ATTR_RE.sub("", html)
+    return html
+
 
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     """
@@ -271,12 +288,19 @@ class Tools:
                 page = site.pages[title]
                 if not page.exists:
                     return title, "(Page not found — may have been deleted)"
+                # Resolve #REDIRECT pages to their target so wikitext mode
+                # doesn't return a useless "#REDIRECT [[Target]]" stub — this
+                # keeps wikitext consistent with html/markdown mode below,
+                # which already follows redirects via the parse API.
+                target = page.redirects_to()
+                if target is not None:
+                    page = target
                 if fmt == "wikitext":
                     return title, page.text()
                 # For html/markdown, use the MediaWiki parse API to get
                 # rendered HTML. redirects=True follows #REDIRECT pages,
-                # matching the behavior of page.text().
-                result = site.api("parse", page=title, prop="text", redirects=True)
+                # matching the wikitext behavior above.
+                result = site.api("parse", page=page.name, prop="text", redirects=True)
                 html = result["parse"]["text"]["*"]
                 if fmt == "markdown":
                     # Lazy import: only needed in markdown mode.
@@ -314,7 +338,7 @@ class Tools:
                     # of removing it.
                     content = md(html)
                 else:
-                    content = html
+                    content = _sanitize_html(html)
                 return title, content
             except Exception as e:
                 log.warning("Failed to fetch %r: %s", title, e)
