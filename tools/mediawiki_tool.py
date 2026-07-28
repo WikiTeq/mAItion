@@ -5,13 +5,14 @@ date: 2025-04-30
 version: 1.0
 license: MIT
 description: Allows creating new or updating existing MediaWiki pages when the user asks to save or update something to the wiki/knowledge base. Allows AI to search the wiki for pages.
-requirements: mwclient>=0.10.1, pydantic>=2.0.0
+requirements: mwclient>=0.10.1, pydantic>=2.0.0, markdownify>=0.13.1
 """
 
 import asyncio
 import logging
 import re
 from collections.abc import Awaitable, Callable
+from typing import Literal
 from urllib.parse import quote, urlparse
 
 from pydantic import BaseModel, Field
@@ -149,6 +150,15 @@ class Tools:
                 " Longer pages are truncated. Range: 1–500,000."
             ),
         )
+        content_format: Literal["wikitext", "html", "markdown"] = Field(
+            default="wikitext",
+            description=(
+                "Output format for page content. 'wikitext' returns raw MediaWiki"
+                " markup (default). 'html' returns parsed HTML via the parse API."
+                " 'markdown' returns parsed HTML converted to Markdown using the"
+                " markdownify library."
+            ),
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -159,21 +169,25 @@ class Tools:
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
-        Search the MediaWiki wiki for pages matching a query and return their full wikitext content.
+        Search the MediaWiki wiki for pages matching a query and return their page content.
 
         Use this tool when the user asks to:
         - "search the wiki for ..." / "find wiki pages about ..."
         - "look up ... in the knowledge base"
         - "what does the wiki say about ..."
 
-        The tool runs a full-text search (equivalent to Special:Search) and fetches the complete
-        wikitext of each matching page, returning them as a structured block the AI can read.
+        The tool runs a full-text search (equivalent to Special:Search) and fetches the
+        content of each matching page. The content_format valve selects the output:
+        'wikitext' (raw markup, default), 'html' (parsed HTML), or 'markdown'
+        (parsed HTML converted to Markdown). Prefer 'html' or 'markdown' when pages may
+        contain templates, transclusions, or query results, since raw wikitext does not
+        show their rendered output.
 
         Args:
             query: The search query string.
 
         Returns:
-            A formatted string with each result's title, URL, and full wikitext, or an error.
+            A formatted string with each result's title, URL, and page content, or an error.
         """
         import mwclient
 
@@ -252,17 +266,63 @@ class Tools:
 
         await emit(f"Fetching content for {len(titles)} page(s)...")
 
-        def _fetch_page(title: str) -> tuple[str, str]:
+        def _fetch_page(title: str, fmt: str) -> tuple[str, str]:
             try:
                 page = site.pages[title]
                 if not page.exists:
                     return title, "(Page not found — may have been deleted)"
-                return title, page.text()
+                if fmt == "wikitext":
+                    return title, page.text()
+                # For html/markdown, use the MediaWiki parse API to get
+                # rendered HTML. redirects=True follows #REDIRECT pages,
+                # matching the behavior of page.text().
+                result = site.api("parse", page=title, prop="text", redirects=True)
+                html = result["parse"]["text"]["*"]
+                if fmt == "markdown":
+                    # Lazy import: only needed in markdown mode.
+                    from markdownify import markdownify as md
+
+                    # Strip MediaWiki edit-section spans so "[edit]" links
+                    # don't leak into the markdown output.
+                    # HTML structure:
+                    #   <span class="mw-editsection">
+                    #     <span class="mw-editsection-bracket">[</span>
+                    #     <a ...>edit source</a>
+                    #     <span class="mw-editsection-bracket">]</span>
+                    #   </span>
+                    # The non-greedy regex stops at the FIRST </span>, so
+                    # remove inner brackets first — then the outer span has
+                    # no nested spans and matches correctly.
+                    html = re.sub(
+                        r'<span class="mw-editsection-bracket">.*?</span>',
+                        "",
+                        html,
+                        flags=re.DOTALL,
+                    )
+                    html = re.sub(
+                        r'<span class="mw-editsection">.*?</span>',
+                        "",
+                        html,
+                        flags=re.DOTALL,
+                    )
+                    # Do NOT pass strip=["script", "style"] here: markdownify
+                    # already drops <script>/<style> content via dedicated
+                    # no-op converters, but explicitly stripping those tags
+                    # disables that converter and falls back to naive text
+                    # extraction — leaking raw CSS/JS (e.g. Wikipedia's
+                    # TemplateStyles <style> blocks) into the output instead
+                    # of removing it.
+                    content = md(html)
+                else:
+                    content = html
+                return title, content
             except Exception as e:
                 log.warning("Failed to fetch %r: %s", title, e)
                 return title, "(Content unavailable)"
 
-        pages: list[tuple[str, str]] = await asyncio.gather(*[asyncio.to_thread(_fetch_page, t) for t in titles])
+        pages: list[tuple[str, str]] = await asyncio.gather(
+            *[asyncio.to_thread(_fetch_page, t, self.valves.content_format) for t in titles]
+        )
 
         sections = []
         sources = []
