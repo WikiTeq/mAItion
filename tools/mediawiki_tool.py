@@ -37,6 +37,12 @@ def _truncate(text: str, limit: int = MAX_ERROR_DETAIL_CHARS) -> str:
 _ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
 
 
+def to_source_id(text: str) -> str:
+    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase."""
+    text_with_hyphens = text.replace(" ", "-")
+    return re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
+
+
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     """
     Parse an api.php URL into (host, path, scheme) for mwclient.Site.
@@ -90,20 +96,49 @@ def _validate_title(title: str) -> None:
         )
 
 
-def _build_page_url(scheme: str, host: str, article_path: str, title: str) -> str:
-    """Build a canonical page URL with proper title encoding."""
-    # MediaWiki uses underscores and percent-encoding in URLs
+def _build_page_url(title: str, article_path: str, server: str | None = None) -> str:
+    """Build a canonical page URL with proper title encoding.
+
+    Uses the 'server' field from siteinfo (e.g. 'https://example.com')
+    combined with 'articlepath' (e.g. '/wiki/$1') to produce the full
+    public-facing page URL. Falls back to a relative path when server
+    is unavailable.
+    """
     encoded = quote(title.replace(" ", "_"), safe="/:")
-    return f"{scheme}://{host}{article_path.replace('$1', encoded)}"
+    path = article_path.replace("$1", encoded)
+    if server:
+        return f"{server}{path}"
+    return path
 
 
-def _get_article_path(site) -> str:
+def _get_site_info(site) -> tuple[str, str | None]:
+    """Fetch articlepath and server URL from MediaWiki siteinfo.
+
+    Returns (article_path, server). server is the canonical wiki base URL
+    from siteinfo's 'server' field (e.g. 'https://example.com'), or None
+    if the API call fails.
+    """
     try:
         result = site.api("query", meta="siteinfo", siprop="general")
-        return result["query"]["general"].get("articlepath", "/wiki/$1")
+        general = result["query"]["general"]
+        return general.get("articlepath", "/wiki/$1"), general.get("server")
     except Exception:
-        log.warning("Could not fetch articlepath from siteinfo; falling back to /wiki/$1", exc_info=True)
-        return "/wiki/$1"
+        log.warning("Could not fetch siteinfo; falling back to defaults", exc_info=True)
+        return "/wiki/$1", None
+
+
+def _store_turn_sources(request, sources: list) -> None:
+    """Append sources to __request__.state._wikiteq_sources for get_sources tool."""
+    if not request or not sources:
+        return
+    try:
+        turn_sources = getattr(request.state, "_wikiteq_sources", None)
+        if turn_sources is None:
+            turn_sources = []
+            request.state._wikiteq_sources = turn_sources
+        turn_sources.extend(sources)
+    except Exception:
+        log.debug("Could not store sources on request state", exc_info=True)
 
 
 def _connect_site(host: str, path: str, scheme: str, timeout: int, username: str, password: str):
@@ -160,6 +195,15 @@ class Tools:
                 " Longer pages are truncated. Range: 1–500,000."
             ),
         )
+        content_format: Literal["wikitext", "html", "markdown"] = Field(
+            default="wikitext",
+            description=(
+                "Output format for page content. 'wikitext' returns raw MediaWiki"
+                " markup (default). 'html' returns parsed HTML via the parse API."
+                " 'markdown' returns parsed HTML converted to Markdown using the"
+                " markdownify library."
+            ),
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -169,6 +213,7 @@ class Tools:
         query: str,
         content_format: Literal["wikitext", "html", "markdown"] = "wikitext",
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+        __request__=None,
     ) -> str:
         """
         Search the MediaWiki wiki for pages matching a query and return their page content.
@@ -256,8 +301,8 @@ class Tools:
                 f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
             )
 
-        await emit("Fetching wiki article path…")
-        article_path = await asyncio.to_thread(_get_article_path, site)
+        await emit("Fetching wiki site info…")
+        article_path, server = await asyncio.to_thread(_get_site_info, site)
 
         await emit(f"Searching for '{query}'...")
 
@@ -362,12 +407,14 @@ class Tools:
         for i, (title, content) in enumerate(pages, start=1):
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
-            url = _build_page_url(scheme, host, article_path, title)
-            sections.append(f"=== Result {i}: {title} ===\nURL: {url}\n\nPage content: {content}\n")
+            url = _build_page_url(title, article_path, server)
+            sections.append(
+                f"=== Result {i}: {title} ===\nSource id:{to_source_id(title)}\nURL: {url}\n\nPage content: {content}\n"
+            )
             if content not in _fetch_errors:
                 sources.append(
                     {
-                        "source": {"name": title, "url": url},
+                        "source": {"name": title, "url": url, "id": to_source_id(title)},
                         "document": [content],
                         "metadata": [{"source": title, "url": url}],
                     }
@@ -376,6 +423,7 @@ class Tools:
         if __event_emitter__:
             for src in sources:
                 await __event_emitter__({"type": "source", "data": src})
+        _store_turn_sources(__request__, sources)
 
         await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
         return f"Search results for '{query}' ({len(pages)} page(s)):\n\n" + "\n---\n\n".join(sections)
@@ -528,8 +576,8 @@ class Tools:
         # --- Build canonical page URL (blocking — run in thread) ---
         await emit("Fetching page URL…")
 
-        article_path = await asyncio.to_thread(_get_article_path, site)
-        page_url = _build_page_url(scheme, host, article_path, title)
+        article_path, server = await asyncio.to_thread(_get_site_info, site)
+        page_url = _build_page_url(title, article_path, server)
 
         await emit(f"Saved: {page_url}", done=True)
         return page_url

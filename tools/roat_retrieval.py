@@ -54,6 +54,12 @@ def _extract_http_error_detail(err: requests.HTTPError) -> str:
         return _truncate(resp.text)
 
 
+def to_source_id(text: str) -> str:
+    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase."""
+    text_with_hyphens = text.replace(" ", "-")
+    return re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
+
+
 def _parse_raw_chunk(raw_text: str) -> dict:
     match = re.match(r"Score:\s*([\d.]+)\s*\|\s*Text:\s*(.*)", raw_text, re.DOTALL)
     if match:
@@ -82,6 +88,20 @@ def _find_video_url(references: list, field: str = "video_url") -> tuple[str | N
         if url and isinstance(url, str) and url.startswith("https://"):
             return url, ref.get("title") or ref.get("source_name") or "Source"
     return None, None
+
+
+def _store_turn_sources(request, sources: list) -> None:
+    """Append sources to __request__.state._wikiteq_sources for get_sources tool."""
+    if not request or not sources:
+        return
+    try:
+        turn_sources = getattr(request.state, "_wikiteq_sources", None)
+        if turn_sources is None:
+            turn_sources = []
+            request.state._wikiteq_sources = turn_sources
+        turn_sources.extend(sources)
+    except Exception:
+        log.debug("Could not store sources on request state", exc_info=True)
 
 
 def _call_rag_service(
@@ -134,9 +154,9 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
         filename = _get_filename_from_extras(extras)
         source_name = ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
 
-        metadata_fields = {"title": source_name}
+        metadata_fields = {"title": source_name, "id": to_source_id(source_name)}
         metadata_fields.update(
-            {k: v for k, v in extras.items() if k not in _internal_fields and k != "url" and v is not None}
+            {k: v for k, v in extras.items() if k not in _internal_fields and k not in ("url", "id") and v is not None}
         )
         url = ref.get("url") or extras.get("url")
         if url:
@@ -156,7 +176,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
         )
 
         source_obj = {
-            "source": {"name": source_name},
+            "source": {"name": source_name, "id": to_source_id(source_name)},
             "document": [text[:max_document_preview_chars] if max_document_preview_chars > 0 else text],
             "metadata": [
                 {
@@ -217,6 +237,7 @@ class Tools:
         query: str,
         metadata_filters: list[dict] = [],
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+        __request__=None,
     ) -> str:
         """
         Search the organizational knowledge base to answer questions about company
@@ -358,6 +379,7 @@ class Tools:
         if __event_emitter__:
             for src in sources:
                 await __event_emitter__({"type": "source", "data": src})
+        _store_turn_sources(__request__, sources)
 
         await emit(f"Found {len(sources)} relevant source(s).", done=True)
         log.info("Returning context with %d sources (%d chars)", len(sources), len(context))

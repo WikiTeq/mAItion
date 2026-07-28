@@ -22,6 +22,8 @@ services:
       - ./tools/mediawiki_tool.json:/etc/mediawiki_tool.json
       - ./tools/web_search.py:/etc/web_search.py
       - ./tools/web_search.json:/etc/web_search.json
+      - ./tools/get_sources.py:/etc/get_sources.py
+      - ./tools/get_sources.json:/etc/get_sources.json
       - ./functions/video_inject.py:/etc/video_inject.py
       - ./functions/video_inject.json:/etc/video_inject.json
       - ./models:/etc/owui-models:ro

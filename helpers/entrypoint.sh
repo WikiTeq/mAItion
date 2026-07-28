@@ -265,6 +265,7 @@ do_first_start() {
 
     install_mediawiki_tool
     install_web_search_tool
+    install_get_sources_tool
     install_video_inject_filter
 
     touch /app/backend/data/.first_start
@@ -353,6 +354,32 @@ install_web_search_tool() {
         echo "[Custom entrypoint] TOOL_WEB_SEARCH_API_KEY not set. Set the tavily_api_key valve from Workspace -> Tools in the UI."
     fi
 
+}
+
+install_get_sources_tool() {
+    if [ "$TOOL_GET_SOURCES_ENABLED" != "True" ]; then
+        return 0
+    fi
+
+    echo ""
+    echo "[Custom entrypoint] Installing Get Sources Tool..."
+
+    TOOL_CODE=$(jq -Rs . < "/etc/get_sources.py")
+    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/get_sources.json)
+
+    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${DATA_RAW}")
+
+    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
+    if [ -z "$TOOL_ID" ]; then
+        echo "[Custom entrypoint] ERROR: Get Sources Tool install failed; not marking first_start so this retries on next boot." >&2
+        echo "${CREATE_RESPONSE}" >&2
+        exit 1
+    fi
+
+    echo "[Custom entrypoint] Get Sources Tool created with id: ${TOOL_ID}"
 }
 
 install_video_inject_filter() {

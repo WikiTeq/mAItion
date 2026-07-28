@@ -1,0 +1,9 @@
+{
+	"id": "get_sources",
+	"name": "Get Current Sources",
+	"content": "",
+	"meta": {
+		"description": "Retrieve all sources/citations emitted by tools during the current chat turn.",
+		"manifest": {}
+	}
+}
