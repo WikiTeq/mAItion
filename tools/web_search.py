@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 log = logging.getLogger(__name__)
 
 # Hard caps enforced by the Tavily API
-MAX_RESULTS_LIMIT = 100
+MAX_RESULTS_LIMIT = 20
 MAX_TIMEOUT_SECONDS = 120
 DEFAULT_CONTENT_CAP = 4000
 
@@ -100,6 +100,7 @@ class Tools:
             InvalidAPIKeyError,
             UsageLimitExceededError,
         )
+        from tavily.errors import TimeoutError as TavilyTimeoutError
 
         async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
             if __event_emitter__:
@@ -163,7 +164,7 @@ class Tools:
                 hidden=False,
             )
             return f"Error: Tavily rejected the request ({e}). Check the query and valves."
-        except TimeoutError:
+        except TavilyTimeoutError:
             await emit(
                 f"Error: search timed out after {self.valves.timeout}s.",
                 done=True,
