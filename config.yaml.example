@@ -117,7 +117,8 @@ sources:
   #    # latest_date: "2025-01-01"                                                # optional
   #    schedules: "${SLACK1_SCHEDULES}"
 
-  # IMAP connector — ingests emails from any IMAP4_SSL server (Gmail, Outlook, etc.)
+  # IMAP connector — ingests emails from any IMAP server (Gmail, Outlook, etc.),
+  # over implicit TLS (IMAP4_SSL, default) or STARTTLS (set use_starttls below)
   #- type: "imap"
   #  name: "imap1"
   #  config:
