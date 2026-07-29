@@ -230,13 +230,16 @@ class Tools:
                 self.valves.username,
                 self.valves.password,
             )
-        except mwclient.errors.LoginError:
+        except mwclient.errors.LoginError as e:
             await emit(
                 "Error: authentication failed. Check your username and password in Tool Valves.",
                 done=True,
                 hidden=False,
             )
-            return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
+            return (
+                "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'. "
+                f"Details: {_truncate(str(e))}"
+            )
         except Exception as e:
             log.error("mwclient connection error", exc_info=True)
             await emit("Error: could not connect to the wiki.", done=True, hidden=False)
@@ -411,13 +414,16 @@ class Tools:
                 self.valves.username,
                 self.valves.password,
             )
-        except mwclient.errors.LoginError:
+        except mwclient.errors.LoginError as e:
             await emit(
                 "Error: authentication failed. Check your username and password in Tool Valves.",
                 done=True,
                 hidden=False,
             )
-            return "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'."
+            return (
+                "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'. "
+                f"Details: {_truncate(str(e))}"
+            )
         except Exception as e:
             log.error("mwclient connection error", exc_info=True)
             await emit(
@@ -429,7 +435,7 @@ class Tools:
                 f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
             )
 
-        await emit(f"Saving page «{title}»…")
+        await emit(f"Saving page '{title}'…")
 
         # --- Save the page (blocking — run in thread) ---
         def _save():
@@ -439,15 +445,18 @@ class Tools:
         try:
             await asyncio.to_thread(_save)
         except mwclient.errors.ProtectedPageError:
-            await emit(f"Error: page «{title}» is protected and cannot be edited.", done=True, hidden=False)
-            return f"Error: page «{title}» is protected."
+            await emit(f"Error: page '{title}' is protected and cannot be edited.", done=True, hidden=False)
+            return f"Error: page '{title}' is protected."
         except mwclient.errors.APIError as e:
             if e.code in ("writeapidenied", "permissiondenied"):
                 await emit("Error: this wiki requires login to write.", done=True, hidden=False)
                 return "Error: this wiki requires authentication to write. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
             await emit(f"Error: wiki save failed ({e.code}).", done=True, hidden=False)
-            return f"Error: wiki API returned an error ({e.code}). Check page title and permissions."
+            return (
+                f"Error: wiki API returned an error ({e.code}). Check page title and permissions. "
+                f"Details: {_truncate(str(e))}"
+            )
         except Exception as e:
             log.error("Unexpected error saving page: %s", e, exc_info=True)
             await emit("Error: an unexpected error occurred while saving.", done=True, hidden=False)
