@@ -117,6 +117,20 @@ sources:
   #    # latest_date: "2025-01-01"                                                # optional
   #    schedules: "${SLACK1_SCHEDULES}"
 
+  # IMAP connector — ingests emails from any IMAP server (Gmail, Outlook, etc.),
+  # over implicit TLS (IMAP4_SSL, default) or STARTTLS (set use_starttls below)
+  #- type: "imap"
+  #  name: "imap1"
+  #  config:
+  #    host: "${IMAP1_HOST}"
+  #    port: 993                     # optional, default 993 (IMAPS), or 143 when use_starttls is set
+  #    username: "${IMAP1_USERNAME}"
+  #    password: "${IMAP1_PASSWORD}" # app-specific password for Gmail
+  #    # mailboxes: "${IMAP1_MAILBOXES}" # optional, comma-separated; omit (or leave unset) to ingest all mailboxes
+  #    # since: "2024-01-01"             # optional, only ingest messages on or after this date (YYYY-MM-DD)
+  #    # use_starttls: false             # optional, default false; STARTTLS instead of implicit TLS
+  #    schedules: "${IMAP1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
