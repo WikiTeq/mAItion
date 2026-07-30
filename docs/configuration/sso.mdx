@@ -11,13 +11,6 @@ keywords:
   - authentication
 ---
 
-<Note>
-  Verified against OpenWebUI **open-webui:0.6.5**. If you upgrade the image version in
-  `compose.yaml`, re-verify env var names against the new version before enabling SSO —
-  variable names can change between releases. Check the OpenWebUI changelog and update
-  this doc accordingly.
-</Note>
-
 mAItion inherits OpenWebUI's SSO support. Authentication is configured via environment
 variables in your `.env` file (copied from `.env.openwebui.example`). No application code
 changes are needed.
