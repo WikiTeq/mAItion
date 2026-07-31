@@ -26,23 +26,6 @@ MAX_SEARCH_RESULTS = 20
 # Characters illegal in MediaWiki page titles: #<>[]|{} plus control chars 0-31 and DEL (127)
 _ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
 
-_SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
-_EVENT_HANDLER_ATTR_RE = re.compile(r'\s+on[a-z]+\s*=\s*(".*?"|\'.*?\'|[^\s>]+)', re.IGNORECASE | re.DOTALL)
-
-
-def _sanitize_html(html: str) -> str:
-    """Strip <script> tags and inline event-handler attributes from MediaWiki parse output.
-
-    content_format="html" returns raw MediaWiki parse output as-is (unlike
-    "markdown", which never carries script/style content through markdownify's
-    conversion). A wiki page's wikitext can embed raw HTML via extensions
-    (or arbitrary <script>/on*= attributes if the wiki allows it), so strip
-    those here rather than exposing them under the "html" contract.
-    """
-    html = _SCRIPT_TAG_RE.sub("", html)
-    html = _EVENT_HANDLER_ATTR_RE.sub("", html)
-    return html
-
 
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     """
@@ -167,15 +150,6 @@ class Tools:
                 " Longer pages are truncated. Range: 1–500,000."
             ),
         )
-        content_format: Literal["wikitext", "html", "markdown"] = Field(
-            default="wikitext",
-            description=(
-                "Output format for page content. 'wikitext' returns raw MediaWiki"
-                " markup (default). 'html' returns parsed HTML via the parse API."
-                " 'markdown' returns parsed HTML converted to Markdown using the"
-                " markdownify library."
-            ),
-        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -183,6 +157,7 @@ class Tools:
     async def search_wiki(
         self,
         query: str,
+        content_format: Literal["wikitext", "html", "markdown"] = "wikitext",
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
     ) -> str:
         """
@@ -194,7 +169,7 @@ class Tools:
         - "what does the wiki say about ..."
 
         The tool runs a full-text search (equivalent to Special:Search) and fetches the
-        content of each matching page. The content_format valve selects the output:
+        content of each matching page. The content_format argument selects the output:
         'wikitext' (raw markup, default), 'html' (parsed HTML), or 'markdown'
         (parsed HTML converted to Markdown). Prefer 'html' or 'markdown' when pages may
         contain templates, transclusions, or query results, since raw wikitext does not
@@ -202,6 +177,9 @@ class Tools:
 
         Args:
             query: The search query string.
+            content_format: Output format for page content — 'wikitext' (raw MediaWiki
+                markup, default), 'html' (parsed HTML via the parse API), or 'markdown'
+                (parsed HTML converted to Markdown).
 
         Returns:
             A formatted string with each result's title, URL, and page content, or an error.
@@ -288,18 +266,19 @@ class Tools:
                 page = site.pages[title]
                 if not page.exists:
                     return title, "(Page not found — may have been deleted)"
-                # Resolve #REDIRECT pages to their target so wikitext mode
-                # doesn't return a useless "#REDIRECT [[Target]]" stub — this
-                # keeps wikitext consistent with html/markdown mode below,
-                # which already follows redirects via the parse API.
+                if fmt == "wikitext":
+                    # Return wikitext as-is, including #REDIRECT stubs — models
+                    # can parse the notation and follow up, and silently
+                    # resolving it here would hide redirect pages from queries
+                    # that ask for them specifically.
+                    return title, page.text()
+                # For html/markdown, resolve #REDIRECT pages to their target so
+                # the parse API call below uses the target's canonical page.name
+                # (redirects=True also follows redirects server-side, but
+                # resolving client-side here keeps page.name accurate for URLs).
                 target = page.redirects_to()
                 if target is not None:
                     page = target
-                if fmt == "wikitext":
-                    return title, page.text()
-                # For html/markdown, use the MediaWiki parse API to get
-                # rendered HTML. redirects=True follows #REDIRECT pages,
-                # matching the wikitext behavior above.
                 result = site.api("parse", page=page.name, prop="text", redirects=True)
                 html = result["parse"]["text"]["*"]
                 if fmt == "markdown":
@@ -338,14 +317,14 @@ class Tools:
                     # of removing it.
                     content = md(html)
                 else:
-                    content = _sanitize_html(html)
+                    content = html
                 return title, content
             except Exception as e:
                 log.warning("Failed to fetch %r: %s", title, e)
                 return title, "(Content unavailable)"
 
         pages: list[tuple[str, str]] = await asyncio.gather(
-            *[asyncio.to_thread(_fetch_page, t, self.valves.content_format) for t in titles]
+            *[asyncio.to_thread(_fetch_page, t, content_format) for t in titles]
         )
 
         sections = []

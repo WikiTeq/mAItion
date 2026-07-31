@@ -389,6 +389,7 @@ pip install hf_xet
 pip install "mwclient>=0.10.1"
 pip install "pyyaml>=6.0"
 pip install "tavily-python>=0.5.0"
+pip install "markdownify>=0.13.1"
 
 start_app
 wait_for_app
