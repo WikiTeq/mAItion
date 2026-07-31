@@ -323,7 +323,19 @@ install_web_search_tool() {
     fi
 
     echo "[Custom entrypoint] Web Search Tool created with id: ${TOOL_ID}"
-    echo "[Custom entrypoint] Set the tavily_api_key valve from Workspace -> Tools in the UI."
+
+    if [ -n "$TOOL_WEB_SEARCH_API_KEY" ]; then
+        echo ""
+        echo "[Custom entrypoint] Configuring Web Search Tool valves..."
+        VALVES_JSON=$(jq -n --arg key "${TOOL_WEB_SEARCH_API_KEY}" '{tavily_api_key:$key}')
+
+        curl -s -X POST "http://localhost:8080/api/v1/tools/id/${TOOL_ID}/valves/update" \
+          -H "Authorization: Bearer ${API_KEY}" \
+          -H "Content-Type: application/json" \
+          --data-raw "${VALVES_JSON}"
+    else
+        echo "[Custom entrypoint] TOOL_WEB_SEARCH_API_KEY not set. Set the tavily_api_key valve from Workspace -> Tools in the UI."
+    fi
 
 }
 
