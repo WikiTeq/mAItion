@@ -115,6 +115,7 @@ Two components handle RAG service communication:
 
 - **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
+- **Web Search Tool** (`tools/web_search.py`) — an optional Workspace Tool that lets the LLM search the web via the Tavily API. Enable with `TOOL_WEB_SEARCH_ENABLED=True` in `.env`, then either set `TOOL_WEB_SEARCH_API_KEY` to auto-configure the key on install, or set the `tavily_api_key` valve manually from Workspace → Tools.
 
 ## Connectors configuration
 
