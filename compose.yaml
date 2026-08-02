@@ -24,7 +24,7 @@ services:
       - ./tools/web_search.json:/etc/web_search.json
       - ./functions/video_inject.py:/etc/video_inject.py
       - ./functions/video_inject.json:/etc/video_inject.json
-      - ./models/wikiteqcenturion.json:/etc/wikiteqcenturion.json:ro
+      - ./models:/etc/owui-models:ro
       - ./helpers/entrypoint.sh:/custom-entrypoint.sh
       - ./helpers/healthz.py:/etc/healthz.py
       - ./patches:/etc/patches

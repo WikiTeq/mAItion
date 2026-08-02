@@ -173,6 +173,19 @@ do_first_start() {
               --data-raw "{\"ui\":{\"version\":\"0.6.5\",\"models\":[\"$OPENAI_DEFAULT_MODEL\"]}}"
 
             if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "True" ]; then
+                WORKSPACE_MODEL_FILE="wikiteqcenturion.json"
+            elif [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "False" ] || [ -z "$CREATE_CUSTOM_WORKSPACE_MODEL" ]; then
+                WORKSPACE_MODEL_FILE=""
+            else
+                WORKSPACE_MODEL_FILE="$CREATE_CUSTOM_WORKSPACE_MODEL"
+            fi
+
+            if [ -n "$WORKSPACE_MODEL_FILE" ]; then
+                if [ ! -f "/etc/owui-models/${WORKSPACE_MODEL_FILE}" ]; then
+                    echo "[Custom entrypoint] ERROR: CREATE_CUSTOM_WORKSPACE_MODEL is set to '${CREATE_CUSTOM_WORKSPACE_MODEL}' but /etc/owui-models/${WORKSPACE_MODEL_FILE} was not found" >&2
+                    exit 1
+                fi
+
                 echo ""
                 echo "[Custom entrypoint] Making default model private"
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
@@ -185,7 +198,7 @@ do_first_start() {
                 WORKSPACE_MODEL_DATA=$(jq \
                   --arg base_model "$OPENAI_DEFAULT_MODEL" \
                   '.[0].base_model_id = $base_model | .[0]' \
-                  "/etc/wikiteqcenturion.json")
+                  "/etc/owui-models/${WORKSPACE_MODEL_FILE}")
 
                 if [ -n "$OWUI_MODEL_PROMPT" ]; then
                     WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
