@@ -87,7 +87,8 @@ class Tools:
         all_sources = []
         seen = set()
         for source in current_sources:
-            if not isinstance(source, dict):
+            source = _normalize_source(source)
+            if source is None:
                 continue
             name = source.get("source", {}).get("name", "") or source.get("name", "")
             url = _extract_url(source)
@@ -105,23 +106,30 @@ class Tools:
         if len(all_sources) > self.valves.max_sources:
             all_sources = all_sources[-self.valves.max_sources:]
 
-        # Format output
+        # Format output. Sources were already normalized above (source.source
+        # is a dict, document[0]/url are strings if present), so no further
+        # isinstance guarding is needed here.
         sections = []
         for i, source in enumerate(all_sources, start=1):
             name = (
                 source.get("source", {}).get("name", "")
                 or source.get("name", "(unnamed)")
             )
+            source_id = source.get("source", {}).get("id", "")
             url = _extract_url(source)
             documents = source.get("document", [])
-            if not isinstance(documents, list):
-                documents = [documents] if documents else []
 
             lines = [f"=== Source {i}: {name} ==="]
+            # source_id may be a real URL (web_search.py) or a to_source_id()
+            # slug (roat_retrieval.py/mediawiki_tool.py) — either way it's
+            # useful for citation formatting, so surface it distinctly from
+            # the URL line below rather than silently dropping it.
+            if source_id and source_id != url:
+                lines.append(f"Source id: {source_id}")
             if url:
                 lines.append(f"URL: {url}")
             if documents:
-                doc_text = documents[0] if documents else ""
+                doc_text = documents[0]
                 if len(doc_text) > 500:
                     doc_text = doc_text[:500] + "..."
                 lines.append(f"Excerpt: {doc_text}")
@@ -132,6 +140,35 @@ class Tools:
             f"Sources from current turn ({len(all_sources)} total):\n\n"
             + "\n---\n\n".join(sections)
         )
+
+
+def _normalize_source(source) -> dict | None:
+    """Coerce a raw entry from _wikiteq_sources into a safe-to-use shape.
+
+    Source dicts come from other tools' emitted data (ultimately from
+    external APIs like ROAT/MediaWiki) and are not guaranteed to match the
+    expected shape. Without this, a malformed entry (source.source not a
+    dict, document[0] not a string) would raise and abort processing of
+    every other, valid source in the same turn. Returns None for entries
+    that can't be salvaged.
+    """
+    if not isinstance(source, dict):
+        return None
+
+    source = dict(source)  # shallow copy; don't mutate the shared turn list
+
+    inner = source.get("source")
+    if not isinstance(inner, dict):
+        inner = {}
+    source["source"] = inner
+
+    documents = source.get("document", [])
+    if not isinstance(documents, list):
+        documents = [documents] if documents else []
+    documents = [d for d in documents if isinstance(d, str)]
+    source["document"] = documents
+
+    return source
 
 
 def _extract_url(source: dict) -> str:
@@ -146,11 +183,15 @@ def _extract_url(source: dict) -> str:
     it with a real URL, but roat_retrieval.py/mediawiki_tool.py populate it
     with a to_source_id() slug (e.g. "some-kb-doc"), which is not a URL.
     Only accept it when it actually looks like one.
+
+    Assumes source has already passed through _normalize_source (source.source
+    is a dict); top-level "url" is not normalized, so it's coerced here.
     """
     source_id = source.get("source", {}).get("id", "")
     if isinstance(source_id, str) and source_id.startswith(("http://", "https://")):
         return source_id
-    return source.get("url", "") or source.get("source", {}).get("url", "")
+    url = source.get("url", "") or source.get("source", {}).get("url", "")
+    return url if isinstance(url, str) else ""
 
 
 def _content_fingerprint(source: dict) -> str:
@@ -158,10 +199,10 @@ def _content_fingerprint(source: dict) -> str:
 
     Without this, two distinct chunks of the same document (e.g. two
     non-adjacent ROAT KB passages with the same title, no url extra) would
-    dedup-collide on (name, "") and silently drop one from the output.
+    dedup-collide on (name, "") and silently drop one from the output. Uses
+    the full document text (not a truncated prefix) so two sources that
+    happen to share a common prefix but diverge later still get distinct
+    keys. Assumes source has already passed through _normalize_source.
     """
     documents = source.get("document", [])
-    if not isinstance(documents, list):
-        documents = [documents] if documents else []
-    text = documents[0] if documents else ""
-    return text[:200] if isinstance(text, str) else ""
+    return documents[0] if documents else ""
