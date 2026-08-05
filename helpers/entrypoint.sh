@@ -77,6 +77,22 @@ do_first_start() {
     echo ""
     echo "[Custom entrypoint] First start detected.."
 
+    # Resolve and validate the custom workspace model file up front, before any
+    # API calls are made, so a bad CREATE_CUSTOM_WORKSPACE_MODEL value stops
+    # initialization cleanly with no side effects (signup, tool/provider setup, etc).
+    if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "True" ]; then
+        WORKSPACE_MODEL_FILE="wikiteqcenturion.json"
+    elif [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "False" ] || [ -z "$CREATE_CUSTOM_WORKSPACE_MODEL" ]; then
+        WORKSPACE_MODEL_FILE=""
+    else
+        WORKSPACE_MODEL_FILE="$CREATE_CUSTOM_WORKSPACE_MODEL"
+    fi
+
+    if [ -n "$WORKSPACE_MODEL_FILE" ] && [ ! -f "/etc/owui-models/${WORKSPACE_MODEL_FILE}" ]; then
+        echo "[Custom entrypoint] ERROR: CREATE_CUSTOM_WORKSPACE_MODEL is set to '${CREATE_CUSTOM_WORKSPACE_MODEL}' but /etc/owui-models/${WORKSPACE_MODEL_FILE} was not found" >&2
+        exit 1
+    fi
+
     echo ""
     echo "[Custom entrypoint] Sign up default admin user ..."
     SIGNUP_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/auths/signup" \
@@ -172,20 +188,7 @@ do_first_start() {
               -H "Content-Type: application/json" \
               --data-raw "{\"ui\":{\"version\":\"0.6.5\",\"models\":[\"$OPENAI_DEFAULT_MODEL\"]}}"
 
-            if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "True" ]; then
-                WORKSPACE_MODEL_FILE="wikiteqcenturion.json"
-            elif [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "False" ] || [ -z "$CREATE_CUSTOM_WORKSPACE_MODEL" ]; then
-                WORKSPACE_MODEL_FILE=""
-            else
-                WORKSPACE_MODEL_FILE="$CREATE_CUSTOM_WORKSPACE_MODEL"
-            fi
-
             if [ -n "$WORKSPACE_MODEL_FILE" ]; then
-                if [ ! -f "/etc/owui-models/${WORKSPACE_MODEL_FILE}" ]; then
-                    echo "[Custom entrypoint] ERROR: CREATE_CUSTOM_WORKSPACE_MODEL is set to '${CREATE_CUSTOM_WORKSPACE_MODEL}' but /etc/owui-models/${WORKSPACE_MODEL_FILE} was not found" >&2
-                    exit 1
-                fi
-
                 echo ""
                 echo "[Custom entrypoint] Making default model private"
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
