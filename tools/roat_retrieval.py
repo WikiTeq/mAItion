@@ -14,8 +14,8 @@ import os
 import re
 from collections.abc import Awaitable, Callable
 
-import yaml
 import requests
+import yaml
 from pydantic import BaseModel, Field
 
 log = logging.getLogger(__name__)
@@ -29,6 +29,29 @@ def _escape_document_tags(text: str) -> str:
     text = _CLOSING_DOCUMENT_TAG_RE.sub(lambda m: "<\\/document>", text)
     text = _OPENING_DOCUMENT_TAG_RE.sub(lambda m: "<\\document", text)
     return text
+
+
+MAX_ERROR_DETAIL_CHARS = 500
+
+
+def _truncate(text: str, limit: int = MAX_ERROR_DETAIL_CHARS) -> str:
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    suffix = "... (truncated)"
+    return text[: limit - len(suffix)] + suffix
+
+
+def _extract_http_error_detail(err: requests.HTTPError) -> str:
+    resp = err.response
+    if resp is None:
+        return _truncate(str(err))
+    try:
+        body = resp.json()
+        detail = body.get("detail", body) if isinstance(body, dict) else body
+        return _truncate(str(detail))
+    except ValueError:
+        return _truncate(resp.text)
 
 
 def _parse_raw_chunk(raw_text: str) -> dict:
@@ -113,11 +136,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
 
         metadata_fields = {"title": source_name}
         metadata_fields.update(
-            {
-                k: v
-                for k, v in extras.items()
-                if k not in _internal_fields and k != "url" and v is not None
-            }
+            {k: v for k, v in extras.items() if k not in _internal_fields and k != "url" and v is not None}
         )
         url = ref.get("url") or extras.get("url")
         if url:
@@ -320,13 +339,15 @@ class Tools:
                 metadata_filters,
             )
         except requests.HTTPError as e:
+            detail = _extract_http_error_detail(e)
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("The knowledge base rejected this request.", done=True)
-            return "Error: the knowledge base rejected this request. Check the server logs for details."
+            status_code = e.response.status_code if e.response is not None else "unknown"
+            return f"Error: the knowledge base rejected this request ({status_code}). {detail}"
         except Exception as e:
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("Failed to reach the knowledge base.", done=True)
-            return "Error: could not reach the knowledge base. Check the server logs for details."
+            return f"Error: could not reach the knowledge base. {_truncate(str(e))}"
 
         context, sources = _format_context_and_sources(rag_result, self.valves.max_document_preview_chars)
 
