@@ -237,11 +237,32 @@ class Tools:
                    Only use field names you have seen in a "## Metadata" section or
                    that the user has stated; never invent a field name you haven't
                    observed. Each filter is a dict with "name", "operator", and
-                   "value". Scalar operators (single value):
-                   EQ, NE, GT, GTE, LT, LTE, TEXT_MATCH. List operators (value is a
-                   list): IN, NIN. Example:
+                   "value".
+
+                   Scalar operators — field holds a single value, "value" is a
+                   single value: EQ, NE, GT, GTE, LT, LTE, TEXT_MATCH.
+
+                   IN, NIN — "value" is a list, but this still checks the field's
+                   own value as a single unit against that list (field IN
+                   [A, B, C]), e.g. status IN ["To Do", "Done"] matches a status
+                   field equal to either. Do NOT use IN/NIN on a list-valued field
+                   (e.g. "labels", "tags" shown as a Python list in "## Metadata")
+                   — the field's list gets compared as a whole (e.g. the text
+                   "[\"daycare_hardware\"]"), never against one of its individual
+                   elements, so IN will silently return nothing and NIN will
+                   silently return everything, even when the field clearly
+                   contains the value you're checking for.
+
+                   ANY, ALL — use these when the metadata field itself holds a
+                   list of values (e.g. "labels": ["daycare_hardware", "urgent"])
+                   and you want to check containment: ANY matches if the field
+                   contains at least one of the given values, ALL matches only if
+                   it contains every given value.
+
+                   Example:
                    [{"name": "project", "operator": "EQ", "value": "MAIT"},
-                    {"name": "tags", "operator": "IN", "value": ["A", "B"]}]
+                    {"name": "status", "operator": "IN", "value": ["To Do", "Done"]},
+                    {"name": "labels", "operator": "ANY", "value": ["urgent"]}]
 
         Returns:
             Retrieved document chunks with source metadata, or a message indicating
