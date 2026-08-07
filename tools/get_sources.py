@@ -25,6 +25,12 @@ class Tools:
             le=500,
             description="Maximum number of sources to return (1-500).",
         )
+        max_excerpt_chars: int = Field(
+            default=200,
+            ge=1,
+            le=500,
+            description="Maximum characters of each source's excerpt to include (1-500).",
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -122,16 +128,18 @@ class Tools:
             lines = [f"=== Source {i}: {name} ==="]
             # source_id may be a real URL (web_search.py) or a to_source_id()
             # slug (roat_retrieval.py/mediawiki_tool.py) — either way it's
-            # useful for citation formatting, so surface it distinctly from
-            # the URL line below rather than silently dropping it.
-            if source_id and source_id != url:
+            # useful for citation formatting, so always surface it distinctly
+            # from the URL line below rather than dropping it when the two
+            # happen to match.
+            if source_id:
                 lines.append(f"Source id: {source_id}")
             if url:
                 lines.append(f"URL: {url}")
             if documents:
                 doc_text = documents[0]
-                if len(doc_text) > 500:
-                    doc_text = doc_text[:500] + "..."
+                cap = self.valves.max_excerpt_chars
+                if len(doc_text) > cap:
+                    doc_text = doc_text[:cap] + "..."
                 lines.append(f"Excerpt: {doc_text}")
             sections.append("\n".join(lines))
 
@@ -150,16 +158,18 @@ def _normalize_source(source) -> dict | None:
     expected shape. Without this, a malformed entry (source.source not a
     dict, document[0] not a string) would raise and abort processing of
     every other, valid source in the same turn. Returns None for entries
-    that can't be salvaged.
+    that can't be salvaged — this includes entries missing the inner
+    "source" dict entirely, since a source item with no source metadata
+    (no name/id/url) is too malformed to be worth surfacing.
     """
     if not isinstance(source, dict):
         return None
 
-    source = dict(source)  # shallow copy; don't mutate the shared turn list
-
     inner = source.get("source")
     if not isinstance(inner, dict):
-        inner = {}
+        return None
+
+    source = dict(source)  # shallow copy; don't mutate the shared turn list
     source["source"] = inner
 
     documents = source.get("document", [])
