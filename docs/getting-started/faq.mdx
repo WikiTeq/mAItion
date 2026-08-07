@@ -40,8 +40,8 @@ Yes. You can enable multiple source types and multiple instances of the same typ
 
 ## Can I use multiple S3 accounts or buckets?
 
-Yes. Add additional source entries and matching env vars (`S3_ACCOUNT2_*`, `S3_ACCOUNT3_*`, etc). You
-can also configure individual connectors to use different buckets to keep provenance separate.
+Yes. Each connector instance targets a single bucket. Add additional source entries and matching env
+vars (`S3_ACCOUNT2_*`, `S3_ACCOUNT3_*`, etc) — one per bucket.
 
 ## What is the difference between frontend and backend env files?
 
