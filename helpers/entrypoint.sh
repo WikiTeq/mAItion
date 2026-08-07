@@ -407,6 +407,14 @@ pip install "pyyaml>=6.0"
 pip install "tavily-python>=0.5.0"
 pip install "markdownify>=0.13.1"
 
+# Compression support for the response compression middleware
+# (patches/compression.patch). zstandard is already a transitive OpenWebUI
+# dependency but pinned explicitly here so a future base-image bump can't
+# silently drop it; brotli is not present in the base image at all; gzip is
+# stdlib. Exact pins (not >=) so a new brotli/zstandard release can't
+# silently change compression behavior underneath the middleware.
+pip install "brotli==1.1.0" "zstandard==0.23.0"
+
 start_app
 wait_for_app
 #copy_statics
