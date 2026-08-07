@@ -412,9 +412,9 @@ install_image_resizer_filter() {
 
     FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
     if [ -z "$FILTER_ID" ]; then
-        echo "[Custom entrypoint] ERROR: Image Resizer Filter install failed" >&2
+        echo "[Custom entrypoint] WARNING: Image Resizer Filter install failed" >&2
         echo "${CREATE_RESPONSE}" >&2
-        exit 1
+        return
     fi
 
     echo "[Custom entrypoint] Image Resizer Filter created with id: ${FILTER_ID}"
