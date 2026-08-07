@@ -39,11 +39,14 @@ _ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
 
 
 def to_source_id(text: str) -> str:
-    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase.
+    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase,
+    with a short digest of the original text appended for uniqueness.
 
-    Titles made up entirely of non-ASCII characters (e.g. "日本語") strip down
-    to an empty string, which is not a usable id. In that case, fall back to
-    a deterministic ASCII id derived from a digest of the original title.
+    The digest is always appended, not just when the slug is empty: stripping
+    punctuation means distinct titles like "C++", "C#", and "C" would otherwise
+    all slugify to the same "c" and collide. Titles made up entirely of
+    non-ASCII characters (e.g. "日本語") strip down to an empty slug, in which
+    case the id falls back to the digest alone.
 
     Duplicated verbatim in roat_retrieval.py — OWUI loads each tool's source
     as an independent module (no shared import path between tools), so keep
@@ -51,9 +54,9 @@ def to_source_id(text: str) -> str:
     """
     text_with_hyphens = text.replace(" ", "-")
     slug = re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
-    if slug:
-        return slug
     digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
+    if slug:
+        return f"{slug}-{digest}"
     return f"src-{digest}"
 
 
@@ -110,7 +113,7 @@ def _validate_title(title: str) -> None:
         )
 
 
-def _build_page_url(title: str, article_path: str, server: str | None = None) -> str | None:
+def _build_page_url(title: str, article_path: str, server: str | None, default_scheme: str) -> str | None:
     """Build a canonical, absolute page URL with proper title encoding.
 
     Uses the 'server' field from siteinfo (e.g. 'https://example.com')
@@ -118,9 +121,16 @@ def _build_page_url(title: str, article_path: str, server: str | None = None) ->
     public-facing page URL. Returns None when server is unavailable —
     a relative path would resolve against the OpenWebUI origin instead
     of the wiki's, which is worse than no URL at all.
+
+    MediaWiki's siteinfo 'server' is often protocol-relative (e.g.
+    '//en.wikipedia.org'), which is only meaningful when embedded in an
+    HTML page — surfaced as plain text here, it's not a usable standalone
+    URL. default_scheme (the configured wiki_url's own scheme) fills that in.
     """
     if not server:
         return None
+    if server.startswith("//"):
+        server = f"{default_scheme}:{server}"
     encoded = quote(title.replace(" ", "_"), safe="/:")
     path = article_path.replace("$1", encoded)
     return f"{server}{path}"
@@ -423,14 +433,18 @@ class Tools:
         cap = self.valves.max_page_chars
         _fetch_errors = {"(Page not found — may have been deleted)", "(Content unavailable)"}
         for i, (title, content) in enumerate(pages, start=1):
+            # Check for a fetch failure before truncating — a low max_page_chars
+            # valve can truncate a sentinel string so it no longer matches
+            # _fetch_errors, which would wrongly treat the failure as real content.
+            is_fetch_error = content in _fetch_errors
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
-            url = _build_page_url(title, article_path, server)
+            url = _build_page_url(title, article_path, server, scheme)
             url_line = f"\nURL: {url}" if url else ""
             sections.append(
                 f"=== Result {i}: {title} ===\nSource id:{to_source_id(title)}{url_line}\n\nPage content: {content}\n"
             )
-            if content not in _fetch_errors:
+            if not is_fetch_error:
                 source_entry = {"name": title, "id": to_source_id(title)}
                 metadata_entry = {"source": title}
                 if url:
@@ -601,7 +615,7 @@ class Tools:
         await emit("Fetching page URL…")
 
         article_path, server = await asyncio.to_thread(_get_site_info, site)
-        page_url = _build_page_url(title, article_path, server)
+        page_url = _build_page_url(title, article_path, server, scheme)
 
         if page_url:
             await emit(f"Saved: {page_url}", done=True)

@@ -56,11 +56,14 @@ def _extract_http_error_detail(err: requests.HTTPError) -> str:
 
 
 def to_source_id(text: str) -> str:
-    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase.
+    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase,
+    with a short digest of the original text appended for uniqueness.
 
-    Titles made up entirely of non-ASCII characters (e.g. "日本語") strip down
-    to an empty string, which is not a usable id. In that case, fall back to
-    a deterministic ASCII id derived from a digest of the original title.
+    The digest is always appended, not just when the slug is empty: stripping
+    punctuation means distinct titles like "C++", "C#", and "C" would otherwise
+    all slugify to the same "c" and collide. Titles made up entirely of
+    non-ASCII characters (e.g. "日本語") strip down to an empty slug, in which
+    case the id falls back to the digest alone.
 
     Duplicated verbatim in mediawiki_tool.py — OWUI loads each tool's source
     as an independent module (no shared import path between tools), so keep
@@ -68,9 +71,9 @@ def to_source_id(text: str) -> str:
     """
     text_with_hyphens = text.replace(" ", "-")
     slug = re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
-    if slug:
-        return slug
     digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
+    if slug:
+        return f"{slug}-{digest}"
     return f"src-{digest}"
 
 
