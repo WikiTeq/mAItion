@@ -266,6 +266,7 @@ do_first_start() {
     install_mediawiki_tool
     install_web_search_tool
     install_video_inject_filter
+    install_image_resizer_filter
 
     touch /app/backend/data/.first_start
 }
@@ -388,6 +389,44 @@ install_video_inject_filter() {
 
     echo ""
     echo "[Custom entrypoint] Enabling Video Inject Filter globally..."
+    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json"
+}
+
+install_image_resizer_filter() {
+    if [ "$FUNCTION_IMAGE_RESIZER_ENABLED" != "True" ]; then
+        return
+    fi
+
+    echo ""
+    echo "[Custom entrypoint] Installing Image Resizer Filter..."
+
+    FILTER_CODE=$(jq -Rs . < "/etc/image_resizer.py")
+    DATA_RAW=$(jq --argjson content "${FILTER_CODE}" '.content=$content' /etc/image_resizer.json)
+
+    CREATE_RESPONSE=$(curl -fsS -X POST "http://localhost:8080/api/v1/functions/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${DATA_RAW}")
+
+    FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
+    if [ -z "$FILTER_ID" ]; then
+        echo "[Custom entrypoint] WARNING: Image Resizer Filter install failed" >&2
+        echo "${CREATE_RESPONSE}" >&2
+        return
+    fi
+
+    echo "[Custom entrypoint] Image Resizer Filter created with id: ${FILTER_ID}"
+
+    echo ""
+    echo "[Custom entrypoint] Enabling Image Resizer Filter..."
+    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json"
+
+    echo ""
+    echo "[Custom entrypoint] Enabling Image Resizer Filter globally..."
     curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json"
