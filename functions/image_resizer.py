@@ -62,6 +62,12 @@ def resize_images_in_messages(messages, max_dimension=768):
                     raise ValueError("could not determine image format")
                 image_format = image.format
 
+                # Resizing only touches the first frame. Leave animated
+                # GIF/APNG/WebP images untouched rather than silently
+                # collapsing them to a static image.
+                if getattr(image, "is_animated", False):
+                    continue
+
                 if max(width, height) > max_dimension:
                     scaling_factor = max_dimension / max(width, height)
                     new_width = max(1, int(width * scaling_factor))
