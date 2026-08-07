@@ -238,6 +238,38 @@ SERPAPI1_QUERIES=aaa
 SERPAPI1_SCHEDULES=3600
 ```
 
+### Slab Connector
+
+The Slab connector ingests posts from a [Slab](https://slab.com/) knowledge base via the GraphQL API.
+When `topic_ids` is configured, only posts belonging to those topics are ingested.
+When omitted, all organisation posts are fetched using cursor-based pagination.
+
+> **Plan requirement:** Slab's API and webhooks are only available on the Business or Enterprise plan
+> ([Slab developer tools docs](https://help.slab.com/en/articles/6545629-developer-tools-api-webhooks)).
+> On the Free plan, this connector cannot be used. Instead, use Slab's
+> [full export](https://help.slab.com/en/articles/2271952-export-or-download-your-content) feature to
+> download all pages as Markdown, then ingest the exported files with the Directory connector
+> (see the [rag-of-all-trades README](https://github.com/WikiTeq/rag-of-all-trades#directory-connector)).
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "slab"
+    name: "slab1"
+    config:
+      api_token: "${SLAB1_API_TOKEN}"
+      # topic_ids: "topic_abc123,topic_def456"  # optional
+      schedules: "${SLAB1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+SLAB1_API_TOKEN=your-slab-api-token
+SLAB1_SCHEDULES=3600
+```
+
 ### Web Connector
 
 The Web connector ingests content from web pages. It supports two mutually exclusive modes:
