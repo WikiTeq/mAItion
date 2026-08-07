@@ -1,0 +1,85 @@
+---
+title: "Slack"
+description: "Configure the mAItion Slack connector to ingest channel messages into the knowledge base."
+keywords:
+  - mAItion
+  - Slack connector
+  - Slack ingestion
+  - connectors
+---
+
+Use the Slack Connector to ingest messages from [Slack](https://slack.com) channels into the mAItion knowledge base.
+
+## What It Does
+
+- fetches messages from one or more Slack channels
+- indexes each message and each thread reply as a separate document in the vector store
+- resolves channels directly by ID or dynamically via name patterns or regex
+- optionally restricts ingestion to a date range
+- attaches channel name and resolved username as metadata on each indexed message
+- skips system/bot messages (channel joins/leaves, file shares, thread broadcasts) — only actual message content is ingested
+- runs ingestion on configurable schedules
+
+## Authentication
+
+Authentication requires a Slack bot token (`xoxb-...`) with the following scopes:
+
+- `channels:history`
+- `groups:history`
+- `channels:read`
+- `groups:read`
+- `users:read`
+
+Invite the bot to each target channel (`/invite @YourBot`) — the bot can only read channels it has been added to.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `SLACK1_TOKEN`: Slack bot token (`xoxb-...`)
+- `SLACK1_CHANNEL_IDS`: comma-separated channel IDs (mutually exclusive with `SLACK1_CHANNEL_PATTERNS`)
+- `SLACK1_CHANNEL_PATTERNS`: comma-separated channel name patterns or regex (mutually exclusive with `SLACK1_CHANNEL_IDS`)
+- `SLACK1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "slack"
+    name: "slack1"
+    enabled: true  # optional, default: true
+    config:
+      token: "${SLACK1_TOKEN}"
+      channel_ids: "${SLACK1_CHANNEL_IDS}"            # comma-separated channel IDs (mutually exclusive with channel_patterns)
+      # channel_patterns: "${SLACK1_CHANNEL_PATTERNS}" # channel name patterns or regex (mutually exclusive with channel_ids)
+      # channel_types: "public_channel,private_channel"  # optional, used with channel_patterns
+      # earliest_date: "2024-01-01"                   # optional: fetch messages from this date
+      # latest_date: "2025-01-01"                     # optional: fetch messages up to this date
+      schedules: "${SLACK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+SLACK1_TOKEN=xoxb-your-bot-token
+SLACK1_CHANNEL_IDS=C1234567890,C0987654321
+SLACK1_CHANNEL_PATTERNS=general,^dev.*
+SLACK1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `token` | yes | — | Slack bot token (`xoxb-...`) |
+| `channel_ids` | one of `channel_ids`/`channel_patterns` | — | Comma-separated channel IDs to ingest |
+| `channel_patterns` | one of `channel_ids`/`channel_patterns` | — | Comma-separated channel name patterns or regex, resolved dynamically |
+| `channel_types` | no | `public_channel,private_channel` | Channel types to consider when resolving `channel_patterns` |
+| `earliest_date` | no | — | Only fetch messages on or after this date (`YYYY-MM-DD`) |
+| `latest_date` | no | — | Only fetch messages on or before this date (`YYYY-MM-DD`); requires `earliest_date` to also be set |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Slack Sources
+
+Add more `sources` entries (`slack2`, `slack3`, etc) with separate env vars per source.

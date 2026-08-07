@@ -70,7 +70,8 @@
 							"connectors/jira-connector",
 							"connectors/pipedrive-connector",
 							"connectors/web-connector",
-							"connectors/directory-connector"
+							"connectors/directory-connector",
+							"connectors/slack-connector"
 						]
 					},
 					{
