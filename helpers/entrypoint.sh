@@ -374,15 +374,15 @@ install_get_sources_tool() {
     CURL_STATUS=$?
 
     if [ "$CURL_STATUS" -ne 0 ]; then
-        echo "[Custom entrypoint] ERROR: Get Sources Tool install request failed (curl exit code ${CURL_STATUS}); not marking first_start so this retries on next boot." >&2
-        exit 1
+        echo "[Custom entrypoint] WARNING: Get Sources Tool install request failed (curl exit code ${CURL_STATUS})" >&2
+        return
     fi
 
     TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
     if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] ERROR: Get Sources Tool install failed; not marking first_start so this retries on next boot." >&2
+        echo "[Custom entrypoint] WARNING: Get Sources Tool install failed" >&2
         echo "${CREATE_RESPONSE}" >&2
-        exit 1
+        return
     fi
 
     echo "[Custom entrypoint] Get Sources Tool created with id: ${TOOL_ID}"
@@ -406,9 +406,9 @@ install_video_inject_filter() {
 
     FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
     if [ -z "$FILTER_ID" ]; then
-        echo "[Custom entrypoint] ERROR: Video Inject Filter install failed" >&2
+        echo "[Custom entrypoint] WARNING: Video Inject Filter install failed" >&2
         echo "${CREATE_RESPONSE}" >&2
-        exit 1
+        return
     fi
 
     echo "[Custom entrypoint] Video Inject Filter created with id: ${FILTER_ID}"
