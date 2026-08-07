@@ -9,6 +9,7 @@ requirements: mwclient>=0.10.1, pydantic>=2.0.0, markdownify>=0.13.1
 """
 
 import asyncio
+import hashlib
 import logging
 import re
 from collections.abc import Awaitable, Callable
@@ -40,12 +41,20 @@ _ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
 def to_source_id(text: str) -> str:
     """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase.
 
+    Titles made up entirely of non-ASCII characters (e.g. "日本語") strip down
+    to an empty string, which is not a usable id. In that case, fall back to
+    a deterministic ASCII id derived from a digest of the original title.
+
     Duplicated verbatim in roat_retrieval.py — OWUI loads each tool's source
     as an independent module (no shared import path between tools), so keep
     both copies in sync if this changes.
     """
     text_with_hyphens = text.replace(" ", "-")
-    return re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
+    slug = re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
+    if slug:
+        return slug
+    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
+    return f"src-{digest}"
 
 
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
@@ -101,19 +110,20 @@ def _validate_title(title: str) -> None:
         )
 
 
-def _build_page_url(title: str, article_path: str, server: str | None = None) -> str:
-    """Build a canonical page URL with proper title encoding.
+def _build_page_url(title: str, article_path: str, server: str | None = None) -> str | None:
+    """Build a canonical, absolute page URL with proper title encoding.
 
     Uses the 'server' field from siteinfo (e.g. 'https://example.com')
     combined with 'articlepath' (e.g. '/wiki/$1') to produce the full
-    public-facing page URL. Falls back to a relative path when server
-    is unavailable.
+    public-facing page URL. Returns None when server is unavailable —
+    a relative path would resolve against the OpenWebUI origin instead
+    of the wiki's, which is worse than no URL at all.
     """
+    if not server:
+        return None
     encoded = quote(title.replace(" ", "_"), safe="/:")
     path = article_path.replace("$1", encoded)
-    if server:
-        return f"{server}{path}"
-    return path
+    return f"{server}{path}"
 
 
 def _get_site_info(site) -> tuple[str, str | None]:
@@ -416,15 +426,21 @@ class Tools:
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
             url = _build_page_url(title, article_path, server)
+            url_line = f"\nURL: {url}" if url else ""
             sections.append(
-                f"=== Result {i}: {title} ===\nSource id:{to_source_id(title)}\nURL: {url}\n\nPage content: {content}\n"
+                f"=== Result {i}: {title} ===\nSource id:{to_source_id(title)}{url_line}\n\nPage content: {content}\n"
             )
             if content not in _fetch_errors:
+                source_entry = {"name": title, "id": to_source_id(title)}
+                metadata_entry = {"source": title}
+                if url:
+                    source_entry["url"] = url
+                    metadata_entry["url"] = url
                 sources.append(
                     {
-                        "source": {"name": title, "url": url, "id": to_source_id(title)},
+                        "source": source_entry,
                         "document": [content],
-                        "metadata": [{"source": title, "url": url}],
+                        "metadata": [metadata_entry],
                     }
                 )
 
@@ -587,5 +603,9 @@ class Tools:
         article_path, server = await asyncio.to_thread(_get_site_info, site)
         page_url = _build_page_url(title, article_path, server)
 
-        await emit(f"Saved: {page_url}", done=True)
-        return page_url
+        if page_url:
+            await emit(f"Saved: {page_url}", done=True)
+            return page_url
+
+        await emit(f"Saved «{title}», but could not determine its URL.", done=True)
+        return f"Saved «{title}» to the wiki, but the page URL could not be determined."
