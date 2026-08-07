@@ -367,11 +367,11 @@ install_get_sources_tool() {
     TOOL_CODE=$(jq -Rs . < "/etc/get_sources.py")
     DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/get_sources.json)
 
+    CURL_STATUS=0
     CREATE_RESPONSE=$(curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/tools/create" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}")
-    CURL_STATUS=$?
+      --data-raw "${DATA_RAW}") || CURL_STATUS=$?
 
     if [ "$CURL_STATUS" -ne 0 ]; then
         echo "[Custom entrypoint] WARNING: Get Sources Tool install request failed (curl exit code ${CURL_STATUS})" >&2
