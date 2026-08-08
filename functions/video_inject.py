@@ -11,7 +11,7 @@ import logging
 import re
 from html import escape as html_escape
 from html import unescape
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from pydantic import BaseModel
 
@@ -119,9 +119,10 @@ class Filter:
 
         video_id, start_time = _extract_youtube_id(video_url)
         if video_id:
-            watch_url = f"https://www.youtube.com/watch?v={video_id}"
+            query_params = {"v": video_id}
             if start_time:
-                watch_url += f"&t={start_time}"
+                query_params["t"] = start_time
+            watch_url = f"https://www.youtube.com/watch?{urlencode(query_params)}"
             safe_watch_url = html_escape(watch_url, quote=True)
             safe_thumb_url = html_escape(f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg", quote=True)
             # Note: OWUI's markdown renderer only special-cases raw HTML blocks
