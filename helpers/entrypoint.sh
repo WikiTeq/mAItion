@@ -265,6 +265,7 @@ do_first_start() {
 
     install_mediawiki_tool
     install_web_search_tool
+    install_get_sources_tool
     install_video_inject_filter
 
     touch /app/backend/data/.first_start
@@ -355,6 +356,38 @@ install_web_search_tool() {
 
 }
 
+install_get_sources_tool() {
+    if [ "$TOOL_GET_SOURCES_ENABLED" != "True" ]; then
+        return 0
+    fi
+
+    echo ""
+    echo "[Custom entrypoint] Installing Get Sources Tool..."
+
+    TOOL_CODE=$(jq -Rs . < "/etc/get_sources.py")
+    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/get_sources.json)
+
+    CURL_STATUS=0
+    CREATE_RESPONSE=$(curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/tools/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${DATA_RAW}") || CURL_STATUS=$?
+
+    if [ "$CURL_STATUS" -ne 0 ]; then
+        echo "[Custom entrypoint] WARNING: Get Sources Tool install request failed (curl exit code ${CURL_STATUS})" >&2
+        return
+    fi
+
+    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
+    if [ -z "$TOOL_ID" ]; then
+        echo "[Custom entrypoint] WARNING: Get Sources Tool install failed" >&2
+        echo "${CREATE_RESPONSE}" >&2
+        return
+    fi
+
+    echo "[Custom entrypoint] Get Sources Tool created with id: ${TOOL_ID}"
+}
+
 install_video_inject_filter() {
     if [ "$FUNCTION_VIDEO_INJECT_ENABLED" != "True" ]; then
         return
@@ -373,9 +406,9 @@ install_video_inject_filter() {
 
     FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
     if [ -z "$FILTER_ID" ]; then
-        echo "[Custom entrypoint] ERROR: Video Inject Filter install failed" >&2
+        echo "[Custom entrypoint] WARNING: Video Inject Filter install failed" >&2
         echo "${CREATE_RESPONSE}" >&2
-        exit 1
+        return
     fi
 
     echo "[Custom entrypoint] Video Inject Filter created with id: ${FILTER_ID}"
