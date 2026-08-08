@@ -131,6 +131,25 @@ sources:
   #    # use_starttls: false             # optional, default false; STARTTLS instead of implicit TLS
   #    schedules: "${IMAP1_SCHEDULES}"
 
+  #- type: "sharepoint"
+  #  name: "sharepoint1"
+  #  config:
+  #    client_id: "${SHAREPOINT1_CLIENT_ID}"
+  #    client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
+  #    tenant_id: "${SHAREPOINT1_TENANT_ID}"
+  #    # sharepoint_site_id can be provided instead of sharepoint_site_name
+  #    sharepoint_site_name: "MySite"
+  #    # sharepoint_host_name and sharepoint_relative_url are passed through to
+  #    # the reader but do NOT replace sharepoint_site_name / sharepoint_site_id
+  #    # for site lookup. At least one of site_name or site_id is required.
+  #    # sharepoint_host_name: "contoso.sharepoint.com"
+  #    # sharepoint_relative_url: "sites/YourSiteName"
+  #    # sharepoint_folder_id can be provided instead of sharepoint_folder_path
+  #    sharepoint_folder_path: "Documents/Reports"
+  #    sharepoint_type: "file"                   # "file" (default) or "page"
+  #    recursive: true
+  #    schedules: "${SHAREPOINT1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
