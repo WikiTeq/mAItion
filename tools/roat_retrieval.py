@@ -174,7 +174,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
         filename = _get_filename_from_extras(extras)
         source_name = ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
 
-        metadata_fields = {"title": source_name, "id": to_source_id(source_name)}
+        metadata_fields = {"title": source_name}
         metadata_fields.update(
             {k: v for k, v in extras.items() if k not in _internal_fields and k not in ("url", "id") and v is not None}
         )
@@ -216,6 +216,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
         url = ref.get("url") or extras.get("url")
         if url:
             source_obj["source"]["url"] = url
+            source_obj["metadata"][0]["url"] = url
 
         sources.append(source_obj)
 
