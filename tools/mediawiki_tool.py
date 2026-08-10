@@ -14,7 +14,7 @@ import logging
 import re
 from collections.abc import Awaitable, Callable
 from typing import Literal
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 from pydantic import BaseModel, Field
 
@@ -113,40 +113,64 @@ def _validate_title(title: str) -> None:
         )
 
 
-def _build_page_url(title: str, article_path: str, server: str | None, default_scheme: str) -> str | None:
+def _build_page_url(title: str, article_path: str, origin: str | None) -> str | None:
     """Build a canonical, absolute page URL with proper title encoding.
 
-    Uses the 'server' field from siteinfo (e.g. 'https://example.com')
-    combined with 'articlepath' (e.g. '/wiki/$1') to produce the full
-    public-facing page URL. Returns None when server is unavailable —
-    a relative path would resolve against the OpenWebUI origin instead
-    of the wiki's, which is worse than no URL at all.
+    Combines 'origin' (an absolute scheme+host, e.g. 'https://example.com')
+    with 'articlepath' (e.g. '/wiki/$1') to produce the full public-facing
+    page URL. Returns None when origin is unavailable — a relative path
+    would resolve against the OpenWebUI origin instead of the wiki's,
+    which is worse than no URL at all.
 
-    MediaWiki's siteinfo 'server' is often protocol-relative (e.g.
-    '//en.wikipedia.org'), which is only meaningful when embedded in an
-    HTML page — surfaced as plain text here, it's not a usable standalone
-    URL. default_scheme (the configured wiki_url's own scheme) fills that in.
+    MediaWiki titles may legally contain '/' (e.g. subpages). Combined with
+    a root short-URL articlepath ('/$1'), a title starting with '/' would
+    otherwise produce a path like '//Evil', which urljoin() interprets as
+    a network-path reference (resolving against a different host entirely)
+    rather than a path on 'origin'. Collapsing leading slashes keeps the
+    joined path anchored to origin regardless of title/articlepath shape.
     """
-    if not server:
+    if not origin:
         return None
-    if server.startswith("//"):
-        server = f"{default_scheme}:{server}"
     encoded = quote(title.replace(" ", "_"), safe="/:")
     path = article_path.replace("$1", encoded)
-    return f"{server}{path}"
+    path = "/" + path.lstrip("/")
+    return urljoin(origin, path)
 
 
 def _get_site_info(site) -> tuple[str, str | None]:
-    """Fetch articlepath and server URL from MediaWiki siteinfo.
+    """Fetch articlepath and the wiki's public origin from MediaWiki siteinfo.
 
-    Returns (article_path, server). server is the canonical wiki base URL
-    from siteinfo's 'server' field (e.g. 'https://example.com'), or None
-    if the API call fails.
+    Returns (article_path, origin). origin is an absolute scheme+host
+    (e.g. 'https://example.com') derived from siteinfo's 'base' field,
+    which always contains the full absolute public wiki URL including
+    scheme (e.g. 'https://example.com/wiki/Main_Page') — unlike 'server',
+    which is commonly protocol-relative (e.g. '//example.com') and, for
+    tools connecting via a private/in-cluster wiki_url, may not even share
+    the public scheme. Falls back to 'server' (normalizing a protocol-
+    relative value against the parsed 'base' scheme, or dropping it if
+    unusable) if 'base' is missing or fails to parse. Returns
+    (article_path, None) if the API call fails or no usable origin exists.
     """
     try:
         result = site.api("query", meta="siteinfo", siprop="general")
         general = result["query"]["general"]
-        return general.get("articlepath", "/wiki/$1"), general.get("server")
+        article_path = general.get("articlepath", "/wiki/$1")
+
+        base = general.get("base", "")
+        parsed_base = urlparse(base) if base else None
+        if parsed_base and parsed_base.scheme and parsed_base.netloc:
+            return article_path, f"{parsed_base.scheme}://{parsed_base.netloc}"
+
+        server = general.get("server", "")
+        if server:
+            if server.startswith("//"):
+                scheme = parsed_base.scheme if parsed_base and parsed_base.scheme else "https"
+                return article_path, f"{scheme}:{server}"
+            parsed_server = urlparse(server)
+            if parsed_server.scheme and parsed_server.netloc:
+                return article_path, f"{parsed_server.scheme}://{parsed_server.netloc}"
+
+        return article_path, None
     except Exception:
         log.warning("Could not fetch siteinfo; falling back to defaults", exc_info=True)
         return "/wiki/$1", None
@@ -330,7 +354,7 @@ class Tools:
             )
 
         await emit("Fetching wiki site info…")
-        article_path, server = await asyncio.to_thread(_get_site_info, site)
+        article_path, origin = await asyncio.to_thread(_get_site_info, site)
 
         await emit(f"Searching for '{query}'...")
 
@@ -439,7 +463,7 @@ class Tools:
             is_fetch_error = content in _fetch_errors
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
-            url = _build_page_url(title, article_path, server, scheme)
+            url = _build_page_url(title, article_path, origin)
             url_line = f"\nURL: {url}" if url else ""
             sections.append(
                 f"=== Result {i}: {title} ===\nSource id:{to_source_id(title)}{url_line}\n\nPage content: {content}\n"
@@ -614,12 +638,12 @@ class Tools:
         # --- Build canonical page URL (blocking — run in thread) ---
         await emit("Fetching page URL…")
 
-        article_path, server = await asyncio.to_thread(_get_site_info, site)
-        page_url = _build_page_url(title, article_path, server, scheme)
+        article_path, origin = await asyncio.to_thread(_get_site_info, site)
+        page_url = _build_page_url(title, article_path, origin)
 
         if page_url:
             await emit(f"Saved: {page_url}", done=True)
             return page_url
 
-        await emit(f"Saved «{title}», but could not determine its URL.", done=True)
-        return f"Saved «{title}» to the wiki, but the page URL could not be determined."
+        await emit(f'Saved "{title}", but could not determine its URL.', done=True)
+        return f'Saved "{title}" to the wiki, but the page URL could not be determined.'
