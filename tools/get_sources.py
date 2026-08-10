@@ -8,6 +8,7 @@ description: Retrieves sources/citations emitted by tools in the current chat tu
 requirements: pydantic>=2.0.0
 """
 
+import hashlib
 import logging
 
 from pydantic import BaseModel, Field
@@ -151,16 +152,15 @@ class Tools:
 
 
 def _normalize_source(source) -> dict | None:
-    """Coerce a raw entry from _wikiteq_sources into a safe-to-use shape.
+    """Validate a raw entry from _wikiteq_sources against the shared source
+    schema, returning it unchanged (shallow-copied) or None if malformed.
 
-    Source dicts come from other tools' emitted data (ultimately from
-    external APIs like ROAT/MediaWiki) and are not guaranteed to match the
-    expected shape. Without this, a malformed entry (source.source not a
-    dict, document[0] not a string) would raise and abort processing of
-    every other, valid source in the same turn. Returns None for entries
-    that can't be salvaged — this includes entries missing the inner
-    "source" dict entirely, since a source item with no source metadata
-    (no name/id/url) is too malformed to be worth surfacing.
+    Every source-emitting tool (web_search, roat_retrieval, mediawiki_tool)
+    is expected to produce the same shape: {"source": {"name", "id", "url"?},
+    "document": [str, ...], "metadata": [...]}. A malformed entry (source.source
+    not a dict, document not a non-empty list of strings) would otherwise raise
+    downstream and abort processing of every other, valid source in the same
+    turn — so it's rejected here instead of being coerced or partially salvaged.
     """
     if not isinstance(source, dict):
         return None
@@ -169,39 +169,52 @@ def _normalize_source(source) -> dict | None:
     if not isinstance(inner, dict):
         return None
 
-    source = dict(source)  # shallow copy; don't mutate the shared turn list
-    source["source"] = inner
+    # name feeds the dedup key directly (see get_sources()); a non-string,
+    # truthy name (e.g. a stray dict/list) would make that key unhashable
+    # and crash the whole turn's dedup pass, not just this one malformed
+    # entry. A missing/empty name is fine — it falls back to "(unnamed)".
+    for name_source in (inner, source):
+        name = name_source.get("name")
+        if name and not isinstance(name, str):
+            return None
 
-    documents = source.get("document", [])
-    if not isinstance(documents, list):
-        documents = [documents] if documents else []
-    documents = [d for d in documents if isinstance(d, str)]
-    source["document"] = documents
+    documents = source.get("document")
+    if not isinstance(documents, list) or not documents or not isinstance(documents[0], str):
+        return None
 
-    return source
+    return dict(source)  # shallow copy; don't mutate the shared turn list
 
 
 def _extract_url(source: dict) -> str:
     """Best-effort URL extraction from a source dict.
 
-    Only trusts fields that are actually URLs in every known emitter shape
-    (roat_retrieval, mediawiki_tool, web_search). metadata[0]["source"] is
-    deliberately excluded: in roat_retrieval it holds the document title,
-    not a URL, so treating it as one would mislabel a title as a link.
+    Tries real URL fields first — top-level "url", then source.url — before
+    falling back to source.id, since source.id is not trustworthy as a URL
+    for every emitter: web_search.py populates it with a real URL, but
+    roat_retrieval.py/mediawiki_tool.py populate it with a to_source_id()
+    slug (e.g. "some-kb-doc"), which is not a URL. Only accept source.id
+    when it actually looks like one, and only once url/source.url are absent.
 
-    source.id is also NOT trusted unconditionally: web_search.py populates
-    it with a real URL, but roat_retrieval.py/mediawiki_tool.py populate it
-    with a to_source_id() slug (e.g. "some-kb-doc"), which is not a URL.
-    Only accept it when it actually looks like one.
+    metadata[0]["source"] is deliberately excluded: in roat_retrieval it
+    holds the document title, not a URL, so treating it as one would
+    mislabel a title as a link.
 
     Assumes source has already passed through _normalize_source (source.source
     is a dict); top-level "url" is not normalized, so it's coerced here.
     """
+    url = source.get("url")
+    if isinstance(url, str) and url:
+        return url
+
+    url = source.get("source", {}).get("url")
+    if isinstance(url, str) and url:
+        return url
+
     source_id = source.get("source", {}).get("id", "")
     if isinstance(source_id, str) and source_id.startswith(("http://", "https://")):
         return source_id
-    url = source.get("url", "") or source.get("source", {}).get("url", "")
-    return url if isinstance(url, str) else ""
+
+    return ""
 
 
 def _content_fingerprint(source: dict) -> str:
@@ -209,10 +222,13 @@ def _content_fingerprint(source: dict) -> str:
 
     Without this, two distinct chunks of the same document (e.g. two
     non-adjacent ROAT KB passages with the same title, no url extra) would
-    dedup-collide on (name, "") and silently drop one from the output. Uses
-    the full document text (not a truncated prefix) so two sources that
-    happen to share a common prefix but diverge later still get distinct
-    keys. Assumes source has already passed through _normalize_source.
+    dedup-collide on (name, "") and silently drop one from the output.
+    Hashes the full document text (not a truncated prefix, and not the raw
+    text itself as the dict key) so two sources that happen to share a
+    common prefix but diverge later still get distinct keys. Assumes source
+    has already passed through _normalize_source.
     """
     documents = source.get("document", [])
-    return documents[0] if documents else ""
+    if not documents:
+        return ""
+    return hashlib.sha256(documents[0].encode("utf-8")).hexdigest()
