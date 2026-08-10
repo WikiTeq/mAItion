@@ -247,15 +247,6 @@ class Tools:
                 " Longer pages are truncated. Range: 1–500,000."
             ),
         )
-        content_format: Literal["wikitext", "html", "markdown"] = Field(
-            default="wikitext",
-            description=(
-                "Output format for page content. 'wikitext' returns raw MediaWiki"
-                " markup (default). 'html' returns parsed HTML via the parse API."
-                " 'markdown' returns parsed HTML converted to Markdown using the"
-                " markdownify library."
-            ),
-        )
 
     def __init__(self):
         self.valves = self.Valves()
