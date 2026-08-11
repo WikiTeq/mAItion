@@ -1,0 +1,9 @@
+{
+  "id": "image_resizer",
+  "name": "Image Resizer",
+  "type": "filter",
+  "meta": {
+    "description": "Downscales oversized images in chat messages before they reach the model."
+  },
+  "content": ""
+}

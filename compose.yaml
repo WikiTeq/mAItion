@@ -24,6 +24,8 @@ services:
       - ./tools/web_search.json:/etc/web_search.json
       - ./functions/video_inject.py:/etc/video_inject.py
       - ./functions/video_inject.json:/etc/video_inject.json
+      - ./functions/image_resizer.py:/etc/image_resizer.py
+      - ./functions/image_resizer.json:/etc/image_resizer.json
       - ./models:/etc/owui-models:ro
       - ./helpers/entrypoint.sh:/custom-entrypoint.sh
       - ./helpers/healthz.py:/etc/healthz.py
