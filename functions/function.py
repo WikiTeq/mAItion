@@ -121,7 +121,9 @@ Please provide a comprehensive answer based on the context above. If the context
         """
         try:
             # Try to parse "Score: X.XX | Text: content" format
-            match = re.match(r"Score:\s*([\d.]+)\s*\|\s*Text:\s*(.*)", raw_text, re.DOTALL)
+            match = re.match(
+                r"Score:\s*([\d.]+)\s*\|\s*Text:\s*(.*)", raw_text, re.DOTALL
+            )
             if match:
                 return {"score": float(match.group(1)), "text": match.group(2).strip()}
             # If format doesn't match, return the whole text
@@ -166,25 +168,36 @@ Please provide a comprehensive answer based on the context above. If the context
             filename = self.get_filename_from_extras(extras)
 
             # Extract source information from different possible locations
-            source_name = ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
+            source_name = (
+                ref.get("title")
+                or ref.get("source_name")
+                or filename
+                or f"Source {i + 1}"
+            )
 
             # Strip internal storage/ingestion fields that are not meaningful to the LLM
             # (e.g. checksums, version numbers, and low-level format hints)
             _internal_fields = {"key", "format", "version", "checksum"}
-            metadata_fields = {k: v for k, v in extras.items() if k not in _internal_fields}
+            metadata_fields = {
+                k: v for k, v in extras.items() if k not in _internal_fields
+            }
 
             # Always surface the canonical URL, preferring the top-level ref URL
             # over the one nested inside extras
             metadata_fields["url"] = ref.get("url") or extras.get("url")
 
             # Render remaining fields as a markdown list; skip any None values
-            metadata_md = "\n".join(f"- *{k}*: {v}" for k, v in metadata_fields.items() if v is not None)
+            metadata_md = "\n".join(
+                f"- *{k}*: {v}" for k, v in metadata_fields.items() if v is not None
+            )
 
             # Prepend metadata before the text so the LLM has source context before reading the content
             metadata_section = f"## Metadata\n\n{metadata_md}" if metadata_md else ""
 
             # Build context part with actual text from raw chunks
-            context_parts.append(f"[Source: {source_name}]\n\n{metadata_section}\n\n{text}\n")
+            context_parts.append(
+                f"[Source: {source_name}]\n\n{metadata_section}\n\n{text}\n"
+            )
 
             source_obj = {
                 "source": {"name": source_name},
@@ -216,8 +229,12 @@ Please provide a comprehensive answer based on the context above. If the context
             return "", []
 
         # Use template to format final context
-        formatted_context = self.valves.context_template.format(context=context, query=query)
-        log.info(f"Formatted context with {len(sources)} sources, length: {len(formatted_context)} chars")
+        formatted_context = self.valves.context_template.format(
+            context=context, query=query
+        )
+        log.info(
+            f"Formatted context with {len(sources)} sources, length: {len(formatted_context)} chars"
+        )
 
         return formatted_context, sources
 
