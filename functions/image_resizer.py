@@ -46,7 +46,9 @@ def resize_images_in_messages(messages, max_dimension=768):
             try:
                 _, encoded = image_data_url.split(",", 1)
                 if len(encoded) > MAX_ENCODED_BYTES:
-                    raise ValueError(f"encoded payload too large ({len(encoded)} bytes)")
+                    raise ValueError(
+                        f"encoded payload too large ({len(encoded)} bytes)"
+                    )
 
                 image_data = base64.b64decode(encoded)
                 image = Image.open(io.BytesIO(image_data))
@@ -77,7 +79,9 @@ def resize_images_in_messages(messages, max_dimension=768):
                     buffered = io.BytesIO()
                     image.save(buffered, format=image_format)
                     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-                    out_mime = Image.MIME.get(image_format, f"image/{image_format.lower()}")
+                    out_mime = Image.MIME.get(
+                        image_format, f"image/{image_format.lower()}"
+                    )
                     new_data_url = f"data:{out_mime};base64,{img_str}"
                     image_url["url"] = new_data_url
             except Exception as e:
