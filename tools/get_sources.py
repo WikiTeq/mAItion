@@ -153,7 +153,7 @@ class Tools:
 
 def _normalize_source(source) -> dict | None:
     """Validate a raw entry from _wikiteq_sources against the shared source
-    schema, returning it unchanged (shallow-copied) or None if malformed.
+    schema, returning it unchanged or None if malformed.
 
     Every source-emitting tool (web_search, roat_retrieval, mediawiki_tool)
     is expected to produce the same shape: {"source": {"name", "id", "url"?},
@@ -182,7 +182,7 @@ def _normalize_source(source) -> dict | None:
     if not isinstance(documents, list) or not documents or not isinstance(documents[0], str):
         return None
 
-    return dict(source)  # shallow copy; don't mutate the shared turn list
+    return source
 
 
 def _extract_url(source: dict) -> str:
