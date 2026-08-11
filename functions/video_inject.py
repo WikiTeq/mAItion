@@ -143,7 +143,12 @@ class Filter:
         else:
             safe_url = html_escape(video_url, quote=True)
             ext = video_url.rsplit(".", 1)[-1].split("?")[0].lower()
-            mime_types = {"mp4": "video/mp4", "webm": "video/webm", "ogg": "video/ogg", "mov": "video/quicktime"}
+            mime_types = {
+                "mp4": "video/mp4",
+                "webm": "video/webm",
+                "ogg": "video/ogg",
+                "mov": "video/quicktime",
+            }
             mime = mime_types.get(ext, "video/mp4")
             video_block = f'<video controls style="max-width:100%">\n<source src="{safe_url}" type="{mime}">\n</video>'
 
