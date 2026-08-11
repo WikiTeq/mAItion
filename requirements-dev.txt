@@ -1,0 +1,12 @@
+# Dev-only tooling, not used at runtime by any service in compose.yaml.
+#
+# black is pinned to match the exact version Open WebUI (OWUI) itself uses
+# to reformat Tool/Function code when a user saves it through the OWUI web
+# editor (backend/open_webui/routers/utils.py -> black.format_str(code,
+# mode=black.Mode())). This repo's OWUI image is currently pinned to 0.6.5
+# in compose.yaml, which pins black==25.1.0 in its own requirements.txt/
+# pyproject.toml. If compose.yaml's OWUI image tag is ever updated, re-check
+# OWUI's pinned black version at that tag and update the pin below to match
+# — otherwise in-repo formatting will silently drift from what OWUI
+# produces on save again.
+black==25.1.0

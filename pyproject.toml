@@ -1,0 +1,9 @@
+[tool.black]
+# This value equals Black's default. It is written here on purpose, to
+# document that this repo tracks Black's stock behavior for parity with
+# OWUI v0.6.5 / Black 25.1.0 (see requirements-dev.txt). OWUI reformats
+# Tool/Function code on save using plain `black.Mode()` with no custom
+# options. Do not add other options here — any option that changes output
+# from plain `black.Mode()` breaks parity with OWUI's save-time formatting
+# and reintroduces the diff-noise problem this config exists to prevent.
+line-length = 88
