@@ -31,7 +31,7 @@ Exactly one discovery mode must be set per source:
 
 ## Authentication
 
-Auth is mutually exclusive — set exactly one of the following:
+Set one of the following. Username/password, API token, and bearer token auth are mutually exclusive with `oauth2`; `cookies` is the exception and may be combined with `oauth2`.
 
 - **Cloud basic** (`username` + `api_token`): email address and API token. Recommended for Confluence Cloud. Generate a token at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens).
 - **Server basic** (`username` + `password`): account username and password. For Confluence Server/Data Center.
