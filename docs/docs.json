@@ -80,7 +80,8 @@
 							"connectors/notion-connector",
 							"connectors/dropbox-connector",
 							"connectors/confluence-connector",
-							"connectors/box-connector"
+							"connectors/box-connector",
+							"connectors/trello-connector"
 						]
 					},
 					{
