@@ -1,0 +1,116 @@
+---
+title: "SharePoint"
+description: "Configure the mAItion SharePoint connector to ingest files and pages from SharePoint into the knowledge base."
+keywords:
+  - mAItion
+  - SharePoint connector
+  - SharePoint ingestion
+  - connectors
+---
+
+Use the SharePoint Connector to ingest files or site pages from [SharePoint](https://www.microsoft.com/microsoft-365/sharepoint/collaboration) into the mAItion knowledge base.
+
+## What It Does
+
+- authenticates to Microsoft Entra ID using client credentials (app registration)
+- fetches files from a SharePoint drive/folder, or pages from a SharePoint site
+- converts content to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Modes
+
+- **File mode** (`sharepoint_type: file`, default): loads files from a drive/folder
+- **Page mode** (`sharepoint_type: page`): loads SharePoint site pages
+
+## Authentication
+
+Authentication uses Microsoft Entra ID client credentials (an Azure app registration) —
+`client_id`, `client_secret`, and `tenant_id`.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `SHAREPOINT1_CLIENT_ID`: Azure app registration client ID
+- `SHAREPOINT1_CLIENT_SECRET`: Azure app registration client secret
+- `SHAREPOINT1_TENANT_ID`: Azure tenant ID
+- `SHAREPOINT1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+### File mode
+
+```yaml
+sources:
+  - type: "sharepoint"
+    name: "sharepoint1"
+    enabled: true  # optional, default: true
+    config:
+      client_id: "${SHAREPOINT1_CLIENT_ID}"
+      client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
+      tenant_id: "${SHAREPOINT1_TENANT_ID}"
+      # sharepoint_site_id can be provided instead of sharepoint_site_name
+      sharepoint_site_name: "MySite"
+      # sharepoint_host_name and sharepoint_relative_url are passed through to
+      # the reader but do NOT replace sharepoint_site_name / sharepoint_site_id
+      # for site lookup. At least one of site_name or site_id is required.
+      # sharepoint_host_name: "contoso.sharepoint.com"
+      # sharepoint_relative_url: "sites/YourSiteName"
+      # sharepoint_folder_id can be provided instead of sharepoint_folder_path
+      sharepoint_folder_path: "Documents/Reports"
+      # drive_name: "Documents"                 # optional, name of the document library / drive
+      sharepoint_type: "file"                   # "file" (default) or "page"
+      recursive: true
+      schedules: "${SHAREPOINT1_SCHEDULES}"
+```
+
+<Note>
+  In file mode, when `sharepoint_folder_path` is set, `sharepoint_site_name` is required (it cannot be resolved from `sharepoint_site_id` alone in that case).
+</Note>
+
+### Page mode
+
+```yaml
+sources:
+  - type: "sharepoint"
+    name: "sharepoint1"
+    config:
+      client_id: "${SHAREPOINT1_CLIENT_ID}"
+      client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
+      tenant_id: "${SHAREPOINT1_TENANT_ID}"
+      sharepoint_site_name: "MySite"
+      sharepoint_type: "page"
+      schedules: "${SHAREPOINT1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+SHAREPOINT1_CLIENT_ID=your-azure-app-client-id
+SHAREPOINT1_CLIENT_SECRET=your-azure-app-client-secret
+SHAREPOINT1_TENANT_ID=your-azure-tenant-id
+SHAREPOINT1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `client_id` | yes | — | Azure app registration client ID |
+| `client_secret` | yes | — | Azure app registration client secret |
+| `tenant_id` | yes | — | Azure tenant ID |
+| `sharepoint_site_name` | one of `sharepoint_site_name` / `sharepoint_site_id` | — | SharePoint site name to resolve. Required (not just `sharepoint_site_id`) when `sharepoint_folder_path` is set in file mode |
+| `sharepoint_site_id` | one of `sharepoint_site_name` / `sharepoint_site_id` | — | SharePoint site ID (alternative to `sharepoint_site_name`) |
+| `sharepoint_host_name` | no | — | Passed through to the reader; does not replace site name/ID lookup |
+| `sharepoint_relative_url` | no | — | Passed through to the reader; does not replace site name/ID lookup |
+| `sharepoint_folder_path` | no (file mode) | — | Folder path to ingest files from; alternative to `sharepoint_folder_id` |
+| `sharepoint_folder_id` | no (file mode) | — | Folder ID to ingest files from; alternative to `sharepoint_folder_path` |
+| `drive_name` | no | — | Name of the document library / drive (file mode) |
+| `sharepoint_type` | no | `file` | `file` to ingest files, or `page` to ingest site pages |
+| `recursive` | no | `true` | Recurse into subfolders in file mode |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple SharePoint Sources
+
+Add more `sources` entries (`sharepoint2`, `sharepoint3`, etc) with separate env vars per source.
