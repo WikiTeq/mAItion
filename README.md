@@ -466,7 +466,7 @@ ONEDRIVE1_SCHEDULES=3600
 ### Confluence Connector
 
 The Confluence connector ingests pages from Atlassian Confluence Cloud or Server/Data Center.
-It supports 5 discovery modes and 3 authentication strategies.
+It supports 5 discovery modes and 5 authentication strategies.
 
 **Discovery modes** (exactly one required):
 
@@ -510,7 +510,7 @@ sources:
 CONFLUENCE1_BASE_URL=https://yoursite.atlassian.net/wiki
 CONFLUENCE1_USERNAME=you@example.com
 CONFLUENCE1_API_TOKEN=your-api-token
-CONFLUENCE1_PASSWORD=your-password  # mutually exclusive with API_TOKEN
+#CONFLUENCE1_PASSWORD=your-password  # mutually exclusive with API_TOKEN
 CONFLUENCE1_SPACE_KEY=ENG
 CONFLUENCE1_PAGE_IDS=123456,789012
 CONFLUENCE1_PAGE_LABEL=meeting-notes
