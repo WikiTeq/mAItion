@@ -41,6 +41,7 @@ interact with your knowledge with ease!
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
 * Slack
+* BookStack
 
 ## 🌐 Extra connectors
 

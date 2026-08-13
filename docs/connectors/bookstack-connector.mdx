@@ -24,9 +24,9 @@ Set these in `.env.rag`:
 - `BOOKSTACK1_BASE_URL`: base URL of your BookStack instance (example: `https://wiki.example.com`)
 - `BOOKSTACK1_TOKEN_ID`: API token ID
 - `BOOKSTACK1_TOKEN_SECRET`: API token secret
-- `BOOKSTACK1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+- `BOOKSTACK1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
 
-Generate an API token from your BookStack user profile page (**Edit Profile → API Tokens**).
+Generate an API token from your BookStack user profile page (**Edit Profile → API Tokens**). The token owner must have the **Access System API** permission, otherwise BookStack rejects API requests.
 
 ## `config.yaml` Example
 
@@ -65,7 +65,7 @@ BOOKSTACK1_SCHEDULES=3600
 | `token_secret` | yes | — | API token secret |
 | `item_types` | no | `pages` | Item types to ingest: any subset of `shelves`, `books`, `chapters`, `pages` |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
-| `request_delay` | no | `0` | Seconds to wait between API requests. Increase to avoid rate-limiting (e.g. `0.1`) |
+| `request_delay` | no | `0` | Seconds to wait after each successfully ingested item. Increase to avoid rate-limiting (e.g. `0.1`) |
 
 ## Multiple BookStack Sources
 
