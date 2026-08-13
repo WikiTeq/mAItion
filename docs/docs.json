@@ -72,7 +72,8 @@
 							"connectors/web-connector",
 							"connectors/directory-connector",
 							"connectors/slack-connector",
-							"connectors/onedrive-connector"
+							"connectors/onedrive-connector",
+							"connectors/confluence-connector"
 						]
 					},
 					{
