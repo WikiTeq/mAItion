@@ -41,6 +41,7 @@ interact with your knowledge with ease!
 * MediaWiki (all versions supported, both private and public wiki)
 * SerpAPI
 * Slack
+* BookStack
 
 ## 🌐 Extra connectors
 
@@ -380,6 +381,37 @@ SLACK1_TOKEN=xoxb-your-bot-token
 SLACK1_CHANNEL_IDS=C1234567890,C0987654321
 SLACK1_CHANNEL_PATTERNS=general,^dev.*
 SLACK1_SCHEDULES=3600
+```
+
+### BookStack Connector
+
+The BookStack connector ingests shelves, books, chapters, and pages from a BookStack instance via the REST API.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "bookstack"
+    name: "bookstack1"
+    config:
+      base_url: "${BOOKSTACK1_BASE_URL}"
+      token_id: "${BOOKSTACK1_TOKEN_ID}"
+      token_secret: "${BOOKSTACK1_TOKEN_SECRET}"
+      item_types:              # optional, default: pages
+        - "shelves"
+        - "books"
+        - "chapters"
+        - "pages"
+      schedules: "${BOOKSTACK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BOOKSTACK1_BASE_URL=https://wiki.example.com
+BOOKSTACK1_TOKEN_ID=your-token-id
+BOOKSTACK1_TOKEN_SECRET=your-token-secret
+BOOKSTACK1_SCHEDULES=3600
 ```
 
 ### IMAP Connector

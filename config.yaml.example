@@ -131,6 +131,20 @@ sources:
   #    # use_starttls: false             # optional, default false; STARTTLS instead of implicit TLS
   #    schedules: "${IMAP1_SCHEDULES}"
 
+  # BookStack connector
+  #- type: "bookstack"
+  #  name: "bookstack1"
+  #  config:
+  #    base_url: "${BOOKSTACK1_BASE_URL}"
+  #    token_id: "${BOOKSTACK1_TOKEN_ID}"
+  #    token_secret: "${BOOKSTACK1_TOKEN_SECRET}"
+  #    item_types:              # optional, default: pages
+  #      - "shelves"
+  #      - "books"
+  #      - "chapters"
+  #      - "pages"
+  #    schedules: "${BOOKSTACK1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local
