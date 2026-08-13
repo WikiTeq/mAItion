@@ -82,7 +82,8 @@
 							"connectors/confluence-connector",
 							"connectors/box-connector",
 							"connectors/outlook-connector",
-							"connectors/gitlab-connector"
+							"connectors/gitlab-connector",
+							"connectors/trello-connector"
 						]
 					},
 					{
