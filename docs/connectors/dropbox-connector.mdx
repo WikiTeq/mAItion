@@ -1,0 +1,72 @@
+---
+title: "Dropbox"
+description: "Configure the mAItion Dropbox connector to ingest files from Dropbox."
+keywords:
+  - mAItion
+  - Dropbox connector
+  - Dropbox ingestion
+  - connectors
+---
+
+Use the Dropbox Connector to ingest files from [Dropbox](https://www.dropbox.com/) into the mAItion knowledge base.
+
+## What It Does
+
+- reads files from specific Dropbox paths, or the entire account root recursively
+- converts file content to Markdown for indexing
+- optionally filters files by extension or by directory name
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `DROPBOX1_ACCESS_TOKEN`: Dropbox access token with `files.content.read` scope. Generate one at [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps)
+- `DROPBOX1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "dropbox"
+    name: "dropbox1"
+    enabled: true  # optional, default: true
+    config:
+      access_token: "${DROPBOX1_ACCESS_TOKEN}"
+      # Paths to ingest (optional). If omitted, ingests everything from root recursively.
+      paths:
+        - "/Documents/Engineering"
+        - "/Shared/Wiki"
+      # Extension filters (mutually exclusive, optional):
+      #include_extensions: "md,docx,pdf"   # only these extensions
+      #exclude_extensions: "png,jpg,gif"   # all except these
+      # Directory name filters (mutually exclusive, optional):
+      #include_directories: "source,docs"  # only these folder names
+      #exclude_directories: "archive,tmp"  # all except these folder names
+      schedules: "${DROPBOX1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+DROPBOX1_ACCESS_TOKEN=sl.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DROPBOX1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `access_token` | yes | — | Dropbox access token with `files.content.read` scope |
+| `paths` | no | entire account root | List of Dropbox paths to ingest recursively. If omitted, ingests everything from root |
+| `include_extensions` | no | — | Only ingest files with these extensions, comma-separated (mutually exclusive with `exclude_extensions`) |
+| `exclude_extensions` | no | — | Skip files with these extensions, comma-separated (mutually exclusive with `include_extensions`) |
+| `include_directories` | no | — | Only ingest files under these folder names, comma-separated (mutually exclusive with `exclude_directories`) |
+| `exclude_directories` | no | — | Skip files under these folder names, comma-separated (mutually exclusive with `include_directories`) |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Seconds to wait between API requests. Increase to avoid rate-limiting (e.g. `0.1`) |
+
+## Multiple Dropbox Sources
+
+Add more `sources` entries (`dropbox2`, `dropbox3`, etc) with separate env vars per source.
