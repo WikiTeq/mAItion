@@ -42,6 +42,7 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
+* SharePoint
 
 ## 🌐 Extra connectors
 
