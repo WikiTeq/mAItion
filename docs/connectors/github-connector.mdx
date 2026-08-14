@@ -1,0 +1,103 @@
+---
+title: "GitHub"
+description: "Configure the mAItion GitHub connector to ingest repository files and issues from a GitHub repository."
+keywords:
+  - mAItion
+  - GitHub connector
+  - GitHub ingestion
+  - connectors
+---
+
+Use the GitHub Connector to ingest repository files and optionally issues from a [GitHub](https://github.com) repository into the mAItion knowledge base.
+
+## What It Does
+
+- fetches files from a GitHub repository at a given branch or commit
+- optionally fetches repository issues, with label filtering
+- converts file and issue content to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Authentication
+
+Two authentication methods are supported (mutually exclusive):
+
+- **Personal Access Token** (`personal_token`): a GitHub PAT with access to the target repository.
+- **GitHub App** (`github_app_id` + `github_app_installation_id` + `github_app_private_key`): all three fields are required together when using GitHub App authentication.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `GITHUB1_PERSONAL_TOKEN`: GitHub Personal Access Token — required unless using GitHub App auth
+- `GITHUB1_APP_ID`, `GITHUB1_APP_INSTALLATION_ID`, `GITHUB1_APP_PRIVATE_KEY`: GitHub App credentials — alternative to `GITHUB1_PERSONAL_TOKEN`, all three required together
+- `GITHUB1_OWNER`: repository owner or organization
+- `GITHUB1_REPO`: repository name
+- `GITHUB1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "github"
+    name: "github1"
+    enabled: true  # optional, default: true
+    config:
+      personal_token: "${GITHUB1_PERSONAL_TOKEN}"
+      # GitHub App auth (mutually exclusive with personal_token):
+      #github_app_id: "${GITHUB1_APP_ID}"
+      #github_app_installation_id: "${GITHUB1_APP_INSTALLATION_ID}"
+      #github_app_private_key: "${GITHUB1_APP_PRIVATE_KEY}"
+      owner: "${GITHUB1_OWNER}"
+      repo: "${GITHUB1_REPO}"
+      branch: "main"                    # optional, default "main" (mutually exclusive with commit_sha)
+      #commit_sha: ""                   # optional (mutually exclusive with branch)
+      include_extensions: "md,py"       # optional, comma-separated (mutually exclusive with exclude_extensions)
+      #exclude_extensions: ""           # optional (mutually exclusive with include_extensions)
+      #include_directories: ""          # optional, comma-separated (mutually exclusive with exclude_directories)
+      #exclude_directories: ""          # optional (mutually exclusive with include_directories)
+      include_issues: false             # optional, default false
+      #include_issues_labels: ""        # optional, comma-separated (mutually exclusive with exclude_issues_labels)
+      #exclude_issues_labels: ""        # optional (mutually exclusive with include_issues_labels)
+      concurrent_requests: 5            # optional, default 5
+      schedules: "${GITHUB1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+GITHUB1_PERSONAL_TOKEN=your-personal-access-token
+# GitHub App auth (alternative to personal token):
+#GITHUB1_APP_ID=
+#GITHUB1_APP_INSTALLATION_ID=
+#GITHUB1_APP_PRIVATE_KEY=
+GITHUB1_OWNER=your-org-or-username
+GITHUB1_REPO=your-repo-name
+GITHUB1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `personal_token` | yes, unless using GitHub App auth | — | GitHub Personal Access Token (mutually exclusive with GitHub App credentials) |
+| `github_app_id` | yes, when using GitHub App auth | — | GitHub App ID (required together with `github_app_installation_id` and `github_app_private_key`) |
+| `github_app_installation_id` | yes, when using GitHub App auth | — | GitHub App installation ID |
+| `github_app_private_key` | yes, when using GitHub App auth | — | GitHub App private key |
+| `owner` | yes | — | Repository owner or organization |
+| `repo` | yes | — | Repository name |
+| `branch` | no | `main` | Branch to ingest from (mutually exclusive with `commit_sha`) |
+| `commit_sha` | no | — | Commit SHA to ingest from (mutually exclusive with `branch`) |
+| `include_extensions` | no | — | Comma-separated file extensions to include, e.g. `md,py` (mutually exclusive with `exclude_extensions`) |
+| `exclude_extensions` | no | — | Comma-separated file extensions to exclude (mutually exclusive with `include_extensions`) |
+| `include_directories` | no | — | Comma-separated directories to include (mutually exclusive with `exclude_directories`) |
+| `exclude_directories` | no | — | Comma-separated directories to exclude (mutually exclusive with `include_directories`) |
+| `include_issues` | no | `false` | Whether to also ingest repository issues |
+| `include_issues_labels` | no | — | Comma-separated issue labels to include (mutually exclusive with `exclude_issues_labels`) |
+| `exclude_issues_labels` | no | — | Comma-separated issue labels to exclude (mutually exclusive with `include_issues_labels`) |
+| `concurrent_requests` | no | `5` | Number of concurrent API requests |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple GitHub Sources
+
+Add more `sources` entries (`github2`, `github3`, etc) with separate env vars per source.
