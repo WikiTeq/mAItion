@@ -1,0 +1,82 @@
+---
+title: "Outlook"
+description: "Configure the mAItion Outlook connector to ingest emails from a Microsoft 365 mailbox into the knowledge base."
+keywords:
+  - mAItion
+  - Outlook connector
+  - Microsoft Graph
+  - connectors
+  - ingestion
+---
+
+Use the Outlook Connector to ingest emails from a Microsoft 365 mailbox via the [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/overview) into the mAItion knowledge base.
+
+## What It Does
+
+- fetches emails from a configurable mail folder in a Microsoft 365 mailbox
+- authenticates directly against Microsoft Entra ID using the OAuth2 client credentials flow (app-only, non-interactive)
+- converts HTML email bodies to Markdown for indexing
+- runs ingestion on configurable schedules
+
+## Authentication
+
+Only the client credentials flow (app-only) is supported. This requires:
+
+- An Azure app registration with the `Mail.Read` **application** permission and admin consent granted.
+- A **Microsoft 365 / Entra ID work or school account** mailbox. Personal Microsoft accounts are not supported — client credentials flow is not available for them.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `OUTLOOK1_CLIENT_ID`: Azure app registration client ID
+- `OUTLOOK1_CLIENT_SECRET`: Azure app registration client secret
+- `OUTLOOK1_TENANT_ID`: Azure tenant / directory ID
+- `OUTLOOK1_USER_EMAIL`: mailbox owner email address (example: `user@company.onmicrosoft.com`)
+- `OUTLOOK1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "outlook"
+    name: "outlook1"
+    enabled: true  # optional, default: true
+    config:
+      client_id: "${OUTLOOK1_CLIENT_ID}"
+      client_secret: "${OUTLOOK1_CLIENT_SECRET}"
+      tenant_id: "${OUTLOOK1_TENANT_ID}"
+      user_email: "${OUTLOOK1_USER_EMAIL}"
+      folder: "Inbox"           # optional, default Inbox; custom display names are resolved automatically
+      num_mails: 100            # optional, default 10
+      html_to_text: true        # optional, default true; set to false to keep raw HTML email bodies
+      schedules: "${OUTLOOK1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+OUTLOOK1_CLIENT_ID=your-azure-app-client-id
+OUTLOOK1_CLIENT_SECRET=your-azure-app-client-secret
+OUTLOOK1_TENANT_ID=your-azure-tenant-id
+OUTLOOK1_USER_EMAIL=user@company.onmicrosoft.com
+OUTLOOK1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `client_id` | yes | — | Azure app registration client ID |
+| `client_secret` | yes | — | Azure app registration client secret |
+| `tenant_id` | yes | — | Azure tenant / directory ID |
+| `user_email` | yes | — | Mailbox owner email address |
+| `folder` | no | `Inbox` | Mail folder to ingest. Well-known folder names (e.g. `Inbox`, `SentItems`) are used directly; custom display names are resolved automatically |
+| `num_mails` | no | `10` | Maximum number of emails to fetch |
+| `html_to_text` | no | `true` | Convert HTML email bodies to Markdown; set to `false` to keep raw HTML |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Outlook Sources
+
+Add more `sources` entries (`outlook2`, `outlook3`, etc) with separate env vars per source.
