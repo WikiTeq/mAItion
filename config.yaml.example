@@ -134,6 +134,8 @@ sources:
   #- type: "outlook"
   #  name: "outlook1"
   #  config:
+  #    # Mail.Read app permission grants access to every mailbox in the tenant by default;
+  #    # restrict with RBAC for Applications in Exchange Online
   #    client_id: "${OUTLOOK1_CLIENT_ID}"
   #    client_secret: "${OUTLOOK1_CLIENT_SECRET}"
   #    tenant_id: "${OUTLOOK1_TENANT_ID}"

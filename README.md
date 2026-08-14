@@ -428,6 +428,12 @@ Authenticates directly against Microsoft Entra ID using the OAuth2 client creden
 > **Note:** Client credentials authentication (app-only flow) is only supported for
 > **Microsoft 365 / Entra ID work or school accounts**. Personal Microsoft accounts are not supported.
 > Requires an Azure app registration with `Mail.Read` application permission and admin consent.
+>
+> **Warning:** `Mail.Read` application permission grants access to **every mailbox in the
+> tenant** by default — `user_email` only selects which mailbox this connector queries, it does
+> not restrict what the app registration can reach. Scope access to specific mailboxes with
+> [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/graph/auth-limit-mailbox-access)
+> (the successor to the older Application Access Policy mechanism).
 
 ```yaml
 # config.yaml
