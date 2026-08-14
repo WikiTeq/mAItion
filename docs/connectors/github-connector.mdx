@@ -24,15 +24,15 @@ Two authentication methods are supported (mutually exclusive):
 - **Personal Access Token** (`personal_token`): a GitHub PAT with access to the target repository.
 - **GitHub App** (`github_app_id` + `github_app_installation_id` + `github_app_private_key`): all three fields are required together when using GitHub App authentication.
 
-## Required Environment Variables
+## Environment Variables
 
 Set these in `.env.rag`:
 
-- `GITHUB1_PERSONAL_TOKEN`: GitHub Personal Access Token — required unless using GitHub App auth
-- `GITHUB1_APP_ID`, `GITHUB1_APP_INSTALLATION_ID`, `GITHUB1_APP_PRIVATE_KEY`: GitHub App credentials — alternative to `GITHUB1_PERSONAL_TOKEN`, all three required together
-- `GITHUB1_OWNER`: repository owner or organization
-- `GITHUB1_REPO`: repository name
-- `GITHUB1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+- `GITHUB1_OWNER` (required): repository owner or organization
+- `GITHUB1_REPO` (required): repository name
+- `GITHUB1_PERSONAL_TOKEN` (required, unless using GitHub App auth): GitHub Personal Access Token
+- `GITHUB1_APP_ID`, `GITHUB1_APP_INSTALLATION_ID`, `GITHUB1_APP_PRIVATE_KEY` (required together, alternative to `GITHUB1_PERSONAL_TOKEN`): GitHub App credentials
+- `GITHUB1_SCHEDULES` (optional): ingestion interval in seconds (default is `3600`)
 
 ## `config.yaml` Example
 
