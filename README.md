@@ -419,6 +419,49 @@ IMAP1_MAILBOXES=INBOX,Sent
 IMAP1_SCHEDULES=3600
 ```
 
+### Outlook Connector
+
+The Outlook connector ingests emails from a Microsoft 365 mailbox via the Microsoft Graph API.
+Authenticates directly against Microsoft Entra ID using the OAuth2 client credentials flow
+(app-only, non-interactive) and fetches messages via Graph.
+
+> **Note:** Client credentials authentication (app-only flow) is only supported for
+> **Microsoft 365 / Entra ID work or school accounts**. Personal Microsoft accounts are not supported.
+> Requires an Azure app registration with `Mail.Read` application permission and admin consent.
+>
+> **Warning:** `Mail.Read` application permission grants access to **every mailbox in the
+> tenant** by default — `user_email` only selects which mailbox this connector queries, it does
+> not restrict what the app registration can reach. Scope access to specific mailboxes with
+> [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/graph/auth-limit-mailbox-access)
+> (the successor to the older Application Access Policy mechanism).
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "outlook"
+    name: "outlook1"
+    config:
+      client_id: "${OUTLOOK1_CLIENT_ID}"
+      client_secret: "${OUTLOOK1_CLIENT_SECRET}"
+      tenant_id: "${OUTLOOK1_TENANT_ID}"
+      user_email: "${OUTLOOK1_USER_EMAIL}"
+      folder: "Inbox"           # optional, default Inbox; custom display names are resolved automatically
+      num_mails: 100            # optional, default 10
+      html_to_text: true        # optional, default true; set to false to keep raw HTML email bodies
+      schedules: "${OUTLOOK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+OUTLOOK1_CLIENT_ID=your-azure-app-client-id
+OUTLOOK1_CLIENT_SECRET=your-azure-app-client-secret
+OUTLOOK1_TENANT_ID=your-azure-tenant-id
+OUTLOOK1_USER_EMAIL=user@company.onmicrosoft.com
+OUTLOOK1_SCHEDULES=3600
+```
+
 ## Single Sign-On (SSO)
 
 mAItion inherits full SSO support from OpenWebUI. SSO is disabled by default and configured
