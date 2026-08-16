@@ -57,7 +57,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Gmail
 * Google Drive
 * Jira
-* Gitlab
 * Microsoft Teams
 * Microsoft Office 365
 * Trello
@@ -116,7 +115,7 @@ of the `.env` file. The default ones are:
 If you did not change the `ENABLE_OPENAI_API` you will also have LLM provider
 pre-configured with the values you have in the `.env` including the default chat model
 
-Two components handle RAG service communication:
+Three components handle RAG service communication:
 
 - **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
