@@ -81,7 +81,8 @@
 							"connectors/dropbox-connector",
 							"connectors/confluence-connector",
 							"connectors/box-connector",
-							"connectors/outlook-connector"
+							"connectors/outlook-connector",
+							"connectors/gitlab-connector"
 						]
 					},
 					{
