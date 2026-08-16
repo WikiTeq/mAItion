@@ -483,6 +483,7 @@ sources:
       #group_id: 999                        # optional, for group-level issue queries
       ref: "main"                           # optional, branch/tag/commit, default "main"
       #path: "docs"                         # optional, limit to sub-directory
+      #file_path: "README.md"               # optional, single file only
       recursive: true                       # optional, default true
       files_iterator: true                  # optional, use iterator pagination to fetch all files (default true); set to false to limit to 20 files (GitLab API default page size)
       include_issues: false                 # optional, default false
@@ -493,6 +494,15 @@ sources:
       #issues_milestone: "v1.0"            # optional
       #issues_search: "keyword"            # optional
       #issues_get_all: false               # optional, fetch all pages, default false
+      #issues_scope: "created_by_me"       # optional: created_by_me/assigned_to_me/all
+      #issues_type: "issue"                # optional: issue/incident/test_case/task
+      #issues_confidential: false          # optional
+      #issues_non_archived: true           # optional
+      #issues_iids: [1, 2, 3]              # optional, filter by specific issue IDs
+      #issues_created_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+      #issues_created_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
+      #issues_updated_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+      #issues_updated_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
       schedules: "${GITLAB1_SCHEDULES}"
 
   # With issue ingestion and filters:
