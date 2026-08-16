@@ -428,6 +428,9 @@ paths. Recursive subfolder traversal and MIME type filtering are supported.
 
 > **Note:** Only OneDrive for Business is supported. OneDrive Personal accounts are not supported.
 
+The Azure app registration needs the **application** permission `Files.Read.All` with admin consent
+granted. Without it, Graph API calls fail with a 403 error.
+
 ```yaml
 # config.yaml
 
@@ -445,6 +448,7 @@ sources:
       file_paths:                       # optional: comma-separated file paths
       mime_types:                       # optional: comma-separated MIME types to filter
       recursive: true                   # optional, default true
+      max_file_size_mb: 50              # optional, default 50; files larger than this are skipped
       schedules: "${ONEDRIVE1_SCHEDULES}"
 ```
 

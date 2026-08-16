@@ -144,6 +144,7 @@ sources:
   #    file_paths:                       # optional: comma-separated file paths
   #    mime_types:                       # optional: comma-separated MIME types to filter
   #    recursive: true                   # optional, default true
+  #    max_file_size_mb: 50              # optional, default 50; files larger than this are skipped
   #    schedules: "${ONEDRIVE1_SCHEDULES}"
 
 embedding:
