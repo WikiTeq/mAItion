@@ -58,7 +58,7 @@ DROPBOX1_SCHEDULES=3600
 | Field | Required | Default | Description |
 |---|---|---|---|
 | `enabled` | no | `true` | Set to `false` to skip this source entirely |
-| `access_token` | yes | — | Dropbox access token with `files.content.read` scope |
+| `access_token` | yes | — | Dropbox access token with `files.content.read` and `files.metadata.read` scopes |
 | `paths` | no | entire account root | List of Dropbox paths to ingest recursively. If omitted, ingests everything from root |
 | `include_extensions` | no | — | Only ingest files with these extensions, comma-separated (mutually exclusive with `exclude_extensions`) |
 | `exclude_extensions` | no | — | Skip files with these extensions, comma-separated (mutually exclusive with `include_extensions`) |
