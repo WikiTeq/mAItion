@@ -75,7 +75,8 @@
 							"connectors/slack-connector",
 							"connectors/onedrive-connector",
 							"connectors/github-connector",
-							"connectors/imap-connector"
+							"connectors/imap-connector",
+							"connectors/notion-connector"
 						]
 					},
 					{
