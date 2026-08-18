@@ -1,0 +1,92 @@
+---
+title: "OneDrive"
+description: "Configure the mAItion OneDrive connector to ingest files from Microsoft OneDrive for Business."
+keywords:
+  - mAItion
+  - OneDrive connector
+  - Microsoft 365
+  - connectors
+  - ingestion
+---
+
+Use the OneDrive Connector to ingest files from [Microsoft OneDrive for Business](https://www.microsoft.com/en-us/microsoft-365/onedrive/online-cloud-storage) (Microsoft 365) into the mAItion knowledge base.
+
+## What It Does
+
+- discovers files via the Microsoft Graph API by folder ID, folder path, file IDs, file paths, or the whole drive
+- recursively traverses subfolders and follows OneDrive shared/remote items
+- converts downloaded files to Markdown for indexing
+- filters by MIME type and skips files above a configurable size limit
+- runs ingestion on configurable schedules
+
+## Authentication
+
+The connector uses App authentication (client credentials) via `client_id`, `client_secret`, and `tenant_id`. Only OneDrive for Business is supported — OneDrive Personal accounts are not supported.
+
+The Azure app registration needs the **application** permission `Files.Read.All` with admin consent granted. Without it, Graph API calls fail with a 403 error.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `ONEDRIVE1_CLIENT_ID`: Azure app registration client ID
+- `ONEDRIVE1_CLIENT_SECRET`: Azure app registration client secret
+- `ONEDRIVE1_TENANT_ID`: Azure tenant ID
+- `ONEDRIVE1_USER_PRINCIPAL_NAME`: user principal name / email of the OneDrive owner (example: `user@your-org.onmicrosoft.com`)
+- `ONEDRIVE1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "onedrive"
+    name: "onedrive1"
+    enabled: true  # optional, default: true
+    config:
+      client_id: "${ONEDRIVE1_CLIENT_ID}"
+      client_secret: "${ONEDRIVE1_CLIENT_SECRET}"
+      tenant_id: "${ONEDRIVE1_TENANT_ID}"
+      userprincipalname: "${ONEDRIVE1_USER_PRINCIPAL_NAME}"
+      folder_path: "Documents/Reports"  # optional: hardcode directly in config
+      folder_id:                        # optional: OneDrive folder ID
+      file_ids:                         # optional: comma-separated file IDs
+      file_paths:                       # optional: comma-separated file paths
+      mime_types:                       # optional: comma-separated MIME types to filter
+      recursive: true                   # optional, default true
+      max_file_size_mb: 50              # optional, default 50; files larger than this are skipped
+      schedules: "${ONEDRIVE1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+ONEDRIVE1_CLIENT_ID=your-azure-app-client-id
+ONEDRIVE1_CLIENT_SECRET=your-azure-app-client-secret
+ONEDRIVE1_TENANT_ID=your-azure-tenant-id
+ONEDRIVE1_USER_PRINCIPAL_NAME=user@your-org.onmicrosoft.com
+ONEDRIVE1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `client_id` | yes | — | Azure app registration client ID |
+| `client_secret` | yes | — | Azure app registration client secret |
+| `tenant_id` | yes | — | Azure tenant ID |
+| `userprincipalname` | yes | — | User principal name / email of the OneDrive owner |
+| `folder_id` | no | — | OneDrive folder ID to ingest |
+| `folder_path` | no | — | Relative path of the OneDrive folder to ingest |
+| `file_ids` | no | — | Comma-separated OneDrive file IDs to ingest |
+| `file_paths` | no | — | Comma-separated OneDrive file paths to ingest |
+| `mime_types` | no | all | Comma-separated MIME types to filter |
+| `recursive` | no | `true` | Traverse subfolders recursively |
+| `max_file_size_mb` | no | `50` | Skip files larger than this size |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+If none of `folder_id`, `folder_path`, `file_ids`, or `file_paths` are set, all files from the drive root are loaded.
+
+## Multiple OneDrive Sources
+
+Add more `sources` entries (`onedrive2`, `onedrive3`, etc) with separate env vars per source.

@@ -131,6 +131,22 @@ sources:
   #    # use_starttls: false             # optional, default false; STARTTLS instead of implicit TLS
   #    schedules: "${IMAP1_SCHEDULES}"
 
+  #- type: "onedrive"
+  #  name: "onedrive1"
+  #  config:
+  #    client_id: "${ONEDRIVE1_CLIENT_ID}"
+  #    client_secret: "${ONEDRIVE1_CLIENT_SECRET}"
+  #    tenant_id: "${ONEDRIVE1_TENANT_ID}"
+  #    userprincipalname: "${ONEDRIVE1_USER_PRINCIPAL_NAME}"
+  #    folder_path: "Documents/Reports"  # optional: relative folder path
+  #    folder_id:                        # optional: OneDrive folder ID
+  #    file_ids:                         # optional: comma-separated file IDs
+  #    file_paths:                       # optional: comma-separated file paths
+  #    mime_types:                       # optional: comma-separated MIME types to filter
+  #    recursive: true                   # optional, default true
+  #    max_file_size_mb: 50              # optional, default 50; files larger than this are skipped
+  #    schedules: "${ONEDRIVE1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

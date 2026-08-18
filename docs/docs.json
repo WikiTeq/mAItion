@@ -71,7 +71,8 @@
 							"connectors/pipedrive-connector",
 							"connectors/web-connector",
 							"connectors/directory-connector",
-							"connectors/slack-connector"
+							"connectors/slack-connector",
+							"connectors/onedrive-connector"
 						]
 					},
 					{
