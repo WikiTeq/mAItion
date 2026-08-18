@@ -26,7 +26,7 @@ Authentication requires a Notion **internal integration token** (`secret_...` or
 
 An internal integration can only see pages and databases that have been explicitly shared with it in the Notion workspace — sharing is not automatic just because the token exists. For each page or database you want ingested, open it in Notion, use the `•••` menu → **Add connections**, and select your integration. This applies in every mode, including load-all: with no `page_ids`/`database_ids` configured, the connector discovers everything *shared with the integration*, not the entire workspace.
 
-## Required Environment Variables
+## Environment Variables
 
 Set these in `.env.rag`:
 
