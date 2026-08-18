@@ -588,7 +588,7 @@ GITHUB1_SCHEDULES=3600
 ### GitLab Connector
 
 The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
-Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_api` scopes.
+Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_api` scope.
 
 ```yaml
 # config.yaml
