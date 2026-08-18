@@ -21,7 +21,7 @@ Use the Dropbox Connector to ingest files from [Dropbox](https://www.dropbox.com
 
 Set these in `.env.rag`:
 
-- `DROPBOX1_ACCESS_TOKEN`: Dropbox access token with `files.content.read` scope. Generate one at [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps)
+- `DROPBOX1_ACCESS_TOKEN`: Dropbox access token with `files.content.read` and `files.metadata.read` scopes. Generate one at [dropbox.com/developers/apps](https://www.dropbox.com/developers/apps)
 - `DROPBOX1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
 
 ## `config.yaml` Example
