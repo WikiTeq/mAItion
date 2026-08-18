@@ -42,7 +42,7 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
-* Dropbox (repository files and folders with flexible path, extension, and directory filters)
+* Dropbox (files and folders with flexible path, extension, and directory filters)
 
 ## 🌐 Extra connectors
 
@@ -466,7 +466,7 @@ ONEDRIVE1_SCHEDULES=3600
 
 The Dropbox connector ingests files from Dropbox using the official Dropbox Python SDK.
 Supports ingesting from specific paths or the entire account root, with optional extension and directory name filters.
-Requires a [Dropbox access token](https://www.dropbox.com/developers/apps) with `files.content.read` scope.
+Requires a [Dropbox access token](https://www.dropbox.com/developers/apps) with `files.content.read` and `files.metadata.read` scopes.
 
 ```yaml
 # config.yaml
