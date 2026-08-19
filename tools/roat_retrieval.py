@@ -9,6 +9,7 @@ requirements: requests, pyyaml
 """
 
 import asyncio
+import hashlib
 import logging
 import os
 import re
@@ -54,6 +55,28 @@ def _extract_http_error_detail(err: requests.HTTPError) -> str:
         return _truncate(resp.text)
 
 
+def to_source_id(text: str) -> str:
+    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase,
+    with a short digest of the original text appended for uniqueness.
+
+    The digest is always appended, not just when the slug is empty: stripping
+    punctuation means distinct titles like "C++", "C#", and "C" would otherwise
+    all slugify to the same "c" and collide. Titles made up entirely of
+    non-ASCII characters (e.g. "日本語") strip down to an empty slug, in which
+    case the id falls back to the digest alone.
+
+    Duplicated verbatim in mediawiki_tool.py — OWUI loads each tool's source
+    as an independent module (no shared import path between tools), so keep
+    both copies in sync if this changes.
+    """
+    text_with_hyphens = text.replace(" ", "-")
+    slug = re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
+    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
+    if slug:
+        return f"{slug}-{digest}"
+    return f"src-{digest}"
+
+
 def _parse_raw_chunk(raw_text: str) -> dict:
     match = re.match(r"Score:\s*([\d.]+)\s*\|\s*Text:\s*(.*)", raw_text, re.DOTALL)
     if match:
@@ -82,6 +105,23 @@ def _find_video_url(references: list, field: str = "video_url") -> tuple[str | N
         if url and isinstance(url, str) and url.startswith("https://"):
             return url, ref.get("title") or ref.get("source_name") or "Source"
     return None, None
+
+
+def _store_turn_sources(request, sources: list) -> None:
+    """Append sources to __request__.state._wikiteq_sources for get_sources tool.
+
+    Duplicated verbatim in mediawiki_tool.py — see to_source_id() above for why.
+    """
+    if not request or not sources:
+        return
+    try:
+        turn_sources = getattr(request.state, "_wikiteq_sources", None)
+        if turn_sources is None:
+            turn_sources = []
+            request.state._wikiteq_sources = turn_sources
+        turn_sources.extend(sources)
+    except Exception:
+        log.debug("Could not store sources on request state", exc_info=True)
 
 
 def _call_rag_service(
@@ -136,7 +176,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
 
         metadata_fields = {"title": source_name}
         metadata_fields.update(
-            {k: v for k, v in extras.items() if k not in _internal_fields and k != "url" and v is not None}
+            {k: v for k, v in extras.items() if k not in _internal_fields and k not in ("url", "id") and v is not None}
         )
         url = ref.get("url") or extras.get("url")
         if url:
@@ -156,7 +196,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
         )
 
         source_obj = {
-            "source": {"name": source_name},
+            "source": {"name": source_name, "id": to_source_id(source_name)},
             "document": [text[:max_document_preview_chars] if max_document_preview_chars > 0 else text],
             "metadata": [
                 {
@@ -176,6 +216,7 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
         url = ref.get("url") or extras.get("url")
         if url:
             source_obj["source"]["url"] = url
+            source_obj["metadata"][0]["url"] = url
 
         sources.append(source_obj)
 
@@ -217,6 +258,7 @@ class Tools:
         query: str,
         metadata_filters: list[dict] = [],
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+        __request__=None,
     ) -> str:
         """
         Search the organizational knowledge base to answer questions about company
@@ -358,6 +400,7 @@ class Tools:
         if __event_emitter__:
             for src in sources:
                 await __event_emitter__({"type": "source", "data": src})
+        _store_turn_sources(__request__, sources)
 
         await emit(f"Found {len(sources)} relevant source(s).", done=True)
         log.info("Returning context with %d sources (%d chars)", len(sources), len(context))

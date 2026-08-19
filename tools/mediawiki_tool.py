@@ -9,11 +9,12 @@ requirements: mwclient>=0.10.1, pydantic>=2.0.0, markdownify>=0.13.1
 """
 
 import asyncio
+import hashlib
 import logging
 import re
 from collections.abc import Awaitable, Callable
 from typing import Literal
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 from pydantic import BaseModel, Field
 
@@ -35,6 +36,28 @@ def _truncate(text: str, limit: int = MAX_ERROR_DETAIL_CHARS) -> str:
 
 # Characters illegal in MediaWiki page titles: #<>[]|{} plus control chars 0-31 and DEL (127)
 _ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
+
+
+def to_source_id(text: str) -> str:
+    """Slugify a source name into an id: spaces -> hyphens, strip non-alnum/hyphen, lowercase,
+    with a short digest of the original text appended for uniqueness.
+
+    The digest is always appended, not just when the slug is empty: stripping
+    punctuation means distinct titles like "C++", "C#", and "C" would otherwise
+    all slugify to the same "c" and collide. Titles made up entirely of
+    non-ASCII characters (e.g. "日本語") strip down to an empty slug, in which
+    case the id falls back to the digest alone.
+
+    Duplicated verbatim in roat_retrieval.py — OWUI loads each tool's source
+    as an independent module (no shared import path between tools), so keep
+    both copies in sync if this changes.
+    """
+    text_with_hyphens = text.replace(" ", "-")
+    slug = re.sub(r"[^a-zA-Z0-9-]", "", text_with_hyphens).lower()
+    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
+    if slug:
+        return f"{slug}-{digest}"
+    return f"src-{digest}"
 
 
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
@@ -90,20 +113,75 @@ def _validate_title(title: str) -> None:
         )
 
 
-def _build_page_url(scheme: str, host: str, article_path: str, title: str) -> str:
-    """Build a canonical page URL with proper title encoding."""
-    # MediaWiki uses underscores and percent-encoding in URLs
+def _build_page_url(title: str, article_path: str, origin: str | None) -> str | None:
+    """Build a canonical, absolute page URL with proper title encoding.
+
+    Combines 'origin' (an absolute scheme+host, e.g. 'https://example.com')
+    with 'articlepath' (e.g. '/wiki/$1') to produce the full public-facing
+    page URL. Returns None when origin is unavailable — a relative path
+    would resolve against the OpenWebUI origin instead of the wiki's,
+    which is worse than no URL at all.
+
+    MediaWiki's own naming restrictions reject titles starting with './'
+    or '../' (dot-segments), but a bare leading '/' (e.g. '/Foo') is not
+    banned (see mediawiki.org/wiki/Manual:Page_title, "Naming restrictions").
+    Combined with a root short-URL articlepath ('/$1'), such a title would
+    otherwise produce a path like '//Foo', which urljoin() interprets as a
+    network-path reference (resolving against a different host entirely)
+    rather than a path on 'origin'. Collapsing leading slashes keeps the
+    joined path anchored to origin regardless of title/articlepath shape.
+    """
+    if not origin:
+        return None
     encoded = quote(title.replace(" ", "_"), safe="/:")
-    return f"{scheme}://{host}{article_path.replace('$1', encoded)}"
+    path = article_path.replace("$1", encoded)
+    path = "/" + path.lstrip("/")
+    return urljoin(origin, path)
 
 
-def _get_article_path(site) -> str:
+def _get_site_info(site) -> tuple[str, str | None]:
+    """Fetch articlepath and the wiki's public origin from MediaWiki siteinfo.
+
+    Returns (article_path, origin). origin is an absolute scheme+host
+    (e.g. 'https://example.com') derived from siteinfo's 'base' field,
+    which always contains the full absolute public wiki URL including
+    scheme (e.g. 'https://example.com/wiki/Main_Page') — unlike 'server',
+    which is commonly protocol-relative and, for tools connecting via a
+    private/in-cluster wiki_url, may not even share the public scheme.
+    Returns (article_path, None) if the API call fails or 'base' is
+    missing/unparseable.
+    """
     try:
         result = site.api("query", meta="siteinfo", siprop="general")
-        return result["query"]["general"].get("articlepath", "/wiki/$1")
+        general = result["query"]["general"]
+        article_path = general.get("articlepath", "/wiki/$1")
+
+        base = general.get("base", "")
+        parsed_base = urlparse(base) if base else None
+        if parsed_base and parsed_base.scheme and parsed_base.netloc:
+            return article_path, f"{parsed_base.scheme}://{parsed_base.netloc}"
+
+        return article_path, None
     except Exception:
-        log.warning("Could not fetch articlepath from siteinfo; falling back to /wiki/$1", exc_info=True)
-        return "/wiki/$1"
+        log.warning("Could not fetch siteinfo; falling back to defaults", exc_info=True)
+        return "/wiki/$1", None
+
+
+def _store_turn_sources(request, sources: list) -> None:
+    """Append sources to __request__.state._wikiteq_sources for get_sources tool.
+
+    Duplicated verbatim in roat_retrieval.py — see to_source_id() above for why.
+    """
+    if not request or not sources:
+        return
+    try:
+        turn_sources = getattr(request.state, "_wikiteq_sources", None)
+        if turn_sources is None:
+            turn_sources = []
+            request.state._wikiteq_sources = turn_sources
+        turn_sources.extend(sources)
+    except Exception:
+        log.debug("Could not store sources on request state", exc_info=True)
 
 
 def _connect_site(host: str, path: str, scheme: str, timeout: int, username: str, password: str):
@@ -169,6 +247,7 @@ class Tools:
         query: str,
         content_format: Literal["wikitext", "html", "markdown"] = "wikitext",
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+        __request__=None,
     ) -> str:
         """
         Search the MediaWiki wiki for pages matching a query and return their page content.
@@ -256,8 +335,8 @@ class Tools:
                 f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
             )
 
-        await emit("Fetching wiki article path…")
-        article_path = await asyncio.to_thread(_get_article_path, site)
+        await emit("Fetching wiki site info…")
+        article_path, origin = await asyncio.to_thread(_get_site_info, site)
 
         await emit(f"Searching for '{query}'...")
 
@@ -360,22 +439,35 @@ class Tools:
         cap = self.valves.max_page_chars
         _fetch_errors = {"(Page not found — may have been deleted)", "(Content unavailable)"}
         for i, (title, content) in enumerate(pages, start=1):
+            # Check for a fetch failure before truncating — a low max_page_chars
+            # valve can truncate a sentinel string so it no longer matches
+            # _fetch_errors, which would wrongly treat the failure as real content.
+            is_fetch_error = content in _fetch_errors
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
-            url = _build_page_url(scheme, host, article_path, title)
-            sections.append(f"=== Result {i}: {title} ===\nURL: {url}\n\nPage content: {content}\n")
-            if content not in _fetch_errors:
+            url = _build_page_url(title, article_path, origin)
+            url_line = f"\nURL: {url}" if url else ""
+            sections.append(
+                f"=== Result {i}: {title} ===\nSource id:{to_source_id(title)}{url_line}\n\nPage content: {content}\n"
+            )
+            if not is_fetch_error:
+                source_entry = {"name": title, "id": to_source_id(title)}
+                metadata_entry = {"source": title}
+                if url:
+                    source_entry["url"] = url
+                    metadata_entry["url"] = url
                 sources.append(
                     {
-                        "source": {"name": title, "url": url},
+                        "source": source_entry,
                         "document": [content],
-                        "metadata": [{"source": title, "url": url}],
+                        "metadata": [metadata_entry],
                     }
                 )
 
         if __event_emitter__:
             for src in sources:
                 await __event_emitter__({"type": "source", "data": src})
+        _store_turn_sources(__request__, sources)
 
         await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
         return f"Search results for '{query}' ({len(pages)} page(s)):\n\n" + "\n---\n\n".join(sections)
@@ -528,8 +620,12 @@ class Tools:
         # --- Build canonical page URL (blocking — run in thread) ---
         await emit("Fetching page URL…")
 
-        article_path = await asyncio.to_thread(_get_article_path, site)
-        page_url = _build_page_url(scheme, host, article_path, title)
+        article_path, origin = await asyncio.to_thread(_get_site_info, site)
+        page_url = _build_page_url(title, article_path, origin)
 
-        await emit(f"Saved: {page_url}", done=True)
-        return page_url
+        if page_url:
+            await emit(f"Saved: {page_url}", done=True)
+            return page_url
+
+        await emit(f'Saved "{title}", but could not determine its URL.', done=True)
+        return f'Saved "{title}" to the wiki, but the page URL could not be determined.'
