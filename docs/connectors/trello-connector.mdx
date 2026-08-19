@@ -32,6 +32,7 @@ Set these in `.env.rag`:
 sources:
   - type: "trello"
     name: "trello1"
+    enabled: true  # optional, default: true
     config:
       api_key: "${TRELLO1_API_KEY}"
       api_token: "${TRELLO1_API_TOKEN}"
@@ -54,6 +55,7 @@ TRELLO1_SCHEDULES=3600
 
 | Field | Required | Default | Description |
 |---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `api_key` | yes | — | Trello API key |
 | `api_token` | yes | — | Trello API token |
 | `board_ids` | no | all boards | Comma-separated list of board IDs to restrict ingestion to; omit to ingest all boards accessible to the account |
