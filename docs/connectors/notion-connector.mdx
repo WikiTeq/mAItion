@@ -1,0 +1,75 @@
+---
+title: "Notion"
+description: "Configure the mAItion Notion connector to ingest pages and databases from Notion."
+keywords:
+  - mAItion
+  - Notion connector
+  - Notion ingestion
+  - connectors
+---
+
+Use the Notion Connector to ingest pages and databases from [Notion](https://www.notion.com/) into the mAItion knowledge base.
+
+## What It Does
+
+- fetches Notion pages by ID, or all pages in one or more databases by ID
+- if neither `page_ids` nor `database_ids` are configured, discovers and ingests every page shared with the integration (load-all mode)
+- recursively reads all blocks on a page, including nested/child blocks, and converts the text content for indexing
+- skips trashed and archived pages
+- attaches page title, URL, parent page/database, and creator/last-editor metadata to each indexed page
+- optionally delays between page reads to avoid Notion API rate limits
+- runs ingestion on configurable schedules
+
+## Authentication
+
+Authentication requires a Notion **internal integration token** (`secret_...` or `ntn_...`).
+
+An internal integration can only see pages and databases that have been explicitly shared with it in the Notion workspace — sharing is not automatic just because the token exists. For each page or database you want ingested, open it in Notion, use the `•••` menu → **Add connections**, and select your integration. This applies in every mode, including load-all: with no `page_ids`/`database_ids` configured, the connector discovers everything *shared with the integration*, not the entire workspace.
+
+## Environment Variables
+
+Set these in `.env.rag`:
+
+- `NOTION1_INTEGRATION_TOKEN`: Notion integration token (`secret_...`)
+- `NOTION1_PAGE_IDS`: comma-separated page IDs to ingest (optional; omit for load-all mode)
+- `NOTION1_DATABASE_IDS`: comma-separated database IDs to ingest (optional; omit for load-all mode)
+- `NOTION1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "notion"
+    name: "notion1"
+    enabled: true  # optional, default: true
+    config:
+      integration_token: "${NOTION1_INTEGRATION_TOKEN}"
+      page_ids: "${NOTION1_PAGE_IDS}"            # optional: comma-separated page IDs
+      database_ids: "${NOTION1_DATABASE_IDS}"    # optional: comma-separated database IDs
+      # request_delay: 0.3                       # optional: seconds to sleep between page reads
+      schedules: "${NOTION1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+NOTION1_INTEGRATION_TOKEN=secret_your-notion-integration-token
+NOTION1_PAGE_IDS=page-id-1,page-id-2
+NOTION1_DATABASE_IDS=database-id-1
+NOTION1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `integration_token` | yes | — | Notion internal integration token |
+| `page_ids` | no | — | Comma-separated page IDs to ingest; if omitted along with `database_ids`, all pages shared with the integration are ingested |
+| `database_ids` | no | — | Comma-separated database IDs whose pages should be ingested |
+| `request_delay` | no | `0` | Seconds to sleep between page reads, to avoid Notion API rate limits |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Notion Sources
+
+Add more `sources` entries (`notion2`, `notion3`, etc) with separate env vars per source.
