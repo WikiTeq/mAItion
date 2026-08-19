@@ -42,6 +42,7 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
+* Trello (cards from configured boards or all boards, with optional comment ingestion)
 
 ## 🌐 Extra connectors
 
@@ -486,6 +487,36 @@ For all supported providers (Microsoft/Azure AD, GitHub, generic OIDC, trusted h
 full configuration reference, and common gotchas, see the
 [mAItion SSO docs](https://docs.maition.com/configuration/sso) and the
 [OpenWebUI SSO troubleshooting guide](https://docs.openwebui.com/troubleshooting/sso/).
+
+### Trello Connector
+
+The Trello connector ingests cards from Trello boards using the official `py-trello` SDK.
+Supports ingesting from specific boards or all accessible boards, with optional comment ingestion.
+Requires a [Trello API key and token](https://trello.com/power-ups/admin) with `read` scope.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "trello"
+    name: "trello1"
+    config:
+      api_key: "${TRELLO1_API_KEY}"
+      api_token: "${TRELLO1_API_TOKEN}"
+      #board_ids: "${TRELLO1_BOARD_IDS}"  # optional, comma-separated; omit to ingest all boards
+      load_comments: false                # optional, default false
+      max_comments: 10                    # optional, default 10
+      schedules: "${TRELLO1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+TRELLO1_API_KEY=your-trello-api-key
+TRELLO1_API_TOKEN=your-trello-api-token
+TRELLO1_BOARD_IDS=boardid1,boardid2
+TRELLO1_SCHEDULES=3600
+```
 
 ## Embeddings and Inference
 
