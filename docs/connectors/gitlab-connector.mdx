@@ -39,8 +39,8 @@ sources:
     config:
       gitlab_url: "${GITLAB1_URL}"
       personal_token: "${GITLAB1_TOKEN}"
-      project_id: 12345678              # integer project ID (mutually exclusive with group_id; required unless group_id is set)
-      #group_id: 999                    # optional, for group-level issue queries; mutually exclusive with project_id
+      project_id: 12345678              # integer project ID; required for repository file ingestion
+      #group_id: 999                    # optional; does not select a repository — only used for group-level issue queries when include_issues is true; mutually exclusive with project_id for issue queries
       ref: "main"                       # optional, branch/tag/commit, default "main"
       #path: "docs"                     # optional, limit to sub-directory
       #file_path: "README.md"           # optional, single file only
@@ -81,8 +81,8 @@ GITLAB1_SCHEDULES=3600
 | `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `gitlab_url` | yes | — | Base URL of the GitLab instance |
 | `personal_token` | yes | — | Personal Access Token with `read_api` scope |
-| `project_id` | required unless `group_id` is set | — | Integer project ID to ingest files (and optionally issues) from; mutually exclusive with `group_id` |
-| `group_id` | no | — | Group ID, for group-level issue queries; mutually exclusive with `project_id` |
+| `project_id` | yes | — | Integer project ID to ingest files (and optionally issues) from; required for repository file ingestion |
+| `group_id` | no | — | Group ID; does not select a repository — only used for group-level issue queries when `include_issues` is true; mutually exclusive with `project_id` for issue queries |
 | `ref` | no | `main` | Branch, tag, or commit to read files from |
 | `path` | no | — | Limit file ingestion to a sub-directory |
 | `file_path` | no | — | Limit file ingestion to a single file |

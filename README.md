@@ -114,7 +114,7 @@ of the `.env` file. The default ones are:
 If you did not change the `ENABLE_OPENAI_API` you will also have LLM provider
 pre-configured with the values you have in the `.env` including the default chat model
 
-Three components handle RAG service communication:
+Three components handle RAG service communication and web search integration:
 
 - **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
@@ -478,8 +478,8 @@ sources:
     config:
       gitlab_url: "${GITLAB1_URL}"          # e.g. https://gitlab.com
       personal_token: "${GITLAB1_TOKEN}"
-      project_id: 12345678                  # integer project ID (mutually exclusive with group_id; required unless group_id is set)
-      #group_id: 999                        # optional, for group-level issue queries; mutually exclusive with project_id
+      project_id: 12345678                  # integer project ID; required for repository file ingestion
+      #group_id: 999                        # optional; does not select a repository — only used for group-level issue queries when include_issues is true; mutually exclusive with project_id for issue queries
       ref: "main"                           # optional, branch/tag/commit, default "main"
       #path: "docs"                         # optional, limit to sub-directory
       #file_path: "README.md"               # optional, single file only
