@@ -39,8 +39,8 @@ sources:
     config:
       gitlab_url: "${GITLAB1_URL}"
       personal_token: "${GITLAB1_TOKEN}"
-      project_id: 12345678              # integer project ID (required unless group_id only)
-      #group_id: 999                    # optional, for group-level issue queries
+      project_id: 12345678              # integer project ID (mutually exclusive with group_id; required unless group_id is set)
+      #group_id: 999                    # optional, for group-level issue queries; mutually exclusive with project_id
       ref: "main"                       # optional, branch/tag/commit, default "main"
       #path: "docs"                     # optional, limit to sub-directory
       #file_path: "README.md"           # optional, single file only
@@ -53,7 +53,7 @@ sources:
       #issues_author: "username"        # optional
       #issues_milestone: "v1.0"         # optional
       #issues_search: "keyword"         # optional
-      #issues_get_all: false            # optional, fetch all pages, default false
+      #issues_get_all: true             # optional, fetch all pages, default true; set to false to limit to 20 issues (GitLab API default page size)
       #issues_scope: "created_by_me"    # optional: created_by_me/assigned_to_me/all
       #issues_type: "issue"             # optional: issue/incident/test_case/task
       #issues_confidential: false       # optional
@@ -81,8 +81,8 @@ GITLAB1_SCHEDULES=3600
 | `enabled` | no | `true` | Set to `false` to skip this source entirely |
 | `gitlab_url` | yes | — | Base URL of the GitLab instance |
 | `personal_token` | yes | — | Personal Access Token with `read_api` scope |
-| `project_id` | required unless `group_id` only | — | Integer project ID to ingest files (and optionally issues) from |
-| `group_id` | no | — | Group ID, for group-level issue queries |
+| `project_id` | required unless `group_id` is set | — | Integer project ID to ingest files (and optionally issues) from; mutually exclusive with `group_id` |
+| `group_id` | no | — | Group ID, for group-level issue queries; mutually exclusive with `project_id` |
 | `ref` | no | `main` | Branch, tag, or commit to read files from |
 | `path` | no | — | Limit file ingestion to a sub-directory |
 | `file_path` | no | — | Limit file ingestion to a single file |
@@ -95,7 +95,7 @@ GITLAB1_SCHEDULES=3600
 | `issues_author` | no | — | Filter by author username |
 | `issues_milestone` | no | — | Filter by milestone title |
 | `issues_search` | no | — | Free-text search filter |
-| `issues_get_all` | no | `false` | Fetch all pages of results |
+| `issues_get_all` | no | `true` | Fetch all pages of results; set `false` to limit to 20 issues (GitLab API default page size) |
 | `issues_scope` | no | — | `created_by_me`, `assigned_to_me`, or `all` |
 | `issues_type` | no | — | `issue`, `incident`, `test_case`, or `task` |
 | `issues_confidential` | no | — | Filter by confidential flag |

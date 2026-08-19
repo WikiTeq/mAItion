@@ -478,8 +478,8 @@ sources:
     config:
       gitlab_url: "${GITLAB1_URL}"          # e.g. https://gitlab.com
       personal_token: "${GITLAB1_TOKEN}"
-      project_id: 12345678                  # integer project ID (required unless group_id only)
-      #group_id: 999                        # optional, for group-level issue queries
+      project_id: 12345678                  # integer project ID (mutually exclusive with group_id; required unless group_id is set)
+      #group_id: 999                        # optional, for group-level issue queries; mutually exclusive with project_id
       ref: "main"                           # optional, branch/tag/commit, default "main"
       #path: "docs"                         # optional, limit to sub-directory
       #file_path: "README.md"               # optional, single file only
@@ -492,7 +492,7 @@ sources:
       #issues_author: "username"           # optional
       #issues_milestone: "v1.0"            # optional
       #issues_search: "keyword"            # optional
-      #issues_get_all: false               # optional, fetch all pages, default false
+      #issues_get_all: true                # optional, fetch all pages, default true; set to false to limit to 20 issues (GitLab API default page size)
       #issues_scope: "created_by_me"       # optional: created_by_me/assigned_to_me/all
       #issues_type: "issue"                # optional: issue/incident/test_case/task
       #issues_confidential: false          # optional
