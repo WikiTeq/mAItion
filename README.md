@@ -42,6 +42,7 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
+* GitLab (repository files and issues, supports GitLab.com and self-hosted)
 
 ## 🌐 Extra connectors
 
@@ -52,6 +53,7 @@ Over 100 extra connectors are available at request, including the most popular o
 * Jira
 * GitHub
 * Gitlab
+* Slack
 * Notion
 * Microsoft Teams
 * Microsoft Office 365
@@ -112,7 +114,7 @@ of the `.env` file. The default ones are:
 If you did not change the `ENABLE_OPENAI_API` you will also have LLM provider
 pre-configured with the values you have in the `.env` including the default chat model
 
-Two components handle RAG service communication:
+Three components handle RAG service communication and web search integration:
 
 - **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
@@ -460,6 +462,81 @@ ONEDRIVE1_CLIENT_SECRET=your-azure-app-client-secret
 ONEDRIVE1_TENANT_ID=your-azure-tenant-id
 ONEDRIVE1_USER_PRINCIPAL_NAME=user@your-org.onmicrosoft.com
 ONEDRIVE1_SCHEDULES=3600
+```
+
+### GitLab Connector
+
+The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
+Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_api` scope.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "gitlab"
+    name: "gitlab1"
+    config:
+      gitlab_url: "${GITLAB1_URL}"          # e.g. https://gitlab.com
+      personal_token: "${GITLAB1_TOKEN}"
+      project_id: 12345678                  # integer project ID; required for repository file ingestion
+      #group_id: 999                        # optional; does not select a repository — only used for group-level issue queries when include_issues is true; mutually exclusive with project_id for issue queries
+      ref: "main"                           # optional, branch/tag/commit, default "main"
+      #path: "docs"                         # optional, limit to sub-directory
+      #file_path: "README.md"               # optional, single file only
+      recursive: true                       # optional, default true
+      files_iterator: true                  # optional, use iterator pagination to fetch all files (default true); set to false to limit to 20 files (GitLab API default page size)
+      include_issues: false                 # optional, default false
+      #issues_state: "opened"              # optional: opened/closed/all, default "opened"
+      #issues_labels: "bug,docs"           # optional, comma-separated
+      #issues_assignee: "username"         # optional
+      #issues_author: "username"           # optional
+      #issues_milestone: "v1.0"            # optional
+      #issues_search: "keyword"            # optional
+      #issues_get_all: true                # optional, fetch all pages, default true; set to false to limit to 20 issues (GitLab API default page size)
+      #issues_scope: "created_by_me"       # optional: created_by_me/assigned_to_me/all
+      #issues_type: "issue"                # optional: issue/incident/test_case/task
+      #issues_confidential: false          # optional
+      #issues_non_archived: true           # optional
+      #issues_iids: [1, 2, 3]              # optional, filter by specific issue IDs
+      #issues_created_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+      #issues_created_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
+      #issues_updated_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+      #issues_updated_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
+      schedules: "${GITLAB1_SCHEDULES}"
+
+  # With issue ingestion and filters:
+  #- type: "gitlab"
+  #  name: "gitlab2"
+  #  config:
+  #    gitlab_url: "${GITLAB2_URL}"
+  #    personal_token: "${GITLAB2_TOKEN}"
+  #    project_id: 87654321
+  #    include_issues: true
+  #    issues_state: "opened"            # opened/closed/all, default "opened"
+  #    issues_labels: "bug,feature"      # optional, comma-separated
+  #    issues_assignee: "username"       # optional
+  #    issues_author: "username"         # optional
+  #    issues_milestone: "v2.0"          # optional
+  #    issues_search: "keyword"          # optional
+  #    issues_get_all: true              # optional, fetch all pages, default true; set to false to limit to 20 issues (GitLab API default page size)
+  #    issues_scope: "created_by_me"     # optional: created_by_me/assigned_to_me/all
+  #    issues_type: "issue"              # optional: issue/incident/test_case/task
+  #    issues_confidential: false        # optional
+  #    issues_non_archived: true         # optional
+  #    issues_iids: [1, 2, 3]            # optional, filter by specific issue IIDs; a YAML list or a comma-separated string ("1,2,3") both work
+  #    issues_created_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+  #    issues_created_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
+  #    issues_updated_after: "2024-01-01T00:00:00Z"   # optional, ISO-8601
+  #    issues_updated_before: "2024-12-31T23:59:59Z"  # optional, ISO-8601
+  #    schedules: "${GITLAB2_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+GITLAB1_URL=https://gitlab.com
+GITLAB1_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+GITLAB1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
