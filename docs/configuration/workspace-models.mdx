@@ -57,8 +57,12 @@ Separately from `CREATE_CUSTOM_WORKSPACE_MODEL`, the entrypoint also registers
 model file was selected:
 
 - If a custom model file **is** selected, the default model is created **private**,
-  and the custom model file becomes the public-facing model instead (with its
-  `base_model_id` pointed at the default model — see below).
+  and the custom model file is installed in its place (with its `base_model_id`
+  pointed at the default model — see below). The custom model's own visibility is
+  not set by the entrypoint — it comes from the `access_control` value already in
+  the file. `access_control: null`, as in the bundled `wikiteqcenturion.json`,
+  means OpenWebUI's default visibility rules apply (in practice, public). A file
+  with a restrictive `access_control` object stays restricted.
 - If no custom model file is selected, the default model is created **public**.
 
 Both cases require first-start bootstrap to run, `ENABLE_OPENAI_API=True`, and
