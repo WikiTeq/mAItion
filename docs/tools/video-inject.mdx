@@ -1,0 +1,64 @@
+---
+title: "Video Inject Filter"
+description: "Configure the Video Inject Filter, which appends an inline video player to responses that reference a video."
+keywords:
+  - mAItion
+  - filter
+  - video
+  - YouTube
+  - inline player
+---
+
+The **Video Inject Filter** (`video_inject`) is an Open WebUI **Filter**, not a Workspace Tool. It runs automatically on every response once enabled — the LLM never calls it directly, unlike the Tools documented elsewhere in this section.
+
+## What It Does
+
+The filter scans every message in the conversation, most recent first, for a `<!--VIDEO:https://...-->` marker — regardless of the message's role. Detection runs one check against each message's content after HTML-unescaping it, so a raw marker and an HTML-escaped one (`&lt;!--VIDEO:...--&gt;`) are both caught by that single check. It stops at the first message (in reverse order) that matches.
+
+If no marker is found anywhere, the filter is a true no-op — nothing in the conversation is touched.
+
+### Stripping the marker
+
+Once any marker has been found, the filter strips marker text from **every** message in the conversation, checking three distinct encoded forms — raw, HTML-escaped, and a JSON-escaped `<...>` form that can appear when a marker gets JSON-encoded inside a `<details result="...">` attribute — so the raw marker text never reaches the user, in any message. Note that stripping checks more forms than detection does: the `<...>` form is stripped if present, but is not itself a form that triggers detection.
+
+### Appending the player
+
+If a marker was found, the filter appends a player block to the last assistant message that has plain string `content`. If no such message exists — for example, the assistant's content is a list of parts rather than a string — the filter still strips marker text from the conversation, but appends no player anywhere. This is a distinct outcome from "no marker found," not the same no-op: the marker text still disappears from the conversation even though nothing visible gets added.
+
+The filter tries to extract a valid YouTube video ID from the marker URL first, which decides which of two render paths runs:
+
+**Recognized as YouTube** — the host is `youtu.be` (its own check, not part of a set), or one of `youtube.com` / `www.youtube.com` / `m.youtube.com` / `youtube-nocookie.com` / `www.youtube-nocookie.com` with a `watch`, `shorts`, `embed`, or `live` URL shape. The extracted ID must also be exactly 11 characters (letters, digits, `_`, `-`) to count as valid — an invalid or missing ID falls through to the direct-video path below, even for a `youtube.com`-hosted URL. A `t=` or `start=` query parameter, if present, is copied verbatim into the rendered link's `t=` parameter — it is not normalized or validated, so a value like `1m30s` is passed through unchanged rather than converted to seconds.
+
+Rendered as a clickable thumbnail image plus a separate "▶ Watch on YouTube" link — **not** an inline embed. Two reasons, from the source's own comments:
+
+1. Open WebUI's markdown renderer only special-cases raw HTML blocks containing `<video` for inline rendering. Any other raw HTML — including a plain `<img>` — prints as literal text instead of rendering, which is why the thumbnail uses markdown image syntax rather than raw HTML.
+2. Open WebUI (the pinned version) strips raw `<iframe>` embeds entirely, and an earlier version that wrapped the thumbnail itself in a link caused a confusing double-open — Open WebUI's lightbox loaded the YouTube watch page inside the overlay while a second browser tab also opened. The plain link below the thumbnail is the only clickable way to reach the video.
+
+**Not recognized as YouTube** — any other `https://` marker URL, including one that merely looks like a direct video file. Rendered as an HTML5 `<video controls>` tag. The MIME type is guessed from the URL's file extension (`mp4` → `video/mp4`, `webm` → `video/webm`, `ogg` → `video/ogg`, `mov` → `video/quicktime`; any other extension defaults to `video/mp4`) — this is a guess based only on the URL suffix, not a check of the actual file content.
+
+## Valves
+
+This filter has **no configurable valves.** There is nothing to set.
+
+## Enabling via ENV
+
+Like the Web Search tool, this is a single-gate opt-in — no second required variable. Set in `.env` (from `.env.openwebui.example`):
+
+```bash
+# Video Inject Filter (optional): set FUNCTION_VIDEO_INJECT_ENABLED=True to auto-install the
+# inline video player filter on first boot. Requires video_url metadata in retrieved sources.
+FUNCTION_VIDEO_INJECT_ENABLED=True
+```
+
+**Install timing:** like every other entrypoint-installed piece documented in this section, this only runs during first-start initialization. Setting `FUNCTION_VIDEO_INJECT_ENABLED=True` on an already-running instance does not retroactively install the filter.
+
+**Install mechanics** differ from the `TOOL_*_ENABLED`-style tools documented elsewhere in this section (MediaWiki, Web Search, Get Sources). This filter is created through Open WebUI's **Functions** API (`/api/v1/functions/create`, not `/api/v1/tools/create`), and — because Filters are not automatically active once created, unlike Tools — install sends two further calls after creation: one to enable the filter (`/toggle`), and one to enable it globally (`/toggle/global`). No valve configuration call happens, because there are no valves to set.
+
+### Dependency on a marker producer
+
+This filter does nothing on its own — it only reacts to a `<!--VIDEO:...-->` marker written into a response by another component. In this repository, that producer is [`roat_retrieval`](/tools/roat-retrieval)'s `search_knowledge_base` function. It writes the marker only when:
+
+- `FUNCTION_VIDEO_INJECT_ENABLED` is also `True` (checked independently, in that tool), **and**
+- among the search results, the highest-scored one whose metadata has an `https://` URL under the field named by ROAT's own `video_metadata_field` valve (default field name: `video_url`) — not necessarily the single top-scored result overall, only the top-scored one that actually has a qualifying URL.
+
+One ENV variable name — `FUNCTION_VIDEO_INJECT_ENABLED` — gates both halves of this feature: this filter's own install, and whether the producer ever emits a marker at all. Two separate files check the same variable independently, so both conditions need to hold for a video to actually appear.
