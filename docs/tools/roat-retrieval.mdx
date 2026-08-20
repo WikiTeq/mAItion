@@ -10,7 +10,7 @@ keywords:
   - retrieval
 ---
 
-The **Knowledge Base Search** tool (`roat_retrieval`) is an Open WebUI Workspace Tool. It lets the LLM decide, on its own, when to call the ROAT knowledge base to answer a question — instead of every message going through a filter.
+The **Knowledge Base Search** tool (`roat_retrieval`) is a mAItion Workspace Tool. It lets the LLM decide, on its own, when to call the ROAT knowledge base to answer a question — instead of every message going through a filter.
 
 Use it for questions about internal documents, company processes, or organization-specific topics. Skip it for general knowledge questions (math, programming syntax, public facts) that don't need internal data — the tool's own description tells the model the same thing.
 
@@ -31,7 +31,7 @@ Supported operators:
 
 `IN`/`NIN` and `ANY`/`ALL` are not interchangeable: using `IN`/`NIN` on a list-valued field compares the whole list as one unit and will not match individual list elements. Use `ANY`/`ALL` for list-valued fields instead.
 
-**Response format:** the tool returns one `<document>` block per result, each with YAML frontmatter (built from the source's metadata, plus a `url` field when available) and the matched text. Citations are not embedded inline in this text — each result is also emitted to Open WebUI as a separate `source` event, and stored on the request for the current chat turn. A separate tool (`get_sources`, not covered on this page) can read that same stored data back later in the conversation.
+**Response format:** the tool returns one `<document>` block per result, each with YAML frontmatter (built from the source's metadata, plus a `url` field when available) and the matched text. Citations are not embedded inline in this text — each result is also emitted as a separate `source` event, and stored on the request for the current chat turn. A separate tool (`get_sources`, not covered on this page) can read that same stored data back later in the conversation.
 
 **Requirement:** the selected model must support native function calling for the LLM to call this tool at all.
 
@@ -50,11 +50,15 @@ If the ENV variable `FUNCTION_VIDEO_INJECT_ENABLED=True` is set, and a result's 
 | `max_document_preview_chars` | no | `0` | Maximum characters shown in the document preview of each source citation. `0` means unlimited. |
 | `video_metadata_field` | no | `"video_url"` | Metadata field name to check for a video URL. See [Video playback](#video-playback). |
 
-Valves can be edited after install from **Workspace → Tools** in the Open WebUI admin UI.
+Valves can be edited after install from **Workspace → Tools** in mAItion.
 
 ## Enabling via ENV
 
-Unlike the MediaWiki, Web Search, and Get Sources tools, **Knowledge Base Search has no opt-in flag.** It is always installed, during first-start initialization (the one-time setup that runs the first time the `openwebui` container boots) — there is no `TOOL_ROAT_RETRIEVAL_ENABLED`-style variable to set.
+**Knowledge Base Search has no opt-in flag.** It is always installed — there is no `TOOL_ROAT_RETRIEVAL_ENABLED`-style variable to set.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. On an already-running instance, this tool is already installed; the ENV variables below only affect what it connects to, and changing them takes effect only if you configure the resulting valves manually afterward from the admin UI.
+</Note>
 
 The only thing you configure via ENV is where it connects. In `.env` (from `.env.openwebui.example`):
 
@@ -75,7 +79,7 @@ If you configure `rag_service_url` manually later (for example after changing `R
 
 | Symptom | Cause |
 |---|---|
-| `Error: rag_service_url is not configured in Tool Valves.` | The `rag_service_url` valve is empty. Set it via ENV (see above) or manually from Workspace → Tools. |
+| `Error: rag_service_url is not configured in Tool Valves.` | The `rag_service_url` valve is empty. Set it via ENV (see above) or manually from Workspace → Tools in mAItion. |
 | `Error: the knowledge base rejected this request (<status>). ...` | The ROAT API returned an HTTP error — check the status code and detail in the message, and confirm `rag_service_api_key` is correct. |
 | `Error: could not reach the knowledge base. ...` | The `api` service is unreachable from `rag_service_url` — check the `api` service is up and the URL/network path is correct. |
 | `No relevant information was found in the knowledge base for this query.` | Not an error — the search ran but found nothing. Confirm a connector has indexed data relevant to the query. |
