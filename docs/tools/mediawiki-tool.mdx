@@ -1,0 +1,132 @@
+---
+title: "MediaWiki Search & Write Tool"
+description: "Configure the MediaWiki Search & Write Tool, the Workspace Tool that lets the LLM search and save pages on your MediaWiki wiki."
+keywords:
+  - mAItion
+  - tool
+  - workspace tool
+  - MediaWiki
+  - wiki
+  - search
+  - write
+---
+
+The **MediaWiki Search & Write Tool** (`mediawiki`) is an Open WebUI Workspace Tool. It gives the LLM two on-demand functions: searching your wiki, and creating or updating wiki pages.
+
+Use `search_wiki` when the user asks to look something up on the wiki. Use `save_to_wiki` when the user asks to save, write, or update content on the wiki.
+
+## What It Does
+
+### `search_wiki`
+
+Runs a full-text search (equivalent to Special:Search) and fetches the content of each matching page.
+
+- **`query`** — the search string.
+- **`content_format`** — `wikitext` (raw markup, default), `html` (parsed HTML), or `markdown` (parsed HTML converted to Markdown). Prefer `html` or `markdown` when pages may contain templates, transclusions, or query results, since raw wikitext doesn't show their rendered output.
+
+`max_search_results` caps the number of results (effective range 1–20 — this is a runtime clamp, not a hard validation, so a value outside that range is silently adjusted rather than rejected). `max_page_chars` truncates each page's content. Results are emitted to Open WebUI as `source` citations, the same mechanism `roat_retrieval` uses — a separate tool (`get_sources`, not covered on this page) can read them back later in the conversation.
+
+Distinct outcomes you may see:
+
+- `wiki_url` not configured
+- empty search query
+- invalid `wiki_url` format
+- authentication failed — `username`/`password` were provided but rejected
+- could not connect to the wiki
+- this wiki denies the search request (`readapidenied`/`permissiondenied`) — the acting user (anonymous or logged in) lacks the right to read
+- other wiki API errors (with the error code included)
+- unexpected errors
+- no results found
+- a single result's page content unavailable — returned as `(Page not found — may have been deleted)` or `(Content unavailable)` for that one result, without failing the rest of the search
+
+### `save_to_wiki`
+
+Creates a new page or updates an existing one.
+
+- **`title`** — the page title.
+- **`content`** — the page content, already formatted as MediaWiki markup. **The tool does not convert content for you** — plain text or Markdown passed as `content` is saved as literal wiki markup, not rendered.
+
+Title rules (enforced by the tool):
+
+- Main-namespace pages only — the title must not contain `:`
+- Maximum length: 255 characters
+- Illegal characters: `# < > [ ] | { }` and ASCII control characters (0–31 and 127)
+
+Content size limit: 2,000,000 UTF-8-encoded **bytes**. A page heavy in multi-byte characters can hit this limit at well under 2,000,000 characters — the limit is measured on the encoded byte length, not the character count.
+
+Distinct outcomes you may see:
+
+- `wiki_url` not configured
+- empty title
+- title exceeds 255 characters
+- content exceeds the 2,000,000-byte size limit
+- title contains an illegal character or a `:`
+- invalid `wiki_url` format
+- authentication failed — `username`/`password` were provided but rejected
+- could not connect to the wiki
+- this wiki denies the write request (`writeapidenied`/`permissiondenied`) — the acting user (anonymous or logged in) lacks the right to write
+- page is protected and cannot be edited
+- other wiki API errors (with the error code included)
+- unexpected errors
+- saved successfully, but the page URL could not be determined — still a success, just without a returned link
+
+## Authentication
+
+`username` and `password` are optional. The tool connects **anonymously** when both are empty, and only attempts to log in when both are set. Credentials are not required for every wiki — only wikis that restrict the relevant action reject the request.
+
+Two distinct failure modes can occur, and the tool reports them differently: **authentication** failure (the supplied `username`/`password` are wrong — the tool reports this directly), and **authorization** failure (the acting user, whether anonymous or logged in, lacks permission for that specific action on this wiki — MediaWiki denies the request itself, independent of whether login succeeded).
+
+When credentials are needed, use a [BotPassword](https://www.mediawiki.org/wiki/Manual:Bot_passwords) (Special:BotPasswords on your wiki) rather than a real account password. The expected format is `Username@BotName`.
+
+## Connecting to the Wiki
+
+`wiki_url` must be the full URL to your wiki's `api.php` script (for example `https://wiki.example.com/w/api.php`), starting with `http://` or `https://` and including a resolvable host. The tool can derive a working site path even from a URL that doesn't literally end in `/api.php`, but the supported and documented form is the full `api.php` URL.
+
+## Valves
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `wiki_url` | **yes** | `""` | Full URL to the MediaWiki `api.php` script. Empty by default — the tool returns an error and will not run until this is set. |
+| `username` | no | `""` | MediaWiki username. For production wikis, use a BotPassword in the format `Username@BotName`. |
+| `password` | no | `""` | MediaWiki password or BotPassword token. |
+| `timeout` | no | `30` | Request timeout, in seconds. |
+| `edit_summary` | no | `"Saved via mAItion AI assistant"` | Edit summary recorded in the wiki page history. |
+| `max_search_results` | no | `10` | Maximum number of search results to return. Effective range 1–20 — values outside this range are clamped at runtime, not rejected. |
+| `max_page_chars` | no | `20000` | Maximum characters per page in search results; longer pages are truncated. Valid range 1–500,000, enforced at the schema level. |
+
+Tool id: `mediawiki`. Display name: "MediaWiki Search & Write Tool". Valves can be edited after install from **Workspace → Tools** in the Open WebUI admin UI.
+
+## Enabling via ENV
+
+Unlike the Knowledge Base Search tool, the MediaWiki tool **is opt-in**. It installs only when both of these are true at first-start initialization (the one-time setup that runs the first time the `openwebui` container boots):
+
+```bash
+# MediaWiki Tool (optional): set TOOL_MEDIAWIKI_ENABLED=True to auto-install the
+# MediaWiki Search & Write Tool on first boot. MEDIAWIKI_API_URL is required when enabled.
+TOOL_MEDIAWIKI_ENABLED=True
+MEDIAWIKI_API_URL=https://wiki.example.com/w/api.php
+MEDIAWIKI_USERNAME=
+MEDIAWIKI_PASSWORD=
+```
+
+- `TOOL_MEDIAWIKI_ENABLED=True` is required to attempt install.
+- `MEDIAWIKI_API_URL` must also be non-empty. If it's missing while the flag is `True`, the entrypoint script skips the install and prints a warning to the container logs — it does not fail the boot, so the omission is easy to miss.
+
+At install, only three valves are set from ENV:
+
+- `wiki_url` ← `MEDIAWIKI_API_URL`
+- `username` ← `MEDIAWIKI_USERNAME`
+- `password` ← `MEDIAWIKI_PASSWORD`
+
+`timeout`, `edit_summary`, `max_search_results`, and `max_page_chars` are **not** configurable via ENV. They stay at their defaults above unless changed later from Workspace → Tools.
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| `Error: wiki_url is not configured.` | The `wiki_url` valve is empty. Set it via ENV (see above) or manually from Workspace → Tools. |
+| `Error: authentication failed. ...` | Login failed — check `username`/`password`. If using a BotPassword, confirm the `Username@BotName` format. |
+| `Error: this wiki requires authentication to search.` / `...to write.` | MediaWiki denied the request (`readapidenied`/`writeapidenied`/`permissiondenied`) — the acting user, anonymous or logged in, lacks the right for that action. If anonymous, configure `username` and `password`; if already logged in, the account itself lacks the required right. |
+| `Error: page '<title>' is protected.` | The page can't be edited by this account (save only). |
+| `Error: could not connect to the wiki. ...` | `wiki_url` is unreachable — check the URL and network path. |
+| Title-related errors (empty, too long, illegal character, contains `:`) | The title failed validation before any wiki API call was made (save only). See "Title rules" under [What It Does](#what-it-does) above. |
