@@ -1,0 +1,154 @@
+---
+title: "Workspace Models"
+description: "How mAItion installs a custom workspace model from ./models on first boot, the JSON file format, and how to add your own."
+keywords:
+  - mAItion
+  - workspace model
+  - bootstrap
+  - models
+  - OpenWebUI
+---
+
+mAItion can install one custom OpenWebUI **workspace model** automatically the first
+time the stack boots. This page explains the mechanism, the JSON file format, and how
+to add a model of your own.
+
+## Overview
+
+The `./models` directory is mounted read-only into the `openwebui` container at
+`/etc/owui-models` (see `compose.yaml`). On first boot, the custom entrypoint can take
+one JSON file from that directory and install it as a private workspace model tied to
+your default OpenAI-compatible model.
+
+The repository ships one example: `models/wikiteqcenturion.json`.
+
+## How It Works
+
+The bootstrap logic lives in `helpers/entrypoint.sh` and runs only when both of these
+are true:
+
+- `ENABLE_OPENAI_API=True`
+- `OPENAI_DEFAULT_MODEL` is set to a non-empty model ID
+
+It also runs only on **first start**. The entrypoint tracks this with a
+`/app/backend/data/.first_start` sentinel file, not by checking whether the database is
+empty. In practice: a fresh database with an existing sentinel file does not
+re-trigger the bootstrap, and an existing database without the sentinel file can
+trigger it again.
+
+### Selecting a model file
+
+`CREATE_CUSTOM_WORKSPACE_MODEL` controls which file installs, if any:
+
+- `True` installs the bundled `wikiteqcenturion.json` (kept for backward
+  compatibility).
+- Any other non-empty value is treated as a filename under `models/` — for example
+  `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` installs `models/my-model.json`.
+- `False` or unset installs no custom model.
+
+The entrypoint validates the selected file exists **before** doing anything else —
+including before it signs up the admin user or configures any provider. If the file is
+missing, the container exits immediately with an error and no side effects.
+
+### What happens to the default model
+
+Separately from `CREATE_CUSTOM_WORKSPACE_MODEL`, the entrypoint also registers
+`OPENAI_DEFAULT_MODEL` as a workspace model. Its visibility depends on whether a custom
+model file was selected:
+
+- If a custom model file **is** selected, the default model is created **private**,
+  and the custom model file becomes the public-facing model instead (with its
+  `base_model_id` pointed at the default model — see below).
+- If no custom model file is selected, the default model is created **public**.
+
+Both cases require first-start bootstrap to run, `ENABLE_OPENAI_API=True`, and
+`OPENAI_DEFAULT_MODEL` to be set — this is not unconditional behavior.
+
+### Runtime overrides
+
+A few environment variables modify the installed model before it's created:
+
+- The entrypoint always overwrites the file's `base_model_id` with
+  `OPENAI_DEFAULT_MODEL` at runtime. Whatever value the file itself has for
+  `base_model_id` is ignored.
+- `OWUI_MODEL_PROMPT`, if set, fully replaces the file's `params.system` prompt.
+- `OWUI_MODEL_PROMPT_APPEND`, if set, appends to the system prompt (bundled or
+  already replaced by `OWUI_MODEL_PROMPT`), separated by a blank line.
+- `TOOL_MEDIAWIKI_ENABLED=True` adds `"mediawiki"` to the model's `meta.toolIds`
+  list. This only adds the tool ID to the model definition — it does not by itself
+  confirm that the MediaWiki tool installed successfully, which additionally requires
+  `MEDIAWIKI_API_URL` to be set. Check that the tool actually appears under the
+  model in the OpenWebUI workspace.
+
+### A note on reliability
+
+The bootstrap calls the OpenWebUI API with plain `curl -s`, without response-status
+checking. A failed call (bad admin credentials, a transient network error) does not
+necessarily stop the script or produce a visible error. After first boot, confirm the
+model appears as expected in the OpenWebUI workspace rather than assuming a clean log
+means success.
+
+## JSON File Format
+
+A custom model file must be a **JSON array**, with the model definition as the array's
+first item — the entrypoint reads and installs only `.[0]` of the file. A file shaped
+as a bare JSON object instead of an array will not install correctly.
+
+The following table documents the fields present in the bundled
+`models/wikiteqcenturion.json` example:
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `id` | Yes | — | Unique model identifier used internally by OpenWebUI. |
+| `user_id` | No | `""` | Owning user ID. Leave blank; not needed for bootstrap-installed models. |
+| `base_model_id` | No | — | Ignored at install time — the entrypoint always overwrites this with `OPENAI_DEFAULT_MODEL`. |
+| `name` | Yes | — | Display name shown in the OpenWebUI model picker. |
+| `params.function_calling` | No | — | Function-calling mode, e.g. `"native"`. |
+| `params.system` | No | — | System prompt. Replaced by `OWUI_MODEL_PROMPT` or extended by `OWUI_MODEL_PROMPT_APPEND` if set. |
+| `params.reasoning_effort` | No | — | Reasoning effort hint for models that support it, e.g. `"medium"`. |
+| `meta.profile_image_url` | No | — | Avatar image for the model. Can be a data URI (base64-encoded image) or a static path. |
+| `meta.description` | No | `null` | Short description shown in the model picker. |
+| `meta.capabilities.vision` | No | `false` | Whether the model accepts image input. |
+| `meta.capabilities.usage` | No | `false` | Whether token usage is reported to the user. |
+| `meta.capabilities.citations` | No | `true` | Whether source citations are shown. |
+| `meta.suggestion_prompts` | No | `null` | Optional list of starter prompt suggestions. |
+| `meta.tags` | No | `[]` | Optional tag list for the model. |
+| `meta.toolIds` | No | `[]` | Tool IDs attached to the model (e.g. `roat_retrieval`). `TOOL_MEDIAWIKI_ENABLED=True` appends `"mediawiki"` to this list. |
+| `access_control` | No | `null` | OpenWebUI access-control object. `null` means default visibility rules apply. |
+| `is_active` | No | `true` | Whether the model is active/selectable. |
+| `created_at` | No | — | Export timestamp from OpenWebUI. Not meaningful to set by hand. |
+| `updated_at` | No | — | Export timestamp from OpenWebUI. Not meaningful to set by hand. |
+| `user` | No | `{}` | Export metadata about the owning user. Not meaningful to set by hand. |
+
+## Configuration Reference
+
+These environment variables (in `.env`, copied from `.env.openwebui.example`) control
+workspace model bootstrapping. `ENABLE_OPENAI_API` and `OPENAI_DEFAULT_MODEL` are also
+documented in [Environment Variables (Frontend)](/configuration/frontend-env) — they're
+repeated here because both are required for any of the workspace-model behavior on this
+page to run at all.
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `ENABLE_OPENAI_API` | Yes, for this feature | `False` | Must be exactly `True` for workspace model bootstrap to run at all. |
+| `OPENAI_DEFAULT_MODEL` | Yes, for this feature | — | Must be a non-empty model ID. Used as `base_model_id` for any installed custom model. |
+| `CREATE_CUSTOM_WORKSPACE_MODEL` | No | unset | `True` installs the bundled `wikiteqcenturion.json`. A filename installs that file from `models/` instead. `False`/unset installs no custom model. |
+| `OWUI_MODEL_PROMPT` | No | unset | Fully replaces the installed model's system prompt. |
+| `OWUI_MODEL_PROMPT_APPEND` | No | unset | Appends to the installed model's system prompt (bundled or replaced), separated by a blank line. |
+| `TOOL_MEDIAWIKI_ENABLED` | No | `False` | Only the exact value `True` adds `"mediawiki"` to the installed model's `meta.toolIds`. Also requires `MEDIAWIKI_API_URL` for the tool itself to install. |
+
+## Adding a Custom Model
+
+To install your own workspace model instead of the bundled example:
+
+1. Copy an existing file under `models/`, for example `models/wikiteqcenturion.json`,
+   to a new file such as `models/my-model.json`. Keep the JSON array wrapper.
+2. Edit the fields you want to change — typically `id`, `name`, `params.system`, and
+   `meta.toolIds`. Leave `base_model_id` as-is; it gets overwritten at install time
+   regardless of what you put there.
+3. Set `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` in your `.env` file.
+4. Start (or restart, if this is truly the first start) the stack.
+
+This only works on **first start**. If your instance has already bootstrapped, the
+entrypoint's first-start step will not run again — create the model by hand instead,
+using the OpenWebUI workspace UI or its API.

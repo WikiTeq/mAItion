@@ -81,7 +81,8 @@
 							"configuration/config-reference",
 							"configuration/frontend-env",
 							"configuration/backend-env",
-							"configuration/sso"
+							"configuration/sso",
+							"configuration/workspace-models"
 						]
 					}
 				]
