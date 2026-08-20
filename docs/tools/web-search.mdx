@@ -1,0 +1,67 @@
+---
+title: "Web Search Tool"
+description: "Configure the Web Search Tool, the Workspace Tool that lets the LLM search the web using the Tavily search API."
+keywords:
+  - mAItion
+  - tool
+  - workspace tool
+  - web search
+  - Tavily
+---
+
+The **Web Search Tool** (`web_search`) is an Open WebUI Workspace Tool. It gives the LLM one on-demand function — searching the live web — backed by the [Tavily](https://tavily.com) search API.
+
+## What It Does
+
+`web_search(query)` takes a single required search string and returns a formatted block: each result's title, URL, and a content snippet, plus (when available and enabled) Tavily's own synthesized answer to the query.
+
+For each result that has a URL, the tool emits a `source` citation event directly to Open WebUI. **This is different from `roat_retrieval` and `mediawiki_tool`:** this tool does not store results on the request for later retrieval by the `get_sources` tool — it only reaches Open WebUI's citation UI directly, for the current response. If the citation event itself fails to emit, that failure is logged quietly and does not change the returned search text — so citation display in the UI isn't guaranteed on every successful search.
+
+## Valves
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `tavily_api_key` | **yes** | `""` | Tavily API key (starts with `tvly-`). Get one at [tavily.com](https://tavily.com). Empty by default — the tool returns an error and will not run until this is set. |
+| `max_results` | no | `5` | Maximum number of search results per query. Valid range 1–20, enforced at the schema level. Higher values are slower. |
+| `search_depth` | no | `"basic"` | `"basic"` is fast and cheap; `"advanced"` is more thorough and returns richer content. |
+| `include_answer` | no | `true` | Include Tavily's synthesized answer to the query in the output. |
+| `topic` | no | `"general"` | Search content category: `"general"`, `"news"` (recent headlines), or `"finance"` (market data). |
+| `timeout` | no | `30` | HTTP request timeout in seconds. Valid range 1–120 (120 is Tavily's own hard cap), enforced at the schema level. |
+| `max_content_chars` | no | `4000` | Maximum characters of content per result. Valid range 100–50,000, enforced at the schema level. Longer snippets are truncated. |
+
+Every numeric valve above has real schema validation — an out-of-range value is rejected, not silently clamped. Tool id: `web_search`. Display name: "Web Search". Valves can be edited after install from **Workspace → Tools** in the Open WebUI admin UI.
+
+## Enabling via ENV
+
+Like the MediaWiki tool, this tool is opt-in — but with a simpler, single-condition gate. Set in `.env` (from `.env.openwebui.example`):
+
+```bash
+# Web Search Tool (optional): set TOOL_WEB_SEARCH_ENABLED=True to auto-install the
+# Tavily-powered web search Tool on first boot. Set TOOL_WEB_SEARCH_API_KEY to have
+# it auto-configure the tavily_api_key valve, or leave unset and set the valve
+# later from Workspace -> Tools in the UI.
+TOOL_WEB_SEARCH_ENABLED=True
+TOOL_WEB_SEARCH_API_KEY=
+```
+
+- `TOOL_WEB_SEARCH_ENABLED=True` is the only required condition to install. Unlike the MediaWiki tool, no second variable is required to attempt install.
+- `TOOL_WEB_SEARCH_API_KEY` is optional. If set, it configures the `tavily_api_key` valve directly at install. If left unset, the tool still installs — with `tavily_api_key` at its empty default — and the entrypoint script only logs a note that you should set the `tavily_api_key` valve manually from Workspace → Tools. Nothing fails and nothing is skipped.
+- Only `tavily_api_key` is ever set from ENV. The other six valves (`max_results`, `search_depth`, `include_answer`, `topic`, `timeout`, `max_content_chars`) are configured only through the UI, or left at their defaults above.
+
+**Install timing:** this only runs during first-start initialization — a one-time setup gated on a marker file inside the container. Setting `TOOL_WEB_SEARCH_ENABLED=True` on an already-running instance does **not** retroactively install the tool; the variable must be set before the container's first boot, or the tool added manually afterward.
+
+**Not the same as Open WebUI's built-in web search.** `.env.openwebui.example` also has `ENABLE_WEB_SEARCH` and `WEB_SEARCH_ENGINE` nearby — those control Open WebUI's own separate built-in web search feature (disabled by default), unrelated to this Tavily-powered Workspace Tool.
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| `Error: tavily_api_key is not configured.` | The `tavily_api_key` valve is empty. Set it via ENV (see above) or manually from Workspace → Tools. |
+| `Error: search query cannot be empty.` | An empty query string was passed to the tool. |
+| `Error: Tavily API key is invalid. ...` | The configured key was rejected by Tavily. Check `tavily_api_key`. |
+| `Error: Tavily usage limit exceeded ...` | Tavily's rate limit or quota was hit. Try again later, or check your Tavily plan. |
+| `Error: Tavily rejected the request (...)` | Tavily returned a bad-request error — the message includes Tavily's own detail. Check the query and valve values. |
+| `Error: Tavily search timed out after N seconds.` | The request exceeded the `timeout` valve. Consider raising it (up to 120). |
+| `Error: unexpected error during web search. ...` | An unhandled error occurred during the search call. Check server logs. |
+| No output at all, or a raised exception instead of a returned error string | The Tavily client failed to import or construct — this happens before the tool's own error handling starts, so it is not converted into a graceful error message. Check that the `tavily-python` dependency is installed. |
+| `No web results found for '<query>'.` | Not an error — the search ran but Tavily returned nothing. |
