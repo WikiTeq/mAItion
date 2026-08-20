@@ -1,0 +1,71 @@
+---
+title: "Image Resizer Filter"
+description: "Configure the Image Resizer Filter, which downscales oversized images in chat messages before they reach the model."
+keywords:
+  - mAItion
+  - filter
+  - image
+  - resize
+  - downscale
+---
+
+The **Image Resizer Filter** (`image_resizer`) is an Open WebUI **Filter**, not a Workspace Tool. It uses the `inlet` hook: it runs automatically on every **incoming** message, before the model ever sees it. This is the opposite direction from the [Video Inject Filter](/tools/video-inject), which uses `outlet` and runs on the **response**, after the model replies.
+
+## What It Does
+
+The filter scans every message for `content` items whose type is `image_url` and whose `image_url.url` starts with `data:image/` (a case-sensitive substring match — a URL like `data:IMAGE/...` would not match). Everything else — text, non-`data:image/` URLs, malformed `content`/`image_url` structures — is skipped without modification.
+
+### Two safety limits, at two different points
+
+- **Before decoding:** if the base64-encoded payload is longer than 26,214,400 characters (25 × 1024 × 1024 — 25 MiB), the filter rejects it outright, before ever calling `base64.b64decode`. This guards against being forced into a large in-memory decode by an oversized attachment.
+- **After decoding:** once the image is decoded and opened with Pillow, the filter checks its pixel count (width × height). If that exceeds 64,000,000 pixels, the filter rejects it. This guards against a small file that decompresses into a huge pixel grid — a decompression-bomb style input.
+
+### Animated images are left untouched
+
+If Pillow reports the opened image as animated (GIF/APNG/WebP), the filter skips it completely — it does not collapse the animation to a static first frame.
+
+### No cross-turn cache
+
+Open WebUI resends the full message history on every request, so every historical image gets decoded, opened, and measured again each turn — there's no caching. Only the resize-and-re-encode step is skipped for an image that's already at or under `max_dimension`; the decode and inspection work still happens every time.
+
+### Resizing and re-encoding
+
+For a static image whose largest dimension exceeds the `max_dimension` valve, the filter downscales it with Lanczos resampling (preserving aspect ratio) and re-encodes it back into the same `data:` URL in place.
+
+The output format and MIME type come from Pillow's own detection of the decoded bytes, trusted over whatever MIME type the original data URL declared:
+
+1. The image is saved using Pillow's detected format (e.g. `JPEG`, `PNG`).
+2. The new data URL's MIME string is derived from that same detected format via Pillow's `Image.MIME` mapping, falling back to a computed `image/<format lowercased>` string if the format isn't in that mapping.
+
+If Pillow can't open the payload at all, or opens it but reports no identifiable format, the image is treated as corrupted and skipped — both are distinct failure points, caught the same way.
+
+### Error handling boundary
+
+Each image's processing (decode, format detection, resize, either safety limit) is wrapped in its own error handling: any failure there is logged as a warning, and that one image is left unmodified, without failing the whole request or blocking other images from processing. This protection is per-image, not for the outer loop over messages — the filter does not separately verify that every entry in the message list is itself a well-formed structure before working on it.
+
+## Valves
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `max_dimension` | no | `768` | Maximum image dimension, in pixels. Minimum `1`, no upper bound. Images with a larger dimension are downscaled; smaller ones are left as-is. |
+
+The filter also declares an empty `UserValves` class and accepts a `__user__` parameter — both are present in the source but currently unused, with no effect on behavior.
+
+The `max_dimension` valve can be edited after install from the function's settings in the Open WebUI admin UI.
+
+## Enabling via ENV
+
+Single-gate opt-in, like the Video Inject Filter. Set in `.env` (from `.env.openwebui.example`):
+
+```bash
+# Image Resizer Filter (optional): set FUNCTION_IMAGE_RESIZER_ENABLED=True to auto-install
+# the image downscaling filter on first boot. max_dimension (default 768px) is
+# controlled via the filter's Valve in the admin UI, not an env var.
+FUNCTION_IMAGE_RESIZER_ENABLED=True
+```
+
+**Install timing:** like every other entrypoint-installed piece documented in this section, this only runs during first-start initialization. Setting `FUNCTION_IMAGE_RESIZER_ENABLED=True` on an already-running instance does not retroactively install the filter.
+
+**Install mechanics** match the Video Inject Filter exactly: this filter is created through Open WebUI's Functions API (`/api/v1/functions/create`), then enabled (`/toggle`), then enabled globally (`/toggle/global`).
+
+**No valve is configurable via ENV for this filter.** `max_dimension` is UI-only — there is no `FUNCTION_IMAGE_RESIZER_MAX_DIMENSION`-style variable, and the entrypoint makes no valve-configuration call after install, unlike the tools elsewhere in this section that have at least one ENV-wired valve.

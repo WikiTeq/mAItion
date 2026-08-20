@@ -76,6 +76,12 @@
 						]
 					},
 					{
+						"group": "Tools",
+						"pages": [
+							"tools/image-resizer"
+						]
+					},
+					{
 						"group": "Configuration",
 						"pages": [
 							"configuration/config-reference",
