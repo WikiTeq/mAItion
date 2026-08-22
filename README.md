@@ -159,7 +159,6 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
 
 - **Certificate not issued** — check that ports 80 and 443 are reachable from the public internet and your DNS record is pointing to this server. Run `docker compose logs caddy` to see the ACME challenge output.
 - **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it, or set `CADDY_HTTP_PORT`/`CADDY_HTTPS_PORT` in `.env` to publish Caddy on different host ports — note that LetsEncrypt's HTTP-01 challenge and normal HTTPS access require the public internet to reach ports 80/443, so this only works if you also forward those public ports to your chosen ones, or you're not relying on public TLS (e.g. local testing).
-- **Testing before going live** — avoid LetsEncrypt rate limits by temporarily setting `acme_ca` to the staging endpoint in the Caddyfile global block, then switch to production for your final deployment.
 
 ### Certificate persistence
 
