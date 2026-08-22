@@ -45,7 +45,11 @@ def _extract_youtube_id(video_url: str) -> tuple[str | None, str | None]:
         video_id = parsed.path.lstrip("/").split("/")[0]
     elif host in YOUTUBE_HOSTS:
         path_parts = [p for p in parsed.path.split("/") if p]
-        if path_parts and path_parts[0] in ("shorts", "embed", "live") and len(path_parts) > 1:
+        if (
+            path_parts
+            and path_parts[0] in ("shorts", "embed", "live")
+            and len(path_parts) > 1
+        ):
             video_id = path_parts[1]
         elif parsed.path in ("/watch", "/"):
             query = parse_qs(parsed.query)
@@ -124,7 +128,9 @@ class Filter:
                 query_params["t"] = start_time
             watch_url = f"https://www.youtube.com/watch?{urlencode(query_params)}"
             safe_watch_url = html_escape(watch_url, quote=True)
-            safe_thumb_url = html_escape(f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg", quote=True)
+            safe_thumb_url = html_escape(
+                f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg", quote=True
+            )
             # Note: OWUI's markdown renderer only special-cases raw HTML blocks
             # containing "<video" — any other raw HTML (e.g. a plain <img>) is
             # printed as literal text, not rendered. Use markdown image/link

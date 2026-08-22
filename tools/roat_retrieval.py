@@ -187,9 +187,11 @@ def _format_context_and_sources(
         metadata_fields = {"title": source_name}
         metadata_fields.update(
             {
-                k: v 
-                for k, v in extras.items() 
-                if k not in _internal_fields and k not in ("url", "id") and v is not None
+                k: v
+                for k, v in extras.items()
+                if k not in _internal_fields
+                and k not in ("url", "id")
+                and v is not None
             }
         )
         url = ref.get("url") or extras.get("url")
@@ -210,7 +212,7 @@ def _format_context_and_sources(
         )
 
         source_obj = {
-            "source": {"name": source_name},
+            "source": {"name": source_name, "id": to_source_id(source_name)},
             "document": [
                 (
                     text[:max_document_preview_chars]
