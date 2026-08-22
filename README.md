@@ -126,7 +126,7 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
 ### Requirements
 
 - A public domain (A/AAAA record pointing to your server)
-- Ports **80** and **443** open and publicly reachable (required for the LetsEncrypt HTTP-01 challenge)
+- Ports **80** and **443** open and publicly reachable (required for the LetsEncrypt HTTP-01 challenge). Set `CADDY_HTTP_PORT` / `CADDY_HTTPS_PORT` in `.env` if you need to publish Caddy on different host ports.
 
 ### Setup
 
@@ -138,26 +138,27 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
    WEBUI_URL=https://maition.example.com
    ```
 
-2. Start the stack with the Caddy overlay — it clears OpenWebUI's host port binding so only Caddy is externally reachable:
+   Setting `DOMAIN` to an `http://` URL (e.g. `DOMAIN=http://localhost`) bypasses TLS termination entirely — Caddy will serve the app on plain HTTP. Use this only for local testing.
 
-   ```bash
-   docker compose -f compose.yaml -f compose.caddy.yaml up -d
-   ```
-
-   Or set the environment variable once so plain `docker compose` picks it up:
+2. Start the stack with the Caddy overlay by setting `COMPOSE_FILE` so plain `docker compose` picks it up automatically:
 
    ```bash
    export COMPOSE_FILE=compose.yaml:compose.caddy.yaml
    docker compose up -d
    ```
 
-   Caddy will automatically obtain and renew a TLS certificate. HTTP requests are redirected to HTTPS automatically.
+   Or pass the overlay explicitly with `-f`:
+
+   ```bash
+   docker compose -f compose.yaml -f compose.caddy.yaml up -d
+   ```
+
+   Either way, the overlay clears OpenWebUI's host port binding so only Caddy is externally reachable. Caddy will automatically obtain and renew a TLS certificate, and HTTP requests are redirected to HTTPS automatically.
 
 ### Troubleshooting
 
 - **Certificate not issued** — check that ports 80 and 443 are reachable from the public internet and your DNS record is pointing to this server. Run `docker compose logs caddy` to see the ACME challenge output.
-- **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it or change Caddy to use different ports.
-- **Behind NAT or Cloudflare proxy** — HTTP-01 challenge may not work. DNS-01 is the alternative; the included Caddy image (`melonsmasher/caddy-cloudflare-cache:2`) already bundles the Cloudflare DNS module. Add `dns cloudflare {$CLOUDFLARE_API_TOKEN}` inside a `tls` block in your `Caddyfile` and set `CLOUDFLARE_API_TOKEN` in `.env`.
+- **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it, or set `CADDY_HTTP_PORT`/`CADDY_HTTPS_PORT` in `.env` to publish Caddy on different host ports — note that LetsEncrypt's HTTP-01 challenge and normal HTTPS access require the public internet to reach ports 80/443, so this only works if you also forward those public ports to your chosen ones, or you're not relying on public TLS (e.g. local testing).
 - **Testing before going live** — avoid LetsEncrypt rate limits by temporarily setting `acme_ca` to the staging endpoint in the Caddyfile global block, then switch to production for your final deployment.
 
 ### Certificate persistence
