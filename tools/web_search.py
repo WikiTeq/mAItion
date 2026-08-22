@@ -22,6 +22,25 @@ MAX_TIMEOUT_SECONDS = 120
 DEFAULT_CONTENT_CAP = 4000
 
 
+def _store_turn_sources(request, sources: list) -> None:
+    """Append sources to __request__.state._wikiteq_sources for get_sources tool.
+
+    Duplicated verbatim in roat_retrieval.py and mediawiki_tool.py — OWUI loads
+    each tool's source as an independent module (no shared import path between
+    tools), so keep all copies in sync if this changes.
+    """
+    if not request or not sources:
+        return
+    try:
+        turn_sources = getattr(request.state, "_wikiteq_sources", None)
+        if turn_sources is None:
+            turn_sources = []
+            request.state._wikiteq_sources = turn_sources
+        turn_sources.extend(sources)
+    except Exception:
+        log.debug("Could not store sources on request state", exc_info=True)
+
+
 class Tools:
     """OpenWebUI tool exposing Tavily web search to chat models."""
 
@@ -74,6 +93,7 @@ class Tools:
         self,
         query: str,
         __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
+        __request__=None,
     ) -> str:
         """
         Search the web for up-to-date information using the Tavily search API.
@@ -203,25 +223,30 @@ class Tools:
             # Emit a source/citation event so OpenWebUI renders the page
             # as a clickable reference under the response. Short name
             # "source" is required for DB persistence (not "citation").
+            # Document passage: use the (possibly pre-truncation) snippet,
+            # capped so the citation stays readable in the UI.
+            doc_passage = content if len(content) <= cap else content[:cap]
+            source_obj = {
+                "source": {"name": title, "id": url},
+                "document": [doc_passage],
+                "metadata": [
+                    {"source": url, "name": title, "url": url}
+                ],
+            }
             if url and __event_emitter__:
-                # Document passage: use the (possibly pre-truncation) snippet,
-                # capped so the citation stays readable in the UI.
-                doc_passage = content if len(content) <= cap else content[:cap]
                 try:
                     await __event_emitter__(
                         {
                             "type": "source",
-                            "data": {
-                                "source": {"name": title, "id": url},
-                                "document": [doc_passage],
-                                "metadata": [
-                                    {"source": url, "name": title, "url": url}
-                                ],
-                            },
+                            "data": source_obj,
                         }
                     )
                 except Exception:
                     log.debug("Failed to emit source event", exc_info=True)
+            # Register the same source on request state so the get_sources
+            # tool can retrieve it for inline citations (same contract as
+            # roat_retrieval.py and mediawiki_tool.py).
+            _store_turn_sources(__request__, [source_obj])
 
             if len(content) > cap:
                 content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
