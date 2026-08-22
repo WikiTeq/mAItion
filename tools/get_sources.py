@@ -59,6 +59,7 @@ class Tools:
         Returns:
             A formatted list of current-turn sources, or a message if none found.
         """
+
         async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
             if __event_emitter__:
                 await __event_emitter__(
@@ -80,9 +81,7 @@ class Tools:
         current_sources = []
         if __request__:
             try:
-                current_sources = getattr(
-                    __request__.state, "_wikiteq_sources", []
-                )
+                current_sources = getattr(__request__.state, "_wikiteq_sources", [])
             except Exception:
                 log.debug("No request state sources found", exc_info=True)
 
@@ -111,16 +110,15 @@ class Tools:
 
         # Apply limit (keep most recent if over cap)
         if len(all_sources) > self.valves.max_sources:
-            all_sources = all_sources[-self.valves.max_sources:]
+            all_sources = all_sources[-self.valves.max_sources :]
 
         # Format output. Sources were already normalized above (source.source
         # is a dict, document[0]/url are strings if present), so no further
         # isinstance guarding is needed here.
         sections = []
         for i, source in enumerate(all_sources, start=1):
-            name = (
-                source.get("source", {}).get("name", "")
-                or source.get("name", "(unnamed)")
+            name = source.get("source", {}).get("name", "") or source.get(
+                "name", "(unnamed)"
             )
             source_id = source.get("source", {}).get("id", "")
             url = _extract_url(source)
@@ -179,7 +177,11 @@ def _normalize_source(source) -> dict | None:
             return None
 
     documents = source.get("document")
-    if not isinstance(documents, list) or not documents or not isinstance(documents[0], str):
+    if (
+        not isinstance(documents, list)
+        or not documents
+        or not isinstance(documents[0], str)
+    ):
         return None
 
     return source
