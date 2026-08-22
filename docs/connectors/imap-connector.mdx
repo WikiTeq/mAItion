@@ -1,0 +1,83 @@
+---
+title: "IMAP"
+description: "Configure the mAItion IMAP connector to ingest emails from any IMAP mail server."
+keywords:
+  - mAItion
+  - IMAP connector
+  - email ingestion
+  - connectors
+---
+
+Use the IMAP Connector to ingest emails from any IMAP-capable mail server (Gmail, Outlook/Exchange,
+Yahoo, self-hosted, etc.) into the mAItion knowledge base.
+
+## What It Does
+
+- connects to an IMAP mailbox over implicit TLS (IMAP4_SSL) or STARTTLS
+- auto-discovers all mailboxes when none are specified, or ingests only the listed mailboxes
+- converts each email into a document with subject as title and parsed body as content
+- extracts sender/recipient metadata (including Cc/Bcc) and handles both plain text and HTML bodies
+- runs ingestion on configurable schedules
+
+## Authentication
+
+Authenticates with a plain username and password against the configured mailbox — most providers
+(e.g. Gmail) require an app-specific password rather than the account password when 2FA is enabled.
+Server certificates are always verified (hostname + trust chain); self-signed certificates are
+rejected unless the server's CA is trusted by the environment running the connector.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `IMAP1_HOST`: IMAP server hostname (example: `imap.gmail.com`)
+- `IMAP1_USERNAME`: IMAP account username
+- `IMAP1_PASSWORD`: IMAP account password or app-specific password
+- `IMAP1_MAILBOXES`: comma-separated list of mailboxes to ingest (optional; omit to ingest all mailboxes)
+- `IMAP1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "imap"
+    name: "imap1"
+    enabled: true  # optional, default: true
+    config:
+      host: "${IMAP1_HOST}"
+      port: 993                       # optional, default 993 (IMAPS), or 143 when use_starttls is set
+      username: "${IMAP1_USERNAME}"
+      password: "${IMAP1_PASSWORD}"   # app-specific password for Gmail
+      mailboxes: "${IMAP1_MAILBOXES}" # optional, comma-separated; remove this line (not just the env var) to ingest all mailboxes
+      since: "2024-01-01"             # optional, only ingest messages on or after this date (YYYY-MM-DD)
+      use_starttls: false             # optional, default false; connect plaintext then upgrade via STARTTLS instead of implicit TLS
+      schedules: "${IMAP1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+IMAP1_HOST=imap.example.com
+IMAP1_USERNAME=user@example.com
+IMAP1_PASSWORD=your-app-password
+IMAP1_MAILBOXES=INBOX,Sent
+IMAP1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `host` | yes | — | IMAP server hostname |
+| `port` | no | `993` (or `143` when `use_starttls` is set) | IMAP server port |
+| `username` | yes | — | IMAP account username |
+| `password` | yes | — | IMAP account password or app-specific password |
+| `mailboxes` | no | all mailboxes | Comma-separated list of mailboxes to ingest |
+| `since` | no | — | Only ingest messages on or after this date (`YYYY-MM-DD`) |
+| `use_starttls` | no | `false` | Connect plaintext then upgrade via STARTTLS instead of implicit TLS |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple IMAP Sources
+
+Add more `sources` entries (`imap2`, `imap3`, etc) with separate env vars per source.
