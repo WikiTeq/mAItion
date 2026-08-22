@@ -4,13 +4,17 @@ Standalone check for the dynamic, valve-dependent docstrings in mediawiki_tool.p
 wiki_url, refreshed whenever valves are (re)assigned, without leaking across
 Tools() instances or breaking OWUI's parameter-schema introspection.
 
-Run inside the api container (which has pydantic/requests/pyyaml installed):
+Run inside the api container (which has pydantic/mwclient installed):
     docker exec -it <api_container> python /app/tools/test_mediawiki_dynamic_doc.py
 
 Or on a bare host, stub the missing third-party deps first since this repo has
 no test framework/dependencies installed outside the Docker image:
-    pip install --user pydantic
+    pip install --user pydantic mwclient
     python3 tools/test_mediawiki_dynamic_doc.py
+
+No network access is required: the one check that calls search_wiki() patches
+out the mwclient connection so it fails fast on a stubbed error instead of
+making a real outbound request.
 """
 
 import asyncio
@@ -129,11 +133,17 @@ def main() -> int:
     check("get_type_hints resolves 'return' as str", hints.get("return") is str)
 
     # --- the wrapped method still forwards calls correctly to the real impl ---
+    # wiki_url IS configured on `t`, so this exercises the real connection path
+    # rather than the "not configured" short-circuit. The actual mwclient
+    # connection is stubbed to fail immediately -- no real network call to
+    # othersite.com and no 30s connection timeout -- while still proving
+    # args/kwargs are forwarded correctly through to _connect_site.
+    def _stub_connect_site(*args, **kwargs):
+        raise RuntimeError("stubbed: no real network connection in this check")
+
+    mod._connect_site = _stub_connect_site
+
     async def run_call():
-        # wiki_url IS configured on `t`, so this exercises the real connection
-        # path rather than the "not configured" short-circuit; expect it to
-        # fail at connection (no real wiki at othersite.com) rather than at
-        # argument handling, proving args/kwargs are forwarded correctly.
         return await t.search_wiki(query="test query")
 
     result = asyncio.run(run_call())
