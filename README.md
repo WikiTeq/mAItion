@@ -570,7 +570,6 @@ You must set `OPENROUTER_API_KEY` and `OPENROUTER_API_BASE` in the `.env.rag` fi
 The `config.yaml` file contains the main configuration of the service.
 
 > Environment variables (`${...}`) in the config file are evaluated at runtime.
-
 ```yaml
 sources: # holds the list of sources to ingest from (Connectors)
 
@@ -610,6 +609,19 @@ vector_store:
 
 * [Rag-Of-All-Trades](https://github.com/wikiteq/rag-of-all-trades) v0.1 as a RAG backend
 * [OpenWebUI](https://github.com/open-webui/open-webui) v0.6.5 as a front-end
+
+## Testing
+
+End-to-end regression tests live in [`tests/e2e`](tests/e2e/README.md). They boot
+the core compose stack (`openwebui` + `postgres` + `redis`) plus an in-network
+OpenAI-compatible LLM stub, exercise real user journeys through the HTTP API
+(login, chat completion, chat persistence), and tear everything down. No API
+keys or external services are needed.
+
+```bash
+make test-e2e            # full run, requires Docker (<5 min; skips with a warning if Docker is unavailable)
+make test-e2e-validate   # fast syntax/wiring pre-flight, no Docker needed
+```
 
 ## Troubleshooting
 

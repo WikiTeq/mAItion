@@ -1,0 +1,40 @@
+services:
+  # Deterministic OpenAI-compatible stub so E2E journeys never touch a real
+  # LLM provider. Wired into openwebui via the e2e override below.
+  llm-stub:
+    image: python:3.12-slim
+    container_name: maition-e2e-llm-stub
+    volumes:
+      # E2E_DIR must be an absolute path to tests/e2e (set by run.sh); relative
+      # mounts here would resolve against --project-directory (the repo root).
+      - ${E2E_DIR:-./tests/e2e}/llm_stub.py:/srv/llm_stub.py:ro
+    command: >
+      sh -c "python /srv/llm_stub.py"
+    environment:
+      - LLM_STUB_PORT=8090
+      - LLM_STUB_MODEL=stub-model
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8090/health')\""]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 2s
+    ports:
+      - "127.0.0.1:${LLM_STUB_HOST_PORT:-8090}:8090"
+
+  openwebui:
+    depends_on:
+      llm-stub:
+        condition: service_healthy
+
+  api:
+    profiles:
+      - rag
+
+  celery_worker:
+    profiles:
+      - rag
+
+  celery_beat:
+    profiles:
+      - rag
