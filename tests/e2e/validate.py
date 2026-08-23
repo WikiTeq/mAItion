@@ -50,13 +50,8 @@ def check_compose_yaml():
     try:
         import yaml
     except ImportError:
-        try:
-            import json
-        except ImportError:
-            print("SKIP yaml module unavailable; skipping compose parse check")
-            return True
-        # fall through to docker-based check in main()
-    import yaml
+        print("SKIP yaml module unavailable; skipping compose parse check")
+        return True
 
     with open(os.path.join(HERE, "compose.e2e.yaml")) as fh:
         doc = yaml.safe_load(fh)

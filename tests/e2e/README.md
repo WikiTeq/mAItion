@@ -13,10 +13,12 @@ and OpenWebUI's HTTP API. No LLM API keys, no S3, no external services.
    provisioning (admin signup, tool install, provider wiring) is covered too.
 3. Waits for health, waits until first-boot provisioning has created both the
    admin and the regular user, then runs user journeys through public endpoints:
-   - **Journey 1** — admin login → provider model list → create chat → LLM
-     completion (served by the stub) → persist and re-read the chat.
+   - **Journey 1** — admin login → model list (`/openai/models`) → create chat
+     → LLM completion (`/openai/chat/completions`, served by the stub) →
+     persist and re-read the chat (`/api/v1/chats`).
    - **Journey 2** — regular-user (non-admin) login.
-   - **Journey 3** — admin config endpoint sanity check.
+   - **Journey 3** — liveness smoke check of the public config endpoint
+     (`/api/config`).
 4. Tears the stack down (volumes included) unless `--keep-up` is passed.
 
 The RAG services (`api`, `celery_worker`, `celery_beat`) are profiled out by
@@ -50,6 +52,7 @@ Environment knobs:
 | --------------------- | ------------- | ---------------------------------------- |
 | `E2E_HTTP_PORT`       | `3100`        | Host port for the OpenWebUI web UI       |
 | `MAITION_E2E_PROJECT` | `maition-e2e` | Docker Compose project name              |
+| `E2E_FORCE_ENV`       | unset         | Overwrite existing `.env`/`.env.rag` with the stub templates (originals are backed up and restored on exit); without it, reuse mode refuses to run unless `OPENAI_API_BASE_URL` points at `llm-stub` |
 
 ## Adding journeys
 

@@ -22,12 +22,51 @@ export E2E_DIR="$SCRIPT_DIR"
 PASS=0
 FAIL=0
 KEEP_UP=0
-PROVISIONED_ENV=0
+# Per-file state: "provisioned" (we created it; delete on teardown unless
+# KEEP_UP) or "backed_up" (we overwrote a pre-existing file; restore original).
+ENV_FILE_STATE_OPENWEBUI=""
+ENV_FILE_STATE_RAG=""
+ENV_BACKUP_DIR=""
 
 restore_env() {
-  if [[ "$PROVISIONED_ENV" == 1 ]]; then
-    rm -f "$REPO_ROOT/.env" "$REPO_ROOT/.env.rag"
+  local f file state_var state
+  for f in OPENWEBUI RAG; do
+    file="$REPO_ROOT/.env"
+    [[ "$f" == "RAG" ]] && file="$REPO_ROOT/.env.rag"
+    state_var="ENV_FILE_STATE_$f"
+    state="${!state_var}"
+    if [[ "$state" == "provisioned" ]]; then
+      if [[ "$KEEP_UP" == 1 ]]; then
+        log "--keep-up set; leaving provisioned $(basename "$file") in place for stack reuse"
+      else
+        rm -f "$file"
+      fi
+    elif [[ "$state" == "backed_up" ]]; then
+      if [[ "$KEEP_UP" == 1 ]]; then
+        log "--keep-up set; $(basename "$file") stays overwritten by the E2E copy; your original is kept at $ENV_BACKUP_DIR/$(basename "$file").bak"
+      elif mv "$ENV_BACKUP_DIR/$(basename "$file").bak" "$file"; then
+        log "Restored pre-existing $(basename "$file") from backup"
+      else
+        log "WARN: could not restore $(basename "$file"); original preserved at $ENV_BACKUP_DIR/$(basename "$file").bak"
+      fi
+    fi
+  done
+}
+
+cleanup() {
+  if [[ "${_CLEANED_UP:-0}" == 1 ]]; then
+    return
   fi
+  _CLEANED_UP=1
+  if [[ "$KEEP_UP" == 1 ]]; then
+    log "--keep-up set; leaving stack running (project: $PROJECT). Tear down with:"
+    log "  docker compose -p $PROJECT -f $REPO_ROOT/compose.yaml -f $REPO_ROOT/compose.dev.yaml -f $SCRIPT_DIR/compose.e2e.yaml down -v --remove-orphans"
+    restore_env
+    return
+  fi
+  log "Tearing down stack..."
+  dc down --remove-orphans --volumes >/dev/null 2>&1 || true
+  restore_env
 }
 
 if [[ "${1:-}" == "--keep-up" ]]; then
@@ -60,11 +99,13 @@ require_docker() {
 
 wait_for() {
   local url="$1" label="$2" tries="${3:-90}"
-  for ((i = 1; i <= tries; i++)); do
+  i=0
+  while [ "$i" -lt "$tries" ]; do
     if curl -fsS --max-time 5 -o /dev/null "$url" 2>/dev/null; then
       return 0
     fi
     sleep 3
+    i=$((i + 1))
   done
   fail "timeout waiting for $label ($url) after $tries attempts"
   return 1
@@ -80,6 +121,29 @@ api() {
 }
 
 jqget() { python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get(sys.argv[1],''))" "$1"; }
+
+check_provider_guard() {
+  # In reuse-existing-.env mode, refuse to run against anything but the stub:
+  # otherwise Journey 1 traffic would hit the dev's real paid LLM provider.
+  local base_url
+  base_url="$(grep -E '^OPENAI_API_BASE_URL=' "$REPO_ROOT/.env" | tail -n 1 | cut -d= -f2- || true)"
+  base_url="${base_url//\"/}"
+  base_url="${base_url%\'}"
+  if [[ -z "$base_url" ]]; then
+    fail "reuse mode: no OPENAI_API_BASE_URL found in $REPO_ROOT/.env"
+    return 1
+  fi
+  case "$base_url" in
+    *llm-stub*)
+      return 0
+      ;;
+    *)
+      fail "refusing to run E2E: OPENAI_API_BASE_URL ($base_url) does not point at llm-stub."
+      fail "Journey traffic would hit your real LLM provider. Re-run with E2E_FORCE_ENV=1 to force the stub env, or point OPENAI_API_BASE_URL at http://llm-stub:8090/v1."
+      return 1
+      ;;
+  esac
+}
 
 # ---------------------------------------------------------------------------
 # journeys
@@ -107,7 +171,7 @@ ids=[m["id"] for m in items if isinstance(m, dict) and "id" in m]
 pref=[i for i in ids if i.startswith("stub-model")]
 print(pref[0] if pref else (ids[0] if ids else ""))')
   if [[ -z "$model_id" ]]; then
-    fail "no usable model in /api/v1/models/: $(printf '%s' "$resp" | head -c 300)"
+    fail "no usable model in /openai/models: $(printf '%s' "$resp" | head -c 300)"
     return 1
   fi
   pass "model list contains stubbed LLM (id: $model_id)"
@@ -178,9 +242,9 @@ journey_admin_config_endpoints() {
 }
 
 run_journeys() {
-  journey_admin_login_and_chat; J1=$?
-  journey_regular_user_login; J2=$?
-  journey_admin_config_endpoints; J3=$?
+  journey_admin_login_and_chat
+  journey_regular_user_login
+  journey_admin_config_endpoints
 }
 
 # ---------------------------------------------------------------------------
@@ -194,39 +258,60 @@ main() {
   # ships only examples (.env.openwebui.example etc.) and compose requires
   # real ones; both are gitignored so this never touches a dev's own setup.
   if [[ ! -f "$REPO_ROOT/.env" || "${E2E_FORCE_ENV:-0}" == "1" ]] ; then
+    if [[ -f "$REPO_ROOT/.env" && "${E2E_FORCE_ENV:-0}" == "1" ]]; then
+      ENV_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/maition-e2e-env-backup.XXXXXX")"
+      chmod 700 "$ENV_BACKUP_DIR"
+      cp "$REPO_ROOT/.env" "$ENV_BACKUP_DIR/.env.bak"
+      ENV_FILE_STATE_OPENWEBUI=backed_up
+      log "Backed up existing .env to $ENV_BACKUP_DIR before overwrite"
+    fi
+    if [[ -f "$REPO_ROOT/.env.rag" ]]; then
+      if [[ "${E2E_FORCE_ENV:-0}" == "1" ]]; then
+        [[ -n "$ENV_BACKUP_DIR" ]] || { ENV_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/maition-e2e-env-backup.XXXXXX")"; chmod 700 "$ENV_BACKUP_DIR"; }
+        cp "$REPO_ROOT/.env.rag" "$ENV_BACKUP_DIR/.env.rag.bak"
+        ENV_FILE_STATE_RAG=backed_up
+        log "Backed up existing .env.rag to $ENV_BACKUP_DIR before overwrite"
+      fi
+    elif [[ "${E2E_FORCE_ENV:-0}" == "1" ]]; then
+      log "No existing .env.rag found; provisioning from tests/e2e template"
+    fi
     log "Provisioning .env / .env.rag from tests/e2e templates"
     cp "$SCRIPT_DIR/env.openwebui.e2e" "$REPO_ROOT/.env"
     cp "$SCRIPT_DIR/env.rag.e2e" "$REPO_ROOT/.env.rag"
-    PROVISIONED_ENV=1
+    [[ -z "$ENV_FILE_STATE_OPENWEBUI" ]] && ENV_FILE_STATE_OPENWEBUI=provisioned
+    [[ -z "$ENV_FILE_STATE_RAG" ]] && ENV_FILE_STATE_RAG=provisioned
   else
     log "Using existing $REPO_ROOT/.env (E2E credentials may differ)"
+    check_provider_guard || { cleanup; exit 1; }
   fi
-  trap restore_env EXIT
+  trap cleanup EXIT
 
   log "Using project '$PROJECT'; web UI will bind http://localhost:${HTTP_PORT}"
   log "Booting core stack (postgres, redis, llm-stub, openwebui)..."
 
   dc down --remove-orphans --volumes >/dev/null 2>&1 || true
-  dc up -d --build --quiet-pull || { fail "docker compose up failed"; dc logs openwebui 2>/dev/null | timeout 10 tail -40; cleanup; exit 1; }
+  dc up -d --build --quiet-pull || { fail "docker compose up failed"; dc logs openwebui 2>/dev/null | tail -40; cleanup; exit 1; }
 
   log "Waiting for health endpoints..."
-  wait_for "http://localhost:${HTTP_PORT}/health" "openwebui /health" 60 || { dc logs openwebui 2>/dev/null | timeout 10 tail -40; cleanup; exit 1; }
+  wait_for "http://localhost:${HTTP_PORT}/health" "openwebui /health" 60 || { dc logs openwebui 2>/dev/null | tail -40; cleanup; exit 1; }
 
   # The custom entrypoint provisions the admin account, then continues with
   # provider wiring and the optional regular user; wait until BOTH accounts
   # can sign in so journeys never race first-boot provisioning.
   ok=0
-  for ((i = 1; i <= 40; i++)); do
+  i=0
+  while [ "$i" -lt 40 ]; do
     admin_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST "http://localhost:${HTTP_PORT}/api/v1/auths/signin" \
       -H "Content-Type: application/json" -d '{"email":"admin@example123.com","password":"q1w2e3r4!"}')
     user_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST "http://localhost:${HTTP_PORT}/api/v1/auths/signin" \
       -H "Content-Type: application/json" -d '{"email":"user@example123.com","password":"q1w2e3r4!"}')
     [[ "$admin_code" == "200" && "$user_code" == "200" ]] && { ok=1; break; }
     sleep 3
+    i=$((i + 1))
   done
   if [[ "$ok" != 1 ]]; then
     fail "provisioned accounts not ready before timeout (admin=$admin_code user=$user_code)"
-    dc logs openwebui 2>/dev/null | timeout 10 tail -40
+    dc logs openwebui 2>/dev/null | tail -40
     cleanup
     exit 1
   fi
@@ -242,16 +327,6 @@ main() {
   fi
   log "All E2E checks passed."
   exit 0
-}
-
-cleanup() {
-  if [[ "$KEEP_UP" == 1 ]]; then
-    log "--keep-up set; leaving stack running (project: $PROJECT). Tear down with:"
-    log "  docker compose -p $PROJECT -f $REPO_ROOT/compose.yaml -f $REPO_ROOT/compose.dev.yaml -f $SCRIPT_DIR/compose.e2e.yaml down -v --remove-orphans"
-    return
-  fi
-  log "Tearing down stack..."
-  dc down --remove-orphans --volumes >/dev/null 2>&1 || true
 }
 
 main
