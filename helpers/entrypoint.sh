@@ -3,7 +3,8 @@
 # Inspired by https://github.com/open-webui/open-webui/discussions/8955#discussioncomment-12548747
 # this custom entrypoint script does the following:
 # - creates pre-defined admin user account as specified in ENVs
-# - creates a pre-defined Function
+# - automatically installs & enables pre-defined Functions and Tools
+#   (see install_tools_and_functions() below)
 
 set -e
 : "${HEALTHZ_PORT:?missing HEALTHZ_PORT}"
@@ -73,6 +74,143 @@ wait_for_app() {
     echo "[Custom entrypoint] started"
 }
 
+# Install one Tool or Function from its .py/.json pair mounted under /etc.
+#
+# Arguments:
+#   $1 - kind: "tool" or "function"
+#   $2 - id, matching the .py/.json file basenames (e.g. web_search)
+#   $3 - name of the "<...>_ENABLED" env var gating this item, or "-"
+#        to always install (e.g. TOOL_WEB_SEARCH_ENABLED,
+#        FUNCTION_VIDEO_INJECT_ENABLED)
+#   $4 - optional valves JSON, applied to the item right after creation
+#
+# Optional environment:
+#   OWUI_ITEMS_DIR - directory holding the .py/.json pairs (default /etc)
+#
+# A failed create or missing files are reported but never abort the
+# remaining items.
+install_item() {
+    local kind="$1"
+    local id="$2"
+    local enable_var="$3"
+    local valves_json="$4"
+    local dir="${OWUI_ITEMS_DIR:-/etc}"
+    local api_kind="${kind}s" # tools | functions
+    local py_file="${dir}/${id}.py"
+    local json_file="${dir}/${id}.json"
+
+    if [ "$enable_var" != "-" ] && [ "${!enable_var}" != "True" ]; then
+        return 0
+    fi
+
+    if [ ! -f "$py_file" ] || [ ! -f "$json_file" ]; then
+        echo ""
+        echo "[Custom entrypoint] WARNING: ${kind} '${id}' enabled via ${enable_var} but ${py_file} or ${json_file} is missing. Skipping." >&2
+        return 0
+    fi
+
+    echo ""
+    echo "[Custom entrypoint] Installing ${kind} '${id}'..."
+
+    local code data_raw create_response
+    code=$(jq -Rs . < "$py_file")
+    data_raw=$(jq --argjson content "${code}" '.content=$content' "$json_file")
+
+    create_response=$(curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/${api_kind}/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${data_raw}") || {
+        echo "[Custom entrypoint] WARNING: ${kind} '${id}' install request failed" >&2
+        return 0
+    }
+
+    local item_id
+    item_id=$(echo "${create_response}" | jq -r '.id // empty')
+    if [ -z "$item_id" ]; then
+        echo "[Custom entrypoint] WARNING: ${kind} '${id}' install failed" >&2
+        echo "${create_response}" >&2
+        return 0
+    fi
+
+    echo "[Custom entrypoint] ${kind} '${id}' installed with id: ${item_id}"
+
+    if [ -n "$valves_json" ]; then
+        echo ""
+        echo "[Custom entrypoint] Configuring the ${kind} '${id}' valves"
+        curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/${api_kind}/id/${item_id}/valves/update" \
+          -H "Authorization: Bearer ${API_KEY}" \
+          -H "Content-Type: application/json" \
+          --data-raw "${valves_json}"
+    fi
+
+    if [ "$kind" == "function" ]; then
+        echo ""
+        echo "[Custom entrypoint] Enabling the ${kind} '${id}'"
+        curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${item_id}/toggle" \
+          -H "Authorization: Bearer ${API_KEY}" \
+          -H "Content-Type: application/json"
+
+        echo ""
+        echo "[Custom entrypoint] Enabling the ${kind} '${id}' globally"
+        curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${item_id}/toggle/global" \
+          -H "Authorization: Bearer ${API_KEY}" \
+          -H "Content-Type: application/json"
+    fi
+}
+
+# Build the valves JSON for a Tool/Function id. Prints the valves JSON on
+# stdout; returns non-zero to skip the item's install entirely.
+valves_for() {
+    case "$1" in
+        roat_retrieval)
+            jq -n --arg url "$ROAT_API_URL/api/v1/query" --arg key "$ROAT_API_KEY" \
+              '{rag_service_url:$url,rag_service_api_key:$key}'
+            ;;
+        mediawiki_tool)
+            if [ -z "${MEDIAWIKI_API_URL:-}" ]; then
+                echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_ENABLED=True but MEDIAWIKI_API_URL is not set. Skipping MediaWiki Tool install." >&2
+                return 1
+            fi
+            jq -n \
+              --arg wiki "${MEDIAWIKI_API_URL}" \
+              --arg user "${MEDIAWIKI_USERNAME:-}" \
+              --arg pass "${MEDIAWIKI_PASSWORD:-}" \
+              '{wiki_url:$wiki,username:$user,password:$pass}'
+            ;;
+        web_search)
+            if [ -n "${TOOL_WEB_SEARCH_API_KEY:-}" ]; then
+                jq -n --arg key "${TOOL_WEB_SEARCH_API_KEY}" '{tavily_api_key:$key}'
+            else
+                echo "[Custom entrypoint] TOOL_WEB_SEARCH_API_KEY not set. Set the tavily_api_key valve from Workspace -> Tools in the UI." >&2
+            fi
+            ;;
+    esac
+}
+
+# Every bundled Tool/Function is provisioned here. Adding a new one means
+# dropping its .py/.json pair into tools/ (or functions/), mounting it in
+# compose.yaml, and adding a single entry to the list below:
+#   "<tool|function> <id> <ENABLED env var or ->"
+install_tools_and_functions() {
+    local item kind id enable_var
+    for item in \
+        "tool roat_retrieval -" \
+        "function video_inject FUNCTION_VIDEO_INJECT_ENABLED" \
+        "function image_resizer FUNCTION_IMAGE_RESIZER_ENABLED" \
+        "tool mediawiki_tool TOOL_MEDIAWIKI_ENABLED" \
+        "tool web_search TOOL_WEB_SEARCH_ENABLED" \
+        "tool get_sources TOOL_GET_SOURCES_ENABLED"
+    do
+        kind="${item%% *}"
+        enable_var="${item##* }"
+        id="$(echo "$item" | awk '{print $2}')"
+        if ! item_valves=$(valves_for "$id"); then
+            continue
+        fi
+        install_item "$kind" "$id" "$enable_var" "$item_valves"
+    done
+}
+
 do_first_start() {
     echo ""
     echo "[Custom entrypoint] First start detected.."
@@ -105,61 +243,6 @@ do_first_start() {
     echo "[Custom entrypoint] Received API_KEY.."
 
     # Filter function replaced by ROAT search Tool — kept for reference
-    # JSON_TEMPLATE_PATH="/etc/function.json"
-    # PYTHON_FILE_PATH="/etc/function.py"
-    #
-    # PYTHON_CODE=$(jq -Rs . < "/etc/function.py")
-    # DATA_RAW=$(jq --argjson content "${PYTHON_CODE}" \
-    #   '.content=$content' \
-    #   "${JSON_TEMPLATE_PATH}")
-    #
-    # echo ""
-    # echo "[Custom entrypoint] Adding Pipe function to Open WebUI"
-    # curl -s -X POST "http://localhost:8080/api/v1/functions/create" \
-    #   -H "Authorization: Bearer ${API_KEY}" \
-    #   -H "Content-Type: application/json" \
-    #   --data-raw "${DATA_RAW}"
-    #
-    # echo ""
-    # echo "[Custom entrypoint] Configuring the function valves"
-    # curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/valves/update" \
-    #   -H "Authorization: Bearer ${API_KEY}" \
-    #   -H "Content-Type: application/json" \
-    #   --data-raw "{\"pipelines\":[\"*\"],\"priority\":null,\"enabled\":true,\"rag_service_url\":\"$ROAT_API_URL/api/v1/query\",\"rag_service_api_key\":\"$ROAT_API_KEY\",\"rag_service_timeout\":null,\"top_k\":null,\"inject_context\":null,\"context_template\":null}"
-    #
-    # echo ""
-    # echo "[Custom entrypoint] Enabling the function"
-    # curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/toggle" \
-    #   -H "Authorization: Bearer ${API_KEY}" \
-    #   -H "Content-Type: application/json"
-    #
-    # echo ""
-    # echo "[Custom entrypoint] Enabling the function globally"
-    # curl -s -X POST "http://localhost:8080/api/v1/functions/id/ragofalltrades/toggle/global" \
-    #   -H "Authorization: Bearer ${API_KEY}" \
-    #   -H "Content-Type: application/json"
-
-    TOOL_PYTHON_CODE=$(jq -Rs . < "/etc/roat_retrieval.py")
-    TOOL_DATA_RAW=$(jq --argjson content "${TOOL_PYTHON_CODE}" \
-      '.content=$content' \
-      "/etc/roat_retrieval.json")
-
-    echo ""
-    echo "[Custom entrypoint] Installing ROAT search Tool"
-    curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${TOOL_DATA_RAW}"
-
-    echo ""
-    echo "[Custom entrypoint] Configuring the tool valves"
-    curl -s -X POST "http://localhost:8080/api/v1/tools/id/roat_retrieval/valves/update" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "$(jq -n --arg url "$ROAT_API_URL/api/v1/query" --arg key "$ROAT_API_KEY" \
-        '{rag_service_url:$url,rag_service_api_key:$key}')"
-
-    echo ""
     echo "[Custom entrypoint] Disabling Direct Connections for regular users"
     curl -s -X POST "http://localhost:8080/api/v1/configs/direct_connections" \
       -H "Authorization: Bearer ${API_KEY}" \
@@ -263,207 +346,11 @@ do_first_start() {
       -H "Content-Type: application/json" \
       --data-raw "{\"suggestions\":[]}"
 
-    install_mediawiki_tool
-    install_web_search_tool
-    install_get_sources_tool
-    install_video_inject_filter
-    install_image_resizer_filter
+    install_tools_and_functions
 
     touch /app/backend/data/.first_start
 }
 
-install_mediawiki_tool() {
-    if [ "$TOOL_MEDIAWIKI_ENABLED" != "True" ]; then
-        return
-    fi
-
-    if [ -z "$MEDIAWIKI_API_URL" ]; then
-        echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_ENABLED=True but MEDIAWIKI_API_URL is not set. Skipping MediaWiki Tool install." >&2
-        return
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing MediaWiki Tool..."
-
-    TOOL_CODE=$(jq -Rs . < "/etc/mediawiki_tool.py")
-    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/mediawiki_tool.json)
-
-    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}")
-
-    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] WARNING: MediaWiki Tool install failed"
-        echo "${CREATE_RESPONSE}"
-        return
-    fi
-
-    echo "[Custom entrypoint] MediaWiki Tool created with id: ${TOOL_ID}"
-
-    echo ""
-    echo "[Custom entrypoint] Configuring MediaWiki Tool valves..."
-    VALVES_JSON=$(jq -n \
-      --arg wiki "${MEDIAWIKI_API_URL}" \
-      --arg user "${MEDIAWIKI_USERNAME:-}" \
-      --arg pass "${MEDIAWIKI_PASSWORD:-}" \
-      '{wiki_url:$wiki,username:$user,password:$pass}')
-
-    curl -s -X POST "http://localhost:8080/api/v1/tools/id/${TOOL_ID}/valves/update" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${VALVES_JSON}"
-
-}
-
-install_web_search_tool() {
-    if [ "$TOOL_WEB_SEARCH_ENABLED" != "True" ]; then
-        return
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing Web Search Tool..."
-
-    TOOL_CODE=$(jq -Rs . < "/etc/web_search.py")
-    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/web_search.json)
-
-    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}")
-
-    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] WARNING: Web Search Tool install failed"
-        echo "${CREATE_RESPONSE}"
-        return
-    fi
-
-    echo "[Custom entrypoint] Web Search Tool created with id: ${TOOL_ID}"
-
-    if [ -n "$TOOL_WEB_SEARCH_API_KEY" ]; then
-        echo ""
-        echo "[Custom entrypoint] Configuring Web Search Tool valves..."
-        VALVES_JSON=$(jq -n --arg key "${TOOL_WEB_SEARCH_API_KEY}" '{tavily_api_key:$key}')
-
-        curl -s -X POST "http://localhost:8080/api/v1/tools/id/${TOOL_ID}/valves/update" \
-          -H "Authorization: Bearer ${API_KEY}" \
-          -H "Content-Type: application/json" \
-          --data-raw "${VALVES_JSON}"
-    else
-        echo "[Custom entrypoint] TOOL_WEB_SEARCH_API_KEY not set. Set the tavily_api_key valve from Workspace -> Tools in the UI."
-    fi
-
-}
-
-install_get_sources_tool() {
-    if [ "$TOOL_GET_SOURCES_ENABLED" != "True" ]; then
-        return 0
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing Get Sources Tool..."
-
-    TOOL_CODE=$(jq -Rs . < "/etc/get_sources.py")
-    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/get_sources.json)
-
-    CURL_STATUS=0
-    CREATE_RESPONSE=$(curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}") || CURL_STATUS=$?
-
-    if [ "$CURL_STATUS" -ne 0 ]; then
-        echo "[Custom entrypoint] WARNING: Get Sources Tool install request failed (curl exit code ${CURL_STATUS})" >&2
-        return
-    fi
-
-    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] WARNING: Get Sources Tool install failed" >&2
-        echo "${CREATE_RESPONSE}" >&2
-        return
-    fi
-
-    echo "[Custom entrypoint] Get Sources Tool created with id: ${TOOL_ID}"
-}
-
-install_video_inject_filter() {
-    if [ "$FUNCTION_VIDEO_INJECT_ENABLED" != "True" ]; then
-        return
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing Video Inject Filter..."
-
-    FILTER_CODE=$(jq -Rs . < "/etc/video_inject.py")
-    DATA_RAW=$(jq --argjson content "${FILTER_CODE}" '.content=$content' /etc/video_inject.json)
-
-    CREATE_RESPONSE=$(curl -fsS -X POST "http://localhost:8080/api/v1/functions/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}")
-
-    FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$FILTER_ID" ]; then
-        echo "[Custom entrypoint] WARNING: Video Inject Filter install failed" >&2
-        echo "${CREATE_RESPONSE}" >&2
-        return
-    fi
-
-    echo "[Custom entrypoint] Video Inject Filter created with id: ${FILTER_ID}"
-
-    echo ""
-    echo "[Custom entrypoint] Enabling Video Inject Filter..."
-    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json"
-
-    echo ""
-    echo "[Custom entrypoint] Enabling Video Inject Filter globally..."
-    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json"
-}
-
-install_image_resizer_filter() {
-    if [ "$FUNCTION_IMAGE_RESIZER_ENABLED" != "True" ]; then
-        return
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing Image Resizer Filter..."
-
-    FILTER_CODE=$(jq -Rs . < "/etc/image_resizer.py")
-    DATA_RAW=$(jq --argjson content "${FILTER_CODE}" '.content=$content' /etc/image_resizer.json)
-
-    CREATE_RESPONSE=$(curl -fsS -X POST "http://localhost:8080/api/v1/functions/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}")
-
-    FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$FILTER_ID" ]; then
-        echo "[Custom entrypoint] WARNING: Image Resizer Filter install failed" >&2
-        echo "${CREATE_RESPONSE}" >&2
-        return
-    fi
-
-    echo "[Custom entrypoint] Image Resizer Filter created with id: ${FILTER_ID}"
-
-    echo ""
-    echo "[Custom entrypoint] Enabling Image Resizer Filter..."
-    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json"
-
-    echo ""
-    echo "[Custom entrypoint] Enabling Image Resizer Filter globally..."
-    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json"
-}
 
 start_healthz_server
 apply_patches
