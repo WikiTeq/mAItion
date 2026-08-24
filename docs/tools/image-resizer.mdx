@@ -11,12 +11,6 @@ keywords:
 
 The **Image Resizer Filter** (`image_resizer`) is a mAItion **Filter**, not a Workspace Tool. It runs automatically on every **incoming** message, before the model ever sees it.
 
-## What It Does
-
-The filter scans every message for `content` items whose type is `image_url` and whose `image_url.url` starts with `data:image/`. Everything else — text, non-`data:image/` URLs, malformed `content`/`image_url` structures — is skipped without modification.
-
-For a static image whose largest dimension exceeds the `max_dimension` valve, the filter downscales it, preserving aspect ratio, and re-encodes it back into the same `data:` URL in place. Images already at or under `max_dimension` are left as-is.
-
 ## Valves
 
 | Field | Required | Default | Description |
