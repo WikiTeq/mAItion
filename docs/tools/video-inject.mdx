@@ -9,7 +9,7 @@ keywords:
   - inline player
 ---
 
-The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**, not a Workspace Tool. It runs automatically on every response once enabled — the LLM never calls it directly.
+The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**, not a Workspace Tool. It runs automatically on every response once enabled — the LLM never calls it directly. It looks for a `<!--VIDEO:https://...-->` marker in the conversation; the Knowledge Base Search tool can emit one when a retrieved source has a video URL.
 
 ## Valves
 
