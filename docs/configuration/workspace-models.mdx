@@ -22,18 +22,21 @@ To install your own workspace model instead of the bundled example:
    `meta.toolIds`. Leave `base_model_id` as-is; it gets overwritten at install time
    regardless of what you put there.
 3. Set `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` in your `.env` file.
-4. Start (or restart, if this is truly the first start) the stack.
+4. Start the stack.
 
-This only works on **first start**. If your instance has already bootstrapped, the
-first-start step will not run again — create the model by hand instead, using the
-workspace UI or its API.
+This only works on first boot. If your instance has already bootstrapped, create the
+model by hand instead, using the workspace UI or its API.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `CREATE_CUSTOM_WORKSPACE_MODEL` on an already-running instance does not install it retroactively.
+</Note>
 
 ## Overview
 
 The `./models` directory is mounted read-only into the container at
 `/etc/owui-models` (see `compose.yaml`). On first boot, the entrypoint can take one
 JSON file from that directory and install it as a workspace model tied to your
-default OpenAI-compatible model.
+default model.
 
 The repository ships one example: `models/wikiteqcenturion.json`.
 
@@ -64,17 +67,19 @@ missing, the container exits immediately with an error and no side effects.
 
 ### What happens to the default model
 
-The entrypoint always creates a workspace model for `OPENAI_DEFAULT_MODEL`, whether or
-not a custom model file is selected. What changes is that model's visibility:
+`OPENAI_DEFAULT_MODEL` configures a **base model** — a provider-derived model
+registered with your provider configuration. Setting it alone does not create a
+workspace model.
 
-- If a custom model file **is** selected, the default model is created **private**.
-  The custom model file is installed as a **second, separate** workspace model, with
-  its `base_model_id` pointed at the default model (see below). The custom model's own
-  visibility is not set by the entrypoint — it comes from the `access_control` value
-  already in the file. `access_control: null`, as in the bundled
-  `wikiteqcenturion.json`, means default visibility rules apply (in practice, public).
-  A file with a restrictive `access_control` object stays restricted.
-- If no custom model file is selected, the default model is created **public**.
+Whether a workspace model gets created from it, and how visible that model is, depends
+on `CREATE_CUSTOM_WORKSPACE_MODEL`:
+
+- If no custom model file is selected, the entrypoint creates a workspace model for
+  `OPENAI_DEFAULT_MODEL` and makes it **public**.
+- If a custom model file **is** selected, the entrypoint instead creates the
+  `OPENAI_DEFAULT_MODEL` workspace model as **private**, and adds the custom model
+  file as its own, **public** workspace model — with its `base_model_id` pointed at
+  `OPENAI_DEFAULT_MODEL` (see below).
 
 Both cases require first-start bootstrap to run, `ENABLE_OPENAI_API=True`, and
 `OPENAI_DEFAULT_MODEL` to be set — this is not unconditional behavior.
@@ -89,15 +94,6 @@ A few environment variables modify the installed model before it's created:
 - `OWUI_MODEL_PROMPT`, if set, fully replaces the file's `params.system` prompt.
 - `OWUI_MODEL_PROMPT_APPEND`, if set, appends to the system prompt (bundled or
   already replaced by `OWUI_MODEL_PROMPT`), separated by a blank line.
-- Enabling a tool at bootstrap can add its ID to the installed model's
-  `meta.toolIds` list. Check the tool's own docs for whether it does this and under
-  which environment variable.
-
-### A note on reliability
-
-The bootstrap calls the API without checking each response. After first boot, confirm
-the model appears as expected in the workspace rather than assuming a clean log means
-success.
 
 ## JSON File Format
 
@@ -114,17 +110,17 @@ The following table documents the fields present in the bundled
 | `user_id` | No | `""` | Owning user ID. Leave blank; not needed for bootstrap-installed models. |
 | `base_model_id` | No | — | Ignored at install time — the entrypoint always overwrites this with `OPENAI_DEFAULT_MODEL`. |
 | `name` | Yes | — | Display name shown in the model picker. |
-| `params.function_calling` | Yes | — | Must be `"native"`. |
+| `params.function_calling` | **Yes** | — | Must be exactly `"native"`. |
 | `params.system` | No | — | System prompt. Replaced by `OWUI_MODEL_PROMPT` or extended by `OWUI_MODEL_PROMPT_APPEND` if set. |
 | `params.reasoning_effort` | No | — | Reasoning effort hint for models that support it, e.g. `"medium"`. |
-| `meta.profile_image_url` | No | — | Avatar image for the model. A base64 data URI is recommended for portability; a static path also works. |
+| `meta.profile_image_url` | No | — | Avatar image for the model. Use a base64 data URI for portability rather than a static path. |
 | `meta.description` | No | `null` | Short description shown in the model picker. |
 | `meta.capabilities.vision` | No | `false` | Whether the model accepts image input. |
 | `meta.capabilities.usage` | No | `false` | Whether token usage is reported to the user. |
 | `meta.capabilities.citations` | No | `true` | Whether source citations are shown. |
 | `meta.suggestion_prompts` | No | `null` | Optional list of starter prompt suggestions. |
 | `meta.tags` | No | `[]` | Optional tag list for the model. |
-| `meta.toolIds` | No | `[]` | Tool IDs attached to the model (e.g. `roat_retrieval`). Some tools may add their own ID to this list at bootstrap time — see Runtime overrides above. |
+| `meta.toolIds` | No | `[]` | Tool IDs attached to the model. Tool registration during bootstrap may automatically add an ID to this list — check the tool's own docs. |
 | `access_control` | No | `null` | Access-control object. `null` means default visibility rules apply. |
 | `is_active` | No | `true` | Whether the model is active/selectable. |
 | `created_at` | No | — | Timestamp field. Not meaningful to set by hand. |
