@@ -33,13 +33,9 @@ Every numeric valve above has real schema validation — an out-of-range value i
 
 ## Enabling via ENV
 
-This tool is opt-in, with a single-condition gate. Set in `.env` (from `.env.openwebui.example`):
+This tool is opt-in, with a single-condition gate. Set in `.env`:
 
 ```bash
-# Web Search Tool (optional): set TOOL_WEB_SEARCH_ENABLED=True to auto-install the
-# Tavily-powered web search Tool on first boot. Set TOOL_WEB_SEARCH_API_KEY to have
-# it auto-configure the tavily_api_key valve, or leave unset and set the valve
-# later from Workspace -> Tools in the UI.
 TOOL_WEB_SEARCH_ENABLED=True
 TOOL_WEB_SEARCH_API_KEY=
 ```
