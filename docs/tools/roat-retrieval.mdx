@@ -14,31 +14,6 @@ The **Knowledge Base Search** tool (`roat_retrieval`) is a mAItion Workspace Too
 
 Use it for questions about internal documents, company processes, or organization-specific topics. Skip it for general knowledge questions (math, programming syntax, public facts) that don't need internal data — the tool's own description tells the model the same thing.
 
-## What It Does
-
-The tool exposes one function, `search_knowledge_base`, with two parameters:
-
-- **`query`** — a free-text search string for the semantic part of the question.
-- **`metadata_filters`** — an optional list of filters to narrow results by a metadata field (for example `project`, `status`, `assignee`). Each filter is `{"name": ..., "operator": ..., "value": ...}`.
-
-Supported operators:
-
-| Operator | Use for |
-|---|---|
-| `EQ`, `NE`, `GT`, `GTE`, `LT`, `LTE`, `TEXT_MATCH` | A field with a single value. `value` is a single value. |
-| `IN`, `NIN` | A field with a single value, checked against a list of candidates. `value` is a list. |
-| `ANY`, `ALL` | A field whose own value is a list (for example `tags: ["urgent", "billing"]`). `ANY` matches if the field contains at least one given value; `ALL` matches only if it contains every given value. |
-
-`IN`/`NIN` and `ANY`/`ALL` are not interchangeable: using `IN`/`NIN` on a list-valued field compares the whole list as one unit and will not match individual list elements. Use `ANY`/`ALL` for list-valued fields instead.
-
-**Response format:** the tool returns one `<document>` block per result, each with YAML frontmatter (built from the source's metadata, plus a `url` field when available) and the matched text. Citations are not embedded inline in this text — each result is also emitted as a separate `source` event, and stored on the request for the current chat turn. A separate tool (`get_sources`, not covered on this page) can read that same stored data back later in the conversation.
-
-**Requirement:** the selected model must support native function calling for the LLM to call this tool at all.
-
-### Video playback
-
-If the ENV variable `FUNCTION_VIDEO_INJECT_ENABLED=True` is set, and a result's metadata contains an `https://` URL under the field named by the `video_metadata_field` valve, the tool prepends a hidden marker to its response. A separate filter turns that marker into an inline video player in the chat. This is what the `video_metadata_field` valve controls — it does nothing unless the video-inject filter is also enabled.
-
 ## Valves
 
 | Field | Required | Default | Description |
@@ -48,7 +23,7 @@ If the ENV variable `FUNCTION_VIDEO_INJECT_ENABLED=True` is set, and a result's 
 | `rag_service_timeout` | no | `30` | Request timeout, in seconds. |
 | `top_k` | no | `20` | Number of top results to retrieve from the knowledge base. |
 | `max_document_preview_chars` | no | `0` | Maximum characters shown in the document preview of each source citation. `0` means unlimited. |
-| `video_metadata_field` | no | `"video_url"` | Metadata field name to check for a video URL. See [Video playback](#video-playback). |
+| `video_metadata_field` | no | `"video_url"` | Metadata field name to check for a video URL. When a result's metadata has one, the tool prepends a hidden marker to its response that the Video Inject Filter turns into an inline player — this valve has no effect unless that filter is also enabled. |
 
 Valves can be edited after install from **Workspace → Tools** in mAItion.
 
@@ -60,10 +35,9 @@ Valves can be edited after install from **Workspace → Tools** in mAItion.
 This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. On an already-running instance, this tool is already installed; the ENV variables below only affect what it connects to, and changing them takes effect only if you configure the resulting valves manually afterward from the admin UI.
 </Note>
 
-The only thing you configure via ENV is where it connects. In `.env` (from `.env.openwebui.example`):
+The only thing you configure via ENV is where it connects. In `.env`:
 
 ```bash
-# the URL of the ROAT API, keep default
 ROAT_API_URL=http://api:8000
 ROAT_API_KEY=12345
 ```
