@@ -30,7 +30,7 @@ def resize_images_in_messages(messages, max_dimension=768):
     # re-opened every turn. Only the encode+save step is skipped once an
     # image is already at/under max_dimension.
     for message in messages:
-        for item in message.get("content", []):
+        for item in message.get("content") or []:
             if not isinstance(item, dict):
                 continue
             if item.get("type") != "image_url":
