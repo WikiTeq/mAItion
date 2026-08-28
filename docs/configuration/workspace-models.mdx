@@ -24,9 +24,6 @@ To install your own workspace model instead of the bundled example:
 3. Set `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` in your `.env` file.
 4. Start the stack.
 
-This only works on first boot. If your instance has already bootstrapped, create the
-model by hand instead, using the workspace UI or its API.
-
 <Note>
 This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `CREATE_CUSTOM_WORKSPACE_MODEL` on an already-running instance does not install it retroactively.
 </Note>
@@ -47,10 +44,6 @@ are true:
 
 - `ENABLE_OPENAI_API=True`
 - `OPENAI_DEFAULT_MODEL` is set to a non-empty model ID
-
-It also runs only once, on first start. Changing `CREATE_CUSTOM_WORKSPACE_MODEL` or
-any of the other variables on this page after that has no effect on an
-already-bootstrapped instance.
 
 ### Selecting a model file
 
