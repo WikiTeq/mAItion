@@ -1,0 +1,135 @@
+---
+title: "Workspace Models"
+description: "How mAItion installs a custom workspace model from ./models on first boot, the JSON file format, and how to add your own."
+keywords:
+  - mAItion
+  - workspace model
+  - bootstrap
+  - models
+---
+
+mAItion can install one custom **workspace model** automatically the first time the
+stack boots. This page explains the mechanism, the JSON file format, and how to add a
+model of your own.
+
+## Adding a Custom Model
+
+To install your own workspace model instead of the bundled example:
+
+1. Copy an existing file under `models/`, for example `models/wikiteqcenturion.json`,
+   to a new file such as `models/my-model.json`. Keep the JSON array wrapper.
+2. Edit the fields you want to change — typically `id`, `name`, `params.system`, and
+   `meta.toolIds`. Leave `base_model_id` as-is; it gets overwritten at install time
+   regardless of what you put there.
+3. Set `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` in your `.env` file.
+4. Start the stack.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `CREATE_CUSTOM_WORKSPACE_MODEL` on an already-running instance does not install it retroactively.
+</Note>
+
+## Overview
+
+The `./models` directory is mounted read-only into the container at
+`/etc/owui-models` (see `compose.yaml`). On first boot, the entrypoint can take one
+JSON file from that directory and install it as a workspace model tied to your
+default model.
+
+The repository ships one example: `models/wikiteqcenturion.json`.
+
+## How It Works
+
+The bootstrap logic lives in `helpers/entrypoint.sh` and runs only when both of these
+are true:
+
+- `ENABLE_OPENAI_API=True`
+- `OPENAI_DEFAULT_MODEL` is set to a non-empty model ID
+
+### Selecting a model file
+
+`CREATE_CUSTOM_WORKSPACE_MODEL` controls which file installs, if any:
+
+- `True` installs the bundled `wikiteqcenturion.json`.
+- Any other non-empty value is treated as a filename under `models/` — for example
+  `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` installs `models/my-model.json`.
+- `False` or unset installs no custom model.
+
+The entrypoint validates the selected file exists **before** doing anything else —
+including before it signs up the admin user or configures any provider. If the file is
+missing, the container exits immediately with an error and no side effects.
+
+### What happens to the default model
+
+`OPENAI_DEFAULT_MODEL` configures a **base model** — a provider-derived model
+registered with your provider configuration. Setting it alone does not create a
+workspace model.
+
+Whether a workspace model gets created from it, and how visible that model is, depends
+on `CREATE_CUSTOM_WORKSPACE_MODEL`:
+
+- If no custom model file is selected, the entrypoint creates a workspace model for
+  `OPENAI_DEFAULT_MODEL` and makes it **public**.
+- If a custom model file **is** selected, the entrypoint instead creates the
+  `OPENAI_DEFAULT_MODEL` workspace model as **private**, and adds the custom model
+  file as its own, **public** workspace model — with its `base_model_id` pointed at
+  `OPENAI_DEFAULT_MODEL` (see below).
+
+Both cases require first-start bootstrap to run, `ENABLE_OPENAI_API=True`, and
+`OPENAI_DEFAULT_MODEL` to be set — this is not unconditional behavior.
+
+### Runtime overrides
+
+A few environment variables modify the installed model before it's created:
+
+- The entrypoint always overwrites the file's `base_model_id` with
+  `OPENAI_DEFAULT_MODEL` at runtime. Whatever value the file itself has for
+  `base_model_id` is ignored.
+- `OWUI_MODEL_PROMPT`, if set, fully replaces the file's `params.system` prompt.
+- `OWUI_MODEL_PROMPT_APPEND`, if set, appends to the system prompt (bundled or
+  already replaced by `OWUI_MODEL_PROMPT`), separated by a blank line.
+
+## JSON File Format
+
+A custom model file must be a **JSON array**, with the model definition as the array's
+first item — the entrypoint reads and installs only `.[0]` of the file. A file shaped
+as a bare JSON object instead of an array will not install correctly.
+
+The following table documents the fields present in the bundled
+`models/wikiteqcenturion.json` example:
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `id` | Yes | — | Unique model identifier used internally. |
+| `user_id` | No | `""` | Owning user ID. Leave blank; not needed for bootstrap-installed models. |
+| `base_model_id` | No | — | Ignored at install time — the entrypoint always overwrites this with `OPENAI_DEFAULT_MODEL`. |
+| `name` | Yes | — | Display name shown in the model picker. |
+| `params.function_calling` | **Yes** | — | Must be exactly `"native"`. |
+| `params.system` | No | — | System prompt. Replaced by `OWUI_MODEL_PROMPT` or extended by `OWUI_MODEL_PROMPT_APPEND` if set. |
+| `params.reasoning_effort` | No | — | Reasoning effort hint for models that support it, e.g. `"medium"`. |
+| `meta.profile_image_url` | No | — | Avatar image for the model. Use a base64 data URI for portability rather than a static path. |
+| `meta.description` | No | `null` | Short description shown in the model picker. |
+| `meta.capabilities.vision` | No | `false` | Whether the model accepts image input. |
+| `meta.capabilities.usage` | No | `false` | Whether token usage is reported to the user. |
+| `meta.capabilities.citations` | No | `true` | Whether source citations are shown. |
+| `meta.suggestion_prompts` | No | `null` | Optional list of starter prompt suggestions. |
+| `meta.tags` | No | `[]` | Optional tag list for the model. |
+| `meta.toolIds` | No | `[]` | Tool IDs attached to the model. Tool registration during bootstrap may automatically add an ID to this list — check the tool's own docs. |
+| `access_control` | No | `null` | Access-control object. `null` means default visibility rules apply. |
+| `is_active` | No | `true` | Whether the model is active/selectable. |
+| `created_at` | No | — | Timestamp field. Not meaningful to set by hand. |
+| `updated_at` | No | — | Timestamp field. Not meaningful to set by hand. |
+| `user` | No | `{}` | Metadata about the owning user. Not meaningful to set by hand. |
+
+## Configuration Reference
+
+These environment variables control workspace model bootstrapping.
+`ENABLE_OPENAI_API` and `OPENAI_DEFAULT_MODEL` are also documented in
+[Environment Variables (Frontend)](/configuration/frontend-env).
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `ENABLE_OPENAI_API` | Yes, for this feature | `False` | Must be exactly `True` for workspace model bootstrap to run at all. |
+| `OPENAI_DEFAULT_MODEL` | Yes, for this feature | — | Must be a non-empty model ID. Used as `base_model_id` for any installed custom model. |
+| `CREATE_CUSTOM_WORKSPACE_MODEL` | No | unset | `True` installs the bundled `wikiteqcenturion.json`. A filename installs that file from `models/` instead. `False`/unset installs no custom model. |
+| `OWUI_MODEL_PROMPT` | No | unset | Fully replaces the installed model's system prompt. |
+| `OWUI_MODEL_PROMPT_APPEND` | No | unset | Appends to the installed model's system prompt (bundled or replaced), separated by a blank line. |
