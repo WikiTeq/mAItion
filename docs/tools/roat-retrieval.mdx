@@ -10,9 +10,11 @@ keywords:
   - retrieval
 ---
 
-The **Knowledge Base Search** tool (`roat_retrieval`) is a mAItion Workspace Tool. It lets the LLM decide, on its own, when to call the ROAT knowledge base to answer a question — instead of every message going through a filter.
+The **Knowledge Base Search** tool (`roat_retrieval`) is a mAItion Workspace Tool. It lets the LLM decide, on its own, when to call the knowledge base to answer a question.
 
-Use it for questions about internal documents, company processes, or organization-specific topics. Skip it for general knowledge questions (math, programming syntax, public facts) that don't need internal data — the tool's own description tells the model the same thing.
+Use it for questions about internal documents, company processes, or organization-specific topics. Skip it for general knowledge questions (math, programming syntax, public facts) that don't need internal data.
+
+The knowledge base is powered by [ROAT (rag-of-all-trades)](https://github.com/WikiTeq/rag-of-all-trades), mAItion's RAG backend.
 
 ## Valves
 
@@ -27,25 +29,23 @@ Use it for questions about internal documents, company processes, or organizatio
 
 Valves can be edited after install from **Workspace → Tools** in mAItion.
 
-## Enabling via ENV
-
-**Knowledge Base Search has no opt-in flag.** It is always installed — there is no `TOOL_ROAT_RETRIEVAL_ENABLED`-style variable to set.
+## Configuration via ENV
 
 <Note>
-This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. On an already-running instance, this tool is already installed; the ENV variables below only affect what it connects to, and changing them takes effect only if you configure the resulting valves manually afterward from the admin UI.
+Knowledge Base Search is always installed — there is no opt-in flag. The ENV variables below only affect what it connects to, and only apply during first-start initialization (the setup that runs only once, the first time the container boots, gated on a marker file). On an already-running instance, configure the resulting valves manually from the admin UI instead.
 </Note>
 
-The only thing you configure via ENV is where it connects. In `.env`:
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `ROAT_API_URL` | yes | `http://api:8000` | Base URL of the ROAT API — the host and port only, with no path suffix. Used to set the tool's `rag_service_url` valve at first start. |
+| `ROAT_API_KEY` | no | `12345` | Bearer token for the ROAT API. Used to set the tool's `rag_service_api_key` valve at first start. |
+
+Example `.env`:
 
 ```bash
 ROAT_API_URL=http://api:8000
 ROAT_API_KEY=12345
 ```
-
-At first start, the entrypoint script sets the tool's valves from these two variables — but not as a direct copy of `ROAT_API_URL`. It appends the query path:
-
-- `rag_service_url` is set to `${ROAT_API_URL}/api/v1/query` — with the defaults above, `http://api:8000/api/v1/query`.
-- `rag_service_api_key` is set to `ROAT_API_KEY`.
 
 If you configure `rag_service_url` manually later (for example after changing `ROAT_API_URL` post-install), remember to include the `/api/v1/query` path — the bare host URL alone will not work.
 
