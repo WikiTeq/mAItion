@@ -2,18 +2,20 @@
 title: MediaWiki Search & Write Tool
 author: WikiTeq
 date: 2025-04-30
-version: 1.0
+version: 1.1
 license: MIT
 description: Allows creating new or updating existing MediaWiki pages when the user asks to save or update something to the wiki/knowledge base. Allows AI to search the wiki for pages.
-requirements: mwclient>=0.10.1, pydantic>=2.0.0, markdownify>=0.13.1
+requirements: mwclient>=0.11.0, pydantic>=2.0.0, requests>=2.0.0, markdownify>=0.13.1
 """
 
 import asyncio
 import hashlib
+import ipaddress
+import json
 import logging
 import re
 from collections.abc import Awaitable, Callable
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import quote, urljoin, urlparse
 
 from pydantic import BaseModel, Field
@@ -60,6 +62,119 @@ def to_source_id(text: str) -> str:
     return f"src-{digest}"
 
 
+def _format_ip_for_netloc(ip: str) -> str:
+    """Bracket IPv6 addresses for use in a URL netloc (IPv4 / already-bracketed unchanged)."""
+    ip = (ip or "").strip()
+    if not ip:
+        return ip
+    if ":" in ip and not ip.startswith("["):
+        return f"[{ip}]"
+    return ip
+
+
+def _host_header_from_url(parsed) -> str:
+    """
+    Build a Host header from a parsed URL: hostname + explicit port, no userinfo.
+
+    Uses netloc (minus userinfo) so non-default ports are preserved, unlike parsed.hostname.
+    """
+    netloc = parsed.netloc or ""
+    if "@" in netloc:
+        netloc = netloc.rsplit("@", 1)[-1]
+    return netloc
+
+
+def _netloc_with_ip(parsed, dest_ip: str) -> str:
+    """Replace the host in a parsed URL with dest_ip, keeping the original port."""
+    dest = _format_ip_for_netloc(dest_ip)
+    if parsed.port is not None:
+        return f"{dest}:{parsed.port}"
+    return dest
+
+
+class HostOverrideAdapter:
+    """
+    requests adapter that resolves a hostname to a fixed IP (curl --resolve style).
+
+    TCP connects to the override IP; TLS SNI and cert validation keep the original hostname.
+    Implemented as a thin subclass factory so requests is only imported at call time
+    (OWUI installs requirements after loading the tool module).
+    """
+
+    @staticmethod
+    def create(dest_ip: str, dest_hostname: str):
+        from requests.adapters import HTTPAdapter
+
+        class _HostOverrideAdapter(HTTPAdapter):
+            def __init__(self, dest_ip: str, dest_hostname: str, **kwargs):
+                self._dest_ip = dest_ip
+                self._dest_hostname = dest_hostname
+                super().__init__(**kwargs)
+
+            def init_poolmanager(self, *args, **kwargs):
+                """Keep original hostname for TLS SNI / cert validation."""
+                kwargs["server_hostname"] = self._dest_hostname
+                super().init_poolmanager(*args, **kwargs)
+
+            def send(self, request, **kwargs):
+                """Rewrite URL hostname -> override IP; force the original Host header (incl. port)."""
+                parsed = urlparse(request.url)
+                # Force (not setdefault) so a Host key from the headers valve
+                # can't silently defeat the Host/SNI guarantee this adapter exists for.
+                request.headers["Host"] = _host_header_from_url(parsed)
+                if parsed.hostname:
+                    request.url = parsed._replace(
+                        netloc=_netloc_with_ip(parsed, self._dest_ip)
+                    ).geturl()
+                return super().send(request, **kwargs)
+
+        return _HostOverrideAdapter(
+            dest_ip=dest_ip, dest_hostname=dest_hostname
+        )
+
+
+def _hostname_for_sni(host: str) -> str:
+    """
+    Strip optional port from host netloc for TLS SNI.
+
+    Expects host in the shape produced by _parse_wiki_url: "hostname[:port]",
+    "ipv4[:port]", or "[ipv6][:port]" (IPv6 literals always bracketed).
+    """
+    if host.startswith("["):
+        end = host.find("]")
+        return host[1:end] if end != -1 else host
+    # hostname:port or ipv4:port — never a bare (unbracketed) IPv6 literal,
+    # since _parse_wiki_url always brackets those.
+    if host.count(":") == 1:
+        return host.split(":", 1)[0]
+    return host
+
+
+def _parse_headers(raw: str | dict | None) -> dict[str, str] | None:
+    """Parse optional extra headers from a JSON string or dict. Empty -> None."""
+    if raw is None:
+        return None
+    if isinstance(raw, dict):
+        if not raw:
+            return None
+        return {str(k): str(v) for k, v in raw.items()}
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"headers must be a valid JSON object, e.g. "
+            f'{{"Authorization": "Bearer token"}}. Parse error: {e}'
+        ) from e
+    if not isinstance(data, dict):
+        raise ValueError(
+            'headers must be a JSON object, e.g. {"Authorization": "Bearer token"}.'
+        )
+    return {str(k): str(v) for k, v in data.items()}
+
+
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     """
     Parse an api.php URL into (host, path, scheme) for mwclient.Site.
@@ -84,6 +199,10 @@ def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
         raise ValueError(
             "wiki_url has no host. Example: https://wiki.example.com/w/api.php"
         )
+    # Bracket bare IPv6 literals so a later host:port split is unambiguous
+    # (urlparse.hostname always returns IPv6 addresses unbracketed).
+    if ":" in netloc:
+        netloc = f"[{netloc}]"
     if parsed.port:
         netloc = f"{netloc}:{parsed.port}"
     host = netloc
@@ -189,21 +308,105 @@ def _store_turn_sources(request, sources: list) -> None:
 
 
 def _connect_site(
-    host: str, path: str, scheme: str, timeout: int, username: str, password: str
+    host: str,
+    path: str,
+    scheme: str,
+    timeout: int,
+    username: str,
+    password: str,
+    *,
+    verify_ssl: bool = True,
+    resolve_ip: str = "",
+    user_agent: str = "",
+    headers: str | dict | None = None,
 ):
-    """Connect to a MediaWiki site, logging in only when credentials are provided."""
+    """
+    Connect to a MediaWiki site, logging in only when credentials are provided.
+
+    Optional network overrides (off by default): verify_ssl, resolve_ip, user_agent, headers.
+    When any override is set, builds a custom requests Session so Host/SNI, TLS, and headers
+    apply to every API call (same approach as the RAGacy MediaWiki connector).
+    """
     # Lazy import: OWUI loads this file before installing requirements, so mwclient
     # is not available at module load time — only at call time.
     import mwclient
+    import requests
+    from mwclient.client import USER_AGENT
 
     has_credentials = bool(username and password)
-    site = mwclient.Site(
-        host,
-        path=path,
-        scheme=scheme,
-        force_login=has_credentials,
-        reqs={"timeout": timeout},
+    resolve_ip = (resolve_ip or "").strip() or None
+    if resolve_ip is not None:
+        try:
+            parsed_ip = ipaddress.ip_address(resolve_ip)
+        except ValueError as e:
+            raise ValueError(
+                f"resolve_ip must be a valid IPv4 or IPv6 address, got {resolve_ip!r}"
+            ) from e
+        # Reject zone IDs (e.g. "fe80::1%eth0"): only meaningful for local
+        # link-local interfaces, not a remote connect target, and not
+        # representable cleanly in a URL netloc.
+        if getattr(parsed_ip, "scope_id", None) is not None:
+            raise ValueError(
+                f"resolve_ip must not include a zone ID (scope), got {resolve_ip!r}"
+            )
+    user_agent = (user_agent or "").strip() or None
+    custom_headers = _parse_headers(headers)
+
+    use_custom_session = (
+        (not verify_ssl)
+        or bool(resolve_ip)
+        or bool(custom_headers)
+        or bool(user_agent)
     )
+
+    if not use_custom_session:
+        site = mwclient.Site(
+            host,
+            path=path,
+            scheme=scheme,
+            force_login=has_credentials,
+            connection_options={"timeout": timeout},
+        )
+    else:
+        session = requests.Session()
+        # When pool is set, mwclient skips its default User-Agent — restore it
+        # (or use the configured override). Dedicated user_agent wins over headers.
+        session.headers["User-Agent"] = user_agent or USER_AGENT
+        if custom_headers:
+            session.headers.update(custom_headers)
+            if user_agent:
+                session.headers["User-Agent"] = user_agent
+
+        # Passed to every session.request() by mwclient (timeout, verify, …)
+        connection_options: dict[str, Any] = {"timeout": timeout}
+        if not verify_ssl:
+            session.verify = False
+            connection_options["verify"] = False
+            import urllib3
+
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            log.warning(
+                "SSL certificate verification is disabled for MediaWiki connection"
+            )
+
+        if resolve_ip:
+            # curl --resolve: TCP to IP, Host/SNI still use original hostname
+            sni_host = _hostname_for_sni(host)
+            adapter = HostOverrideAdapter.create(
+                dest_ip=resolve_ip, dest_hostname=sni_host
+            )
+            session.mount(f"{scheme}://{host}", adapter)
+            log.info("DNS override for MediaWiki: %s -> %s", host, resolve_ip)
+
+        site = mwclient.Site(
+            host,
+            path=path,
+            scheme=scheme,
+            force_login=has_credentials,
+            pool=session,
+            connection_options=connection_options,
+        )
+
     if has_credentials:
         site.login(username, password)
     return site
@@ -242,6 +445,30 @@ class Tools:
             description=(
                 "Maximum characters to include per page in search results."
                 " Longer pages are truncated. Range: 1–500,000."
+            ),
+        )
+        # Optional network overrides (reverse-proxy bypass / custom TLS). All off/default.
+        verify_ssl: bool = Field(
+            default=True,
+            description="Verify TLS certificates when connecting to the wiki. Set false only for self-signed/dev certs.",
+        )
+        resolve_ip: str = Field(
+            default="",
+            description=(
+                "Optional IP to connect to while keeping the wiki hostname for Host/SNI "
+                "(like curl --resolve). Leave empty for normal DNS resolution."
+            ),
+        )
+        user_agent: str = Field(
+            default="",
+            description="Optional HTTP User-Agent override. Leave empty to use the mwclient default.",
+        )
+        headers: str = Field(
+            default="",
+            description=(
+                "Optional extra HTTP headers as a JSON object, e.g. "
+                '{"Authorization": "Bearer token"}. Leave empty for none. '
+                "user_agent valve wins over a User-Agent key here."
             ),
         )
 
@@ -329,7 +556,15 @@ class Tools:
                 self.valves.timeout,
                 self.valves.username,
                 self.valves.password,
+                verify_ssl=self.valves.verify_ssl,
+                resolve_ip=self.valves.resolve_ip,
+                user_agent=self.valves.user_agent,
+                headers=self.valves.headers,
             )
+        except ValueError as e:
+            # Invalid resolve_ip / headers JSON / valve config
+            await emit(f"Error: {e}", done=True, hidden=False)
+            return f"Error: {e}"
         except mwclient.errors.LoginError as e:
             await emit(
                 "Error: authentication failed. Check your username and password in Tool Valves.",
@@ -598,7 +833,15 @@ class Tools:
                 self.valves.timeout,
                 self.valves.username,
                 self.valves.password,
+                verify_ssl=self.valves.verify_ssl,
+                resolve_ip=self.valves.resolve_ip,
+                user_agent=self.valves.user_agent,
+                headers=self.valves.headers,
             )
+        except ValueError as e:
+            # Invalid resolve_ip / headers JSON / valve config
+            await emit(f"Error: {e}", done=True, hidden=False)
+            return f"Error: {e}"
         except mwclient.errors.LoginError as e:
             await emit(
                 "Error: authentication failed. Check your username and password in Tool Valves.",
