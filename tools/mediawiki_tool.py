@@ -2,19 +2,20 @@
 title: MediaWiki Search & Write Tool
 author: WikiTeq
 date: 2025-04-30
-version: 1.0
+version: 1.1
 license: MIT
 description: Allows creating new or updating existing MediaWiki pages when the user asks to save or update something to the wiki/knowledge base. Allows AI to search the wiki for pages.
-requirements: mwclient>=0.10.1, pydantic>=2.0.0, markdownify>=0.13.1
+requirements: mwclient>=0.11.0, pydantic>=2.0.0, requests>=2.0.0, markdownify>=0.13.1
 """
 
 import asyncio
-import hashlib
+import ipaddress
+import json
 import logging
 import re
 from collections.abc import Awaitable, Callable
-from typing import Literal
-from urllib.parse import quote, urljoin, urlparse
+from typing import Any
+from urllib.parse import quote, urlparse
 
 from pydantic import BaseModel, Field
 
@@ -60,6 +61,119 @@ def to_source_id(text: str) -> str:
     return f"src-{digest}"
 
 
+def _format_ip_for_netloc(ip: str) -> str:
+    """Bracket IPv6 addresses for use in a URL netloc (IPv4 / already-bracketed unchanged)."""
+    ip = (ip or "").strip()
+    if not ip:
+        return ip
+    if ":" in ip and not ip.startswith("["):
+        return f"[{ip}]"
+    return ip
+
+
+def _host_header_from_url(parsed) -> str:
+    """
+    Build a Host header from a parsed URL: hostname + explicit port, no userinfo.
+
+    Uses netloc (minus userinfo) so non-default ports are preserved, unlike parsed.hostname.
+    """
+    netloc = parsed.netloc or ""
+    if "@" in netloc:
+        netloc = netloc.rsplit("@", 1)[-1]
+    return netloc
+
+
+def _netloc_with_ip(parsed, dest_ip: str) -> str:
+    """Replace the host in a parsed URL with dest_ip, keeping the original port."""
+    dest = _format_ip_for_netloc(dest_ip)
+    if parsed.port is not None:
+        return f"{dest}:{parsed.port}"
+    return dest
+
+
+class HostOverrideAdapter:
+    """
+    requests adapter that resolves a hostname to a fixed IP (curl --resolve style).
+
+    TCP connects to the override IP; TLS SNI and cert validation keep the original hostname.
+    Implemented as a thin subclass factory so requests is only imported at call time
+    (OWUI installs requirements after loading the tool module).
+    """
+
+    @staticmethod
+    def create(dest_ip: str, dest_hostname: str):
+        from requests.adapters import HTTPAdapter
+
+        class _HostOverrideAdapter(HTTPAdapter):
+            def __init__(self, dest_ip: str, dest_hostname: str, **kwargs):
+                self._dest_ip = dest_ip
+                self._dest_hostname = dest_hostname
+                super().__init__(**kwargs)
+
+            def init_poolmanager(self, *args, **kwargs):
+                """Keep original hostname for TLS SNI / cert validation."""
+                kwargs["server_hostname"] = self._dest_hostname
+                super().init_poolmanager(*args, **kwargs)
+
+            def send(self, request, **kwargs):
+                """Rewrite URL hostname -> override IP; force the original Host header (incl. port)."""
+                parsed = urlparse(request.url)
+                # Force (not setdefault) so a Host key from the headers valve
+                # can't silently defeat the Host/SNI guarantee this adapter exists for.
+                request.headers["Host"] = _host_header_from_url(parsed)
+                if parsed.hostname:
+                    request.url = parsed._replace(
+                        netloc=_netloc_with_ip(parsed, self._dest_ip)
+                    ).geturl()
+                return super().send(request, **kwargs)
+
+        return _HostOverrideAdapter(
+            dest_ip=dest_ip, dest_hostname=dest_hostname
+        )
+
+
+def _hostname_for_sni(host: str) -> str:
+    """
+    Strip optional port from host netloc for TLS SNI.
+
+    Expects host in the shape produced by _parse_wiki_url: "hostname[:port]",
+    "ipv4[:port]", or "[ipv6][:port]" (IPv6 literals always bracketed).
+    """
+    if host.startswith("["):
+        end = host.find("]")
+        return host[1:end] if end != -1 else host
+    # hostname:port or ipv4:port — never a bare (unbracketed) IPv6 literal,
+    # since _parse_wiki_url always brackets those.
+    if host.count(":") == 1:
+        return host.split(":", 1)[0]
+    return host
+
+
+def _parse_headers(raw: str | dict | None) -> dict[str, str] | None:
+    """Parse optional extra headers from a JSON string or dict. Empty -> None."""
+    if raw is None:
+        return None
+    if isinstance(raw, dict):
+        if not raw:
+            return None
+        return {str(k): str(v) for k, v in raw.items()}
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"headers must be a valid JSON object, e.g. "
+            f'{{"Authorization": "Bearer token"}}. Parse error: {e}'
+        ) from e
+    if not isinstance(data, dict):
+        raise ValueError(
+            'headers must be a JSON object, e.g. {"Authorization": "Bearer token"}.'
+        )
+    return {str(k): str(v) for k, v in data.items()}
+
+
 def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     """
     Parse an api.php URL into (host, path, scheme) for mwclient.Site.
@@ -71,15 +185,25 @@ def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     """
     wiki_url = wiki_url.strip()
 
-    if not wiki_url.startswith("http://") and not wiki_url.startswith("https://"):
-        raise ValueError("wiki_url must start with http:// or https://. Example: https://wiki.example.com/w/api.php")
+    if not wiki_url.startswith("http://") and not wiki_url.startswith(
+        "https://"
+    ):
+        raise ValueError(
+            "wiki_url must start with http:// or https://. Example: https://wiki.example.com/w/api.php"
+        )
 
     parsed = urlparse(wiki_url)
     scheme = parsed.scheme
 
     netloc = parsed.hostname or ""
     if not netloc:
-        raise ValueError("wiki_url has no host. Example: https://wiki.example.com/w/api.php")
+        raise ValueError(
+            "wiki_url has no host. Example: https://wiki.example.com/w/api.php"
+        )
+    # Bracket bare IPv6 literals so a later host:port split is unambiguous
+    # (urlparse.hostname always returns IPv6 addresses unbracketed).
+    if ":" in netloc:
+        netloc = f"[{netloc}]"
     if parsed.port:
         netloc = f"{netloc}:{parsed.port}"
     host = netloc
@@ -113,7 +237,9 @@ def _validate_title(title: str) -> None:
         )
 
 
-def _build_page_url(title: str, article_path: str, origin: str | None) -> str | None:
+def _build_page_url(
+    title: str, article_path: str, origin: str | None
+) -> str | None:
     """Build a canonical, absolute page URL with proper title encoding.
 
     Combines 'origin' (an absolute scheme+host, e.g. 'https://example.com')
@@ -163,7 +289,9 @@ def _get_site_info(site) -> tuple[str, str | None]:
 
         return article_path, None
     except Exception:
-        log.warning("Could not fetch siteinfo; falling back to defaults", exc_info=True)
+        log.warning(
+            "Could not fetch siteinfo; falling back to defaults", exc_info=True
+        )
         return "/wiki/$1", None
 
 
@@ -184,20 +312,106 @@ def _store_turn_sources(request, sources: list) -> None:
         log.debug("Could not store sources on request state", exc_info=True)
 
 
-def _connect_site(host: str, path: str, scheme: str, timeout: int, username: str, password: str):
-    """Connect to a MediaWiki site, logging in only when credentials are provided."""
+def _connect_site(
+    host: str,
+    path: str,
+    scheme: str,
+    timeout: int,
+    username: str,
+    password: str,
+    *,
+    verify_ssl: bool = True,
+    resolve_ip: str = "",
+    user_agent: str = "",
+    headers: str | dict | None = None,
+):
+    """
+    Connect to a MediaWiki site, logging in only when credentials are provided.
+
+    Optional network overrides (off by default): verify_ssl, resolve_ip, user_agent, headers.
+    When any override is set, builds a custom requests Session so Host/SNI, TLS, and headers
+    apply to every API call (same approach as the RAGacy MediaWiki connector).
+    """
     # Lazy import: OWUI loads this file before installing requirements, so mwclient
     # is not available at module load time — only at call time.
     import mwclient
+    import requests
+    from mwclient.client import USER_AGENT
 
     has_credentials = bool(username and password)
-    site = mwclient.Site(
-        host,
-        path=path,
-        scheme=scheme,
-        force_login=has_credentials,
-        reqs={"timeout": timeout},
+    resolve_ip = (resolve_ip or "").strip() or None
+    if resolve_ip is not None:
+        try:
+            parsed_ip = ipaddress.ip_address(resolve_ip)
+        except ValueError as e:
+            raise ValueError(
+                f"resolve_ip must be a valid IPv4 or IPv6 address, got {resolve_ip!r}"
+            ) from e
+        # Reject zone IDs (e.g. "fe80::1%eth0"): only meaningful for local
+        # link-local interfaces, not a remote connect target, and not
+        # representable cleanly in a URL netloc.
+        if getattr(parsed_ip, "scope_id", None) is not None:
+            raise ValueError(
+                f"resolve_ip must not include a zone ID (scope), got {resolve_ip!r}"
+            )
+    user_agent = (user_agent or "").strip() or None
+    custom_headers = _parse_headers(headers)
+
+    use_custom_session = (
+        (not verify_ssl)
+        or bool(resolve_ip)
+        or bool(custom_headers)
+        or bool(user_agent)
     )
+
+    if not use_custom_session:
+        site = mwclient.Site(
+            host,
+            path=path,
+            scheme=scheme,
+            force_login=has_credentials,
+            connection_options={"timeout": timeout},
+        )
+    else:
+        session = requests.Session()
+        # When pool is set, mwclient skips its default User-Agent — restore it
+        # (or use the configured override). Dedicated user_agent wins over headers.
+        session.headers["User-Agent"] = user_agent or USER_AGENT
+        if custom_headers:
+            session.headers.update(custom_headers)
+            if user_agent:
+                session.headers["User-Agent"] = user_agent
+
+        # Passed to every session.request() by mwclient (timeout, verify, …)
+        connection_options: dict[str, Any] = {"timeout": timeout}
+        if not verify_ssl:
+            session.verify = False
+            connection_options["verify"] = False
+            import urllib3
+
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            log.warning(
+                "SSL certificate verification is disabled for MediaWiki connection"
+            )
+
+        if resolve_ip:
+            # curl --resolve: TCP to IP, Host/SNI still use original hostname
+            sni_host = _hostname_for_sni(host)
+            adapter = HostOverrideAdapter.create(
+                dest_ip=resolve_ip, dest_hostname=sni_host
+            )
+            session.mount(f"{scheme}://{host}", adapter)
+            log.info("DNS override for MediaWiki: %s -> %s", host, resolve_ip)
+
+        site = mwclient.Site(
+            host,
+            path=path,
+            scheme=scheme,
+            force_login=has_credentials,
+            pool=session,
+            connection_options=connection_options,
+        )
+
     if has_credentials:
         site.login(username, password)
     return site
@@ -238,6 +452,30 @@ class Tools:
                 " Longer pages are truncated. Range: 1–500,000."
             ),
         )
+        # Optional network overrides (reverse-proxy bypass / custom TLS). All off/default.
+        verify_ssl: bool = Field(
+            default=True,
+            description="Verify TLS certificates when connecting to the wiki. Set false only for self-signed/dev certs.",
+        )
+        resolve_ip: str = Field(
+            default="",
+            description=(
+                "Optional IP to connect to while keeping the wiki hostname for Host/SNI "
+                "(like curl --resolve). Leave empty for normal DNS resolution."
+            ),
+        )
+        user_agent: str = Field(
+            default="",
+            description="Optional HTTP User-Agent override. Leave empty to use the mwclient default.",
+        )
+        headers: str = Field(
+            default="",
+            description=(
+                "Optional extra HTTP headers as a JSON object, e.g. "
+                '{"Authorization": "Bearer token"}. Leave empty for none. '
+                "user_agent valve wins over a User-Agent key here."
+            ),
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -275,7 +513,9 @@ class Tools:
         """
         import mwclient
 
-        async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
+        async def emit(
+            message: str, done: bool = False, hidden: bool = True
+        ) -> None:
             if __event_emitter__:
                 await __event_emitter__(
                     {
@@ -290,14 +530,22 @@ class Tools:
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
-            await emit("Error: MediaWiki URL is not configured in Tool Valves.", done=True, hidden=False)
+            await emit(
+                "Error: MediaWiki URL is not configured in Tool Valves.",
+                done=True,
+                hidden=False,
+            )
             return "Error: wiki_url is not configured."
         query = query.strip()
         if not query:
-            await emit("Error: search query cannot be empty.", done=True, hidden=False)
+            await emit(
+                "Error: search query cannot be empty.", done=True, hidden=False
+            )
             return "Error: search query cannot be empty."
 
-        effective_limit = max(1, min(self.valves.max_search_results, MAX_SEARCH_RESULTS))
+        effective_limit = max(
+            1, min(self.valves.max_search_results, MAX_SEARCH_RESULTS)
+        )
 
         # --- Parse wiki URL ---
         try:
@@ -317,7 +565,15 @@ class Tools:
                 self.valves.timeout,
                 self.valves.username,
                 self.valves.password,
+                verify_ssl=self.valves.verify_ssl,
+                resolve_ip=self.valves.resolve_ip,
+                user_agent=self.valves.user_agent,
+                headers=self.valves.headers,
             )
+        except ValueError as e:
+            # Invalid resolve_ip / headers JSON / valve config
+            await emit(f"Error: {e}", done=True, hidden=False)
+            return f"Error: {e}"
         except mwclient.errors.LoginError as e:
             await emit(
                 "Error: authentication failed. Check your username and password in Tool Valves.",
@@ -330,10 +586,12 @@ class Tools:
             )
         except Exception as e:
             log.error("mwclient connection error", exc_info=True)
-            await emit("Error: could not connect to the wiki.", done=True, hidden=False)
-            return (
-                f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
+            await emit(
+                "Error: could not connect to the wiki.",
+                done=True,
+                hidden=False,
             )
+            return f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
 
         await emit("Fetching wiki site info…")
         article_path, origin = await asyncio.to_thread(_get_site_info, site)
@@ -352,14 +610,26 @@ class Tools:
             titles = await asyncio.to_thread(_search)
         except mwclient.errors.APIError as e:
             if e.code in ("readapidenied", "permissiondenied"):
-                await emit("Error: this wiki requires login to search.", done=True, hidden=False)
+                await emit(
+                    "Error: this wiki requires login to search.",
+                    done=True,
+                    hidden=False,
+                )
                 return "Error: this wiki requires authentication to search. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
-            await emit(f"Error: wiki search failed ({e.code}).", done=True, hidden=False)
+            await emit(
+                f"Error: wiki search failed ({e.code}).",
+                done=True,
+                hidden=False,
+            )
             return f"Error: wiki API returned an error ({e.code})."
         except Exception as e:
             log.error("Unexpected error during search: %s", e, exc_info=True)
-            await emit("Error: unexpected error during search.", done=True, hidden=False)
+            await emit(
+                "Error: unexpected error during search.",
+                done=True,
+                hidden=False,
+            )
             return f"Error: unexpected error during search. Details: {_truncate(str(e))}"
 
         if not titles:
@@ -386,7 +656,9 @@ class Tools:
                 target = page.redirects_to()
                 if target is not None:
                     page = target
-                result = site.api("parse", page=page.name, prop="text", redirects=True)
+                result = site.api(
+                    "parse", page=page.name, prop="text", redirects=True
+                )
                 html = result["parse"]["text"]["*"]
                 if fmt == "markdown":
                     # Lazy import: only needed in markdown mode.
@@ -431,20 +703,29 @@ class Tools:
                 return title, "(Content unavailable)"
 
         pages: list[tuple[str, str]] = await asyncio.gather(
-            *[asyncio.to_thread(_fetch_page, t, content_format) for t in titles]
+            *[
+                asyncio.to_thread(_fetch_page, t, content_format)
+                for t in titles
+            ]
         )
 
         sections = []
         sources = []
         cap = self.valves.max_page_chars
-        _fetch_errors = {"(Page not found — may have been deleted)", "(Content unavailable)"}
+        _fetch_errors = {
+            "(Page not found — may have been deleted)",
+            "(Content unavailable)",
+        }
         for i, (title, content) in enumerate(pages, start=1):
             # Check for a fetch failure before truncating — a low max_page_chars
             # valve can truncate a sentinel string so it no longer matches
             # _fetch_errors, which would wrongly treat the failure as real content.
             is_fetch_error = content in _fetch_errors
             if len(content) > cap:
-                content = content[:cap] + f"\n...(truncated {len(content) - cap} chars)"
+                content = (
+                    content[:cap]
+                    + f"\n...(truncated {len(content) - cap} chars)"
+                )
             url = _build_page_url(title, article_path, origin)
             url_line = f"\nURL: {url}" if url else ""
             sections.append(
@@ -470,7 +751,10 @@ class Tools:
         _store_turn_sources(__request__, sources)
 
         await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
-        return f"Search results for '{query}' ({len(pages)} page(s)):\n\n" + "\n---\n\n".join(sections)
+        return (
+            f"Search results for '{query}' ({len(pages)} page(s)):\n\n"
+            + "\n---\n\n".join(sections)
+        )
 
     async def save_to_wiki(
         self,
@@ -510,7 +794,9 @@ class Tools:
         """
         import mwclient
 
-        async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
+        async def emit(
+            message: str, done: bool = False, hidden: bool = True
+        ) -> None:
             if __event_emitter__:
                 await __event_emitter__(
                     {
@@ -525,7 +811,11 @@ class Tools:
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
-            await emit("Error: MediaWiki URL is not configured in Tool Valves.", done=True, hidden=False)
+            await emit(
+                "Error: MediaWiki URL is not configured in Tool Valves.",
+                done=True,
+                hidden=False,
+            )
             return "Error: wiki_url is not configured."
         # --- Validate inputs ---
         title = title.strip()
@@ -568,7 +858,15 @@ class Tools:
                 self.valves.timeout,
                 self.valves.username,
                 self.valves.password,
+                verify_ssl=self.valves.verify_ssl,
+                resolve_ip=self.valves.resolve_ip,
+                user_agent=self.valves.user_agent,
+                headers=self.valves.headers,
             )
+        except ValueError as e:
+            # Invalid resolve_ip / headers JSON / valve config
+            await emit(f"Error: {e}", done=True, hidden=False)
+            return f"Error: {e}"
         except mwclient.errors.LoginError as e:
             await emit(
                 "Error: authentication failed. Check your username and password in Tool Valves.",
@@ -586,9 +884,7 @@ class Tools:
                 done=True,
                 hidden=False,
             )
-            return (
-                f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
-            )
+            return f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
 
         await emit(f"Saving page '{title}'…")
 
@@ -600,21 +896,35 @@ class Tools:
         try:
             await asyncio.to_thread(_save)
         except mwclient.errors.ProtectedPageError:
-            await emit(f"Error: page '{title}' is protected and cannot be edited.", done=True, hidden=False)
+            await emit(
+                f"Error: page '{title}' is protected and cannot be edited.",
+                done=True,
+                hidden=False,
+            )
             return f"Error: page '{title}' is protected."
         except mwclient.errors.APIError as e:
             if e.code in ("writeapidenied", "permissiondenied"):
-                await emit("Error: this wiki requires login to write.", done=True, hidden=False)
+                await emit(
+                    "Error: this wiki requires login to write.",
+                    done=True,
+                    hidden=False,
+                )
                 return "Error: this wiki requires authentication to write. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
-            await emit(f"Error: wiki save failed ({e.code}).", done=True, hidden=False)
+            await emit(
+                f"Error: wiki save failed ({e.code}).", done=True, hidden=False
+            )
             return (
                 f"Error: wiki API returned an error ({e.code}). Check page title and permissions. "
                 f"Details: {_truncate(str(e))}"
             )
         except Exception as e:
             log.error("Unexpected error saving page: %s", e, exc_info=True)
-            await emit("Error: an unexpected error occurred while saving.", done=True, hidden=False)
+            await emit(
+                "Error: an unexpected error occurred while saving.",
+                done=True,
+                hidden=False,
+            )
             return f"Error: an unexpected error occurred while saving. Details: {_truncate(str(e))}"
 
         # --- Build canonical page URL (blocking — run in thread) ---
@@ -627,5 +937,7 @@ class Tools:
             await emit(f"Saved: {page_url}", done=True)
             return page_url
 
-        await emit(f'Saved "{title}", but could not determine its URL.', done=True)
+        await emit(
+            f'Saved "{title}", but could not determine its URL.', done=True
+        )
         return f'Saved "{title}" to the wiki, but the page URL could not be determined.'
