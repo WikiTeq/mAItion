@@ -9,15 +9,15 @@ keywords:
   - inline player
 ---
 
-The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**, not a Workspace Tool. It runs automatically on every response once enabled — the LLM never calls it directly. It looks for a `<!--VIDEO:https://...-->` marker in the conversation; the Knowledge Base Search tool can emit one when a retrieved source has a video URL.
+The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**. It runs automatically on every response once enabled — the LLM never calls it directly. It looks for a `<!--VIDEO:https://...-->` marker in the conversation. The Knowledge Base Search tool can emit one when a retrieved source has a video URL.
 
 ## Valves
 
-This filter has **no configurable valves.** There is nothing to set.
+This filter has no configurable valves.
 
 ## Enabling via ENV
 
-Single-gate opt-in. Set in `.env`:
+The filter can be enabled via ENV. Set in `.env`:
 
 ```bash
 FUNCTION_VIDEO_INJECT_ENABLED=True
