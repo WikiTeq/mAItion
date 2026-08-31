@@ -21,7 +21,7 @@ Use `search_wiki` when the user asks to look something up on the wiki. Use `save
 
 Two distinct failure modes can occur, and the tool reports them differently: **authentication** failure (the supplied `username`/`password` are wrong — the tool reports this directly), and **authorization** failure (the acting user, whether anonymous or logged in, lacks permission for that specific action on this wiki — MediaWiki denies the request itself, independent of whether login succeeded).
 
-When credentials are needed, use a [BotPassword](https://www.mediawiki.org/wiki/Manual:Bot_passwords) (Special:BotPasswords on your wiki) rather than a real account password. The expected format is `Username@BotName`.
+When credentials are needed, use a [BotPassword](https://www.mediawiki.org/wiki/Manual:Bot_passwords) (Special:BotPasswords on your wiki) rather than a real account password.
 
 ## Connecting to the Wiki
 
@@ -32,7 +32,7 @@ When credentials are needed, use a [BotPassword](https://www.mediawiki.org/wiki/
 | Field | Required | Default | Description |
 |---|---|---|---|
 | `wiki_url` | **yes** | `""` | Full URL to the MediaWiki `api.php` script. Empty by default — the tool returns an error and will not run until this is set. |
-| `username` | no | `""` | MediaWiki username. For production wikis, use a BotPassword in the format `Username@BotName`. |
+| `username` | no | `""` | MediaWiki username. For production wikis, use a BotPassword. |
 | `password` | no | `""` | MediaWiki password or BotPassword token. |
 | `timeout` | no | `30` | Request timeout, in seconds. |
 | `edit_summary` | no | `"Saved via mAItion AI assistant"` | Edit summary recorded in the wiki page history. |
@@ -43,7 +43,17 @@ Tool id: `mediawiki`. Display name: "MediaWiki Search & Write Tool". Valves can 
 
 ## Enabling via ENV
 
-This tool is opt-in. It installs only when both of these are true:
+This tool is opt-in. Installing it requires both of these:
+
+- `TOOL_MEDIAWIKI_ENABLED=True`
+- `MEDIAWIKI_API_URL` set to a non-empty value
+
+If `MEDIAWIKI_API_URL` is missing while the flag is `True`, the entrypoint script skips
+the install and prints a warning to the container logs — it does not fail the boot, so
+the omission is easy to miss.
+
+`MEDIAWIKI_USERNAME` and `MEDIAWIKI_PASSWORD` are optional — set them if the wiki needs
+credentials. In `.env`:
 
 ```bash
 TOOL_MEDIAWIKI_ENABLED=True
@@ -51,9 +61,6 @@ MEDIAWIKI_API_URL=https://wiki.example.com/w/api.php
 MEDIAWIKI_USERNAME=
 MEDIAWIKI_PASSWORD=
 ```
-
-- `TOOL_MEDIAWIKI_ENABLED=True` is required to attempt install.
-- `MEDIAWIKI_API_URL` must also be non-empty. If it's missing while the flag is `True`, the entrypoint script skips the install and prints a warning to the container logs — it does not fail the boot, so the omission is easy to miss.
 
 At install, only three valves are set from ENV:
 
@@ -74,7 +81,7 @@ This installs only during first-start initialization — the setup that runs onl
 | `Error: wiki_url is not configured.` | The `wiki_url` valve is empty. Set it via ENV (see above) or manually from Workspace → Tools. |
 | `Error: wiki_url must start with http:// or https://. ...` / `Error: wiki_url has no host. ...` | The `wiki_url` valve isn't a valid URL. |
 | `Error: search query cannot be empty.` / `Error: page title cannot be empty.` | An empty query or title was passed to the tool. |
-| `Error: authentication failed. ...` | Login failed — check `username`/`password`. If using a BotPassword, confirm the `Username@BotName` format. |
+| `Error: authentication failed. ...` | Login failed — check `username`/`password`. |
 | `Error: this wiki requires authentication to search.` / `...to write.` | MediaWiki denied the request (`readapidenied`/`writeapidenied`/`permissiondenied`) — the acting user, anonymous or logged in, lacks the right for that action. If anonymous, configure `username` and `password`; if already logged in, the account itself lacks the required right. |
 | `Error: page '<title>' is protected.` | The page can't be edited by this account (save only). |
 | `Error: could not connect to the wiki. ...` | `wiki_url` is unreachable — check the URL and network path. |
