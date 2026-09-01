@@ -3,7 +3,6 @@ services:
   # LLM provider. Wired into openwebui via the e2e override below.
   llm-stub:
     image: python:3.12-slim
-    container_name: maition-e2e-llm-stub
     volumes:
       # E2E_DIR must be an absolute path to tests/e2e (set by run.sh); relative
       # mounts here would resolve against --project-directory (the repo root).

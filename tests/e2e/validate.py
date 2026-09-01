@@ -46,6 +46,30 @@ def check_files():
     return ok
 
 
+# Journey endpoints documented in tests/e2e/README.md; run.sh must reference each.
+REQUIRED_RUNNER_ENDPOINTS = (
+    "/api/v1/auths/signin",
+    "/openai/models",
+    "/api/v1/chats/new",
+    "/openai/chat/completions",
+    "/api/v1/chats/",
+    "/api/config",
+    "/health",
+)
+
+
+def check_runner_endpoints():
+    runner = os.path.join(HERE, "run.sh")
+    with open(runner) as fh:
+        contents = fh.read()
+    missing = [ep for ep in REQUIRED_RUNNER_ENDPOINTS if ep not in contents]
+    if missing:
+        print(f"FAIL run.sh missing documented journey endpoints: {missing}")
+        return False
+    print("OK   run.sh references documented journey endpoints")
+    return True
+
+
 def check_compose_yaml():
     try:
         import yaml
@@ -61,18 +85,32 @@ def check_compose_yaml():
     if missing:
         print(f"FAIL compose.e2e.yaml missing service keys: {sorted(missing)}")
         return False
-    rag_profiled = all(
-        "profiles" in services[s] for s in ("api", "celery_worker", "celery_beat")
-    )
-    if not rag_profiled:
-        print("FAIL rag services must keep their 'rag' profile so they stay out of the smoke stack")
+
+    rag_services = ("api", "celery_worker", "celery_beat")
+    for svc in rag_services:
+        profiles = services[svc].get("profiles", [])
+        if "rag" not in profiles:
+            print(f"FAIL {svc} must include the 'rag' profile so it stays out of the smoke stack")
+            return False
+
+    stub = services.get("llm-stub", {})
+    if not stub.get("healthcheck"):
+        print("FAIL llm-stub must define a healthcheck")
         return False
+
+    openwebui = services.get("openwebui", {})
+    depends = openwebui.get("depends_on", {})
+    llm_dep = depends.get("llm-stub") if isinstance(depends, dict) else None
+    if not isinstance(llm_dep, dict) or llm_dep.get("condition") != "service_healthy":
+        print("FAIL openwebui must depend on llm-stub with condition: service_healthy")
+        return False
+
     print("OK   compose.e2e.yaml structure valid (llm-stub + profiled RAG services)")
     return True
 
 
 def main():
-    results = [check_python_syntax(), check_files()]
+    results = [check_python_syntax(), check_files(), check_runner_endpoints()]
     r = check_compose_yaml()
     results.append(r)
     if all(results):
