@@ -144,7 +144,7 @@ api_expect() {
   return 0
 }
 
-jqget() { python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get(sys.argv[1],''))" "$1"; }
+jqget() { python3 -c "import json,sys;d=json.load(sys.stdin);v=d.get(sys.argv[1],'');print('' if v is None else v)" "$1"; }
 
 check_port_free() {
   local port="$1" label="$2"
@@ -160,6 +160,11 @@ check_port_free() {
       fail "port $port ($label) is already in use — set E2E_HTTP_PORT or LLM_STUB_HOST_PORT for parallel runs"
       return 1
     fi
+    return 0
+  fi
+  if (echo >/dev/tcp/127.0.0.1/"$port") 2>/dev/null; then
+    fail "port $port ($label) is already in use — set E2E_HTTP_PORT or LLM_STUB_HOST_PORT for parallel runs"
+    return 1
   fi
   return 0
 }
@@ -182,7 +187,7 @@ signin() {
 # ---------------------------------------------------------------------------
 
 journey_admin_login_and_chat() {
-  local token resp model_id chat_id content title
+  local token model_id chat_id content title
 
   log "Journey 1: admin login -> models -> chat completion -> chat persistence"
 
@@ -198,8 +203,8 @@ journey_admin_login_and_chat() {
   fi
   pass "admin signin returns JWT"
 
-  resp=$(api GET /openai/models "" "$token")
-  model_id=$(printf '%s' "$resp" | python3 -c '
+  api_expect 200 GET /openai/models "" "$token" || return 1
+  model_id=$(printf '%s' "$API_BODY" | python3 -c '
 import json,sys
 d=json.load(sys.stdin)
 items=d if isinstance(d, list) else d.get("data", [])
@@ -207,42 +212,47 @@ ids=[m["id"] for m in items if isinstance(m, dict) and "id" in m]
 pref=[i for i in ids if i.startswith("stub-model")]
 print(pref[0] if pref else (ids[0] if ids else ""))')
   if [[ -z "$model_id" ]]; then
-    fail "no usable model in /openai/models: $(printf '%s' "$resp" | head -c 300)"
+    fail "no usable model in /openai/models: $(printf '%s' "$API_BODY" | head -c 300)"
     return 1
   fi
   pass "model list contains stubbed LLM (id: $model_id)"
 
-  resp=$(api POST /api/v1/chats/new "{\"chat\":{\"title\":\"e2e-journey-1\",\"messages\":[],\"models\":[\"$model_id\"],\"params\":{}},\"model_id\":\"$model_id\",\"messages\":[]}" "$token")
-  chat_id=$(printf '%s' "$resp" | jqget id)
+  api_expect 200 POST /api/v1/chats/new "{\"chat\":{\"title\":\"e2e-journey-1\",\"messages\":[],\"models\":[\"$model_id\"],\"params\":{}},\"model_id\":\"$model_id\",\"messages\":[]}" "$token" || return 1
+  chat_id=$(printf '%s' "$API_BODY" | jqget id)
   if [[ -z "$chat_id" ]]; then
-    fail "chat creation failed: $(printf '%s' "$resp" | head -c 300)"
+    fail "chat creation failed: $(printf '%s' "$API_BODY" | head -c 300)"
     return 1
   fi
   pass "created chat $chat_id"
 
-  resp=$(api POST /openai/chat/completions "{\"model\":\"$model_id\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":\"What is the capital of France?\"}]}" "$token")
-  content=$(printf '%s' "$resp" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("choices",[{}])[0].get("message",{}).get("content",""))')
+  api_expect 200 POST /openai/chat/completions "{\"model\":\"$model_id\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":\"What is the capital of France?\"}]}" "$token" || return 1
+  content=$(printf '%s' "$API_BODY" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("choices",[{}])[0].get("message",{}).get("content",""))')
   if [[ "$content" != E2E-STUB-REPLY* ]]; then
-    fail "completion did not come from stub: $(printf '%s' "$resp" | head -c 300)"
+    fail "completion did not come from stub: $(printf '%s' "$API_BODY" | head -c 300)"
     return 1
   fi
   pass "LLM completion served by llm-stub"
 
-  # Persist a completed conversation, then read it back to verify storage.
-  resp=$(api POST "/api/v1/chats/$chat_id" "{\"chat\":{\"title\":\"e2e-journey-1\",\"models\":[\"$model_id\"],\"messages\":[{\"role\":\"user\",\"content\":\"What is the capital of France?\"},{\"role\":\"assistant\",\"content\":\"stubbed answer\"}],\"params\":{}}}" "$token") ||
-    resp=$(api POST "/api/v1/chats/$chat_id" "{\"title\":\"e2e-journey-1\",\"models\":[\"$model_id\"],\"messages\":[{\"role\":\"user\",\"content\":\"What is the capital of France?\"},{\"role\":\"assistant\",\"content\":\"stubbed answer\"}],\"params\":{}}" "$token")
-  title=$(printf '%s' "$resp" | jqget title)
-  if [[ "$title" != "e2e-journey-1" ]]; then
-    fail "chat update/persistence failed: $(printf '%s' "$resp" | head -c 300)"
+  api POST "/api/v1/chats/$chat_id" "{\"chat\":{\"title\":\"e2e-journey-1\",\"models\":[\"$model_id\"],\"messages\":[{\"role\":\"user\",\"content\":\"What is the capital of France?\"},{\"role\":\"assistant\",\"content\":\"stubbed answer\"}],\"params\":{}}}" "$token"
+  if [[ "$API_CODE" != "200" ]]; then
+    api POST "/api/v1/chats/$chat_id" "{\"title\":\"e2e-journey-1\",\"models\":[\"$model_id\"],\"messages\":[{\"role\":\"user\",\"content\":\"What is the capital of France?\"},{\"role\":\"assistant\",\"content\":\"stubbed answer\"}],\"params\":{}}" "$token"
+  fi
+  if [[ "$API_CODE" != "200" ]]; then
+    fail "chat update/persistence failed (HTTP $API_CODE): $(printf '%s' "$API_BODY" | head -c 300)"
     return 1
   fi
-  resp=$(api GET "/api/v1/chats/$chat_id" "" "$token")
-  if ! printf '%s' "$resp" | python3 -c '
+  title=$(printf '%s' "$API_BODY" | jqget title)
+  if [[ "$title" != "e2e-journey-1" ]]; then
+    fail "chat update/persistence failed: $(printf '%s' "$API_BODY" | head -c 300)"
+    return 1
+  fi
+  api_expect 200 GET "/api/v1/chats/$chat_id" "" "$token" || return 1
+  if ! printf '%s' "$API_BODY" | python3 -c '
 import json,sys
 d=json.load(sys.stdin)
 msgs=d.get("chat",{}).get("messages") or d.get("messages") or []
 assert any(m.get("content")=="stubbed answer" for m in msgs), "assistant msg missing"' 2>/dev/null; then
-    fail "persisted chat does not contain the saved messages: $(printf '%s' "$resp" | head -c 300)"
+    fail "persisted chat does not contain the saved messages: $(printf '%s' "$API_BODY" | head -c 300)"
     return 1
   fi
   pass "chat persisted and re-readable with full message history"
@@ -266,7 +276,7 @@ journey_regular_user_login() {
 
 journey_admin_config_endpoints() {
   log "Journey 3: admin config endpoints reachable"
-  local resp token
+  local token
   signin "$E2E_ADMIN_EMAIL" "$E2E_ADMIN_PASS"
   if [[ "$SIGNIN_CODE" != "200" ]]; then
     fail "signin for config journey failed (HTTP $SIGNIN_CODE)"
@@ -277,9 +287,9 @@ journey_admin_config_endpoints() {
     fail "signin for config journey returned no token"
     return 1
   fi
-  resp=$(api GET /api/config "" "$token")
-  if ! printf '%s' "$resp" | python3 -c 'import json,sys;json.load(sys.stdin)' 2>/dev/null; then
-    fail "GET /api/config returned invalid JSON: $(printf '%s' "$resp" | head -c 200)"
+  api_expect 200 GET /api/config "" "$token" || return 1
+  if ! printf '%s' "$API_BODY" | python3 -c 'import json,sys;json.load(sys.stdin)' 2>/dev/null; then
+    fail "GET /api/config returned invalid JSON: $(printf '%s' "$API_BODY" | head -c 200)"
     return 1
   fi
   pass "public config endpoint responds with JSON"
@@ -300,21 +310,23 @@ main() {
 
   # Provision throwaway env files from the committed E2E templates. The repo
   # ships only examples (.env.openwebui.example etc.) and compose requires
-  # real ones; both are gitignored. Refuse to clobber an existing dev .env
+  # real ones; both are gitignored. Refuse to clobber existing env files
   # unless E2E_FORCE_ENV=1 (backs up and restores on exit).
-  if [[ -f "$REPO_ROOT/.env" && "${E2E_FORCE_ENV:-0}" != "1" ]]; then
-    log "refusing to run: $REPO_ROOT/.env already exists."
+  if [[ ( -f "$REPO_ROOT/.env" || -f "$REPO_ROOT/.env.rag" ) && "${E2E_FORCE_ENV:-0}" != "1" ]]; then
+    log "refusing to run: existing env file(s) detected (.env and/or .env.rag)."
     log "E2E journeys require the committed stub templates (see tests/e2e/env.openwebui.e2e)."
     log "Re-run with E2E_FORCE_ENV=1 to back up and overwrite .env/.env.rag for this run."
     exit 1
   fi
 
-  if [[ -f "$REPO_ROOT/.env" && "${E2E_FORCE_ENV:-0}" == "1" ]]; then
+  if [[ "${E2E_FORCE_ENV:-0}" == "1" ]]; then
     ENV_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/maition-e2e-env-backup.XXXXXX")"
     chmod 700 "$ENV_BACKUP_DIR"
-    cp "$REPO_ROOT/.env" "$ENV_BACKUP_DIR/.env.bak"
-    ENV_FILE_STATE_OPENWEBUI=backed_up
-    log "Backed up existing .env to $ENV_BACKUP_DIR before overwrite"
+    if [[ -f "$REPO_ROOT/.env" ]]; then
+      cp "$REPO_ROOT/.env" "$ENV_BACKUP_DIR/.env.bak"
+      ENV_FILE_STATE_OPENWEBUI=backed_up
+      log "Backed up existing .env to $ENV_BACKUP_DIR before overwrite"
+    fi
     if [[ -f "$REPO_ROOT/.env.rag" ]]; then
       cp "$REPO_ROOT/.env.rag" "$ENV_BACKUP_DIR/.env.rag.bak"
       ENV_FILE_STATE_RAG=backed_up
