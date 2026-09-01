@@ -100,7 +100,7 @@ services:
 
   # rag-of-all-trades API
   api:
-    image: ghcr.io/wikiteq/rag-of-all-trades:01d6a7d
+    image: ghcr.io/wikiteq/rag-of-all-trades:3237d7b
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -124,7 +124,7 @@ services:
 
   # rag-of-all-trades WORKER
   celery_worker:
-    image: ghcr.io/wikiteq/rag-of-all-trades:01d6a7d
+    image: ghcr.io/wikiteq/rag-of-all-trades:3237d7b
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -150,7 +150,7 @@ services:
 
   # rag-of-all-trades BEAT
   celery_beat:
-    image: ghcr.io/wikiteq/rag-of-all-trades:01d6a7d
+    image: ghcr.io/wikiteq/rag-of-all-trades:3237d7b
     depends_on:
       postgres:
         condition: service_healthy
