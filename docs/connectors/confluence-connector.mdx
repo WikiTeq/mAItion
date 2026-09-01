@@ -1,0 +1,110 @@
+---
+title: "Confluence"
+description: "Configure the mAItion Confluence connector to ingest pages from Atlassian Confluence into the knowledge base."
+keywords:
+  - mAItion
+  - Confluence connector
+  - Confluence ingestion
+  - connectors
+---
+
+Use the Confluence Connector to ingest pages from [Atlassian Confluence](https://www.atlassian.com/software/confluence) Cloud or Server/Data Center into the mAItion knowledge base.
+
+## What It Does
+
+- discovers pages via a space, a list of page IDs, a label, a CQL query, or a folder
+- converts each page to Markdown for indexing
+- optionally follows descendant pages when discovering by page IDs
+- runs ingestion on configurable schedules
+
+## Discovery Modes
+
+Exactly one discovery mode must be set per source:
+
+| Mode | Config key | Description |
+|---|---|---|
+| Space | `space_key` | All pages in a space |
+| Page IDs | `page_ids` | Comma-separated list of page IDs |
+| Label | `page_label` | All pages with a given label |
+| CQL | `cql` | Arbitrary CQL query |
+| Folder | `folder_id` | All pages inside a folder |
+
+## Authentication
+
+Set one of the following. Username/password, API token, and bearer token auth are mutually exclusive with `oauth2`; `cookies` is the exception and may be combined with `oauth2`.
+
+- **Cloud basic** (`username` + `api_token`): email address and API token. Recommended for Confluence Cloud. Generate a token at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens).
+- **Server basic** (`username` + `password`): account username and password. For Confluence Server/Data Center.
+- **Bearer token** (`api_token` only): a Personal Access Token. For Server/Data Center; requires `cloud: false`.
+- **OAuth2** (`oauth2`): an OAuth2 credentials dict (`client_id`, `token`) passed directly to the underlying reader.
+- **Cookies** (`cookies`): a session cookies dict, e.g. produced by `atlassian.utils.parse_cookie_file()`. Can be combined with `oauth2`.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `CONFLUENCE1_BASE_URL`: Confluence base URL (example: `https://yoursite.atlassian.net/wiki`)
+- `CONFLUENCE1_USERNAME`: Confluence username or email — required for basic auth
+- `CONFLUENCE1_API_TOKEN`: API token (Cloud basic auth) or Personal Access Token (Bearer auth) — mutually exclusive with `CONFLUENCE1_PASSWORD`
+- `CONFLUENCE1_PASSWORD`: Confluence password (Server basic auth) — mutually exclusive with `CONFLUENCE1_API_TOKEN`
+- `CONFLUENCE1_SPACE_KEY`: space key to ingest — set when using the space discovery mode
+- `CONFLUENCE1_PAGE_IDS`: comma-separated page IDs — set when using the page IDs discovery mode
+- `CONFLUENCE1_PAGE_LABEL`: page label — set when using the label discovery mode
+- `CONFLUENCE1_CQL`: CQL query — set when using the CQL discovery mode
+- `CONFLUENCE1_FOLDER_ID`: folder ID — set when using the folder discovery mode
+- `CONFLUENCE1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "confluence"
+    name: "confluence1"
+    enabled: true  # optional, default: true
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      space_key: "${CONFLUENCE1_SPACE_KEY}"
+      page_status: "current"        # optional: filter by status, space_key mode only
+      max_pages: 50                 # optional, default 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
+      request_delay: 0.1            # optional, delay in seconds between requests (default: 0)
+```
+
+```dotenv
+# .env.rag
+
+CONFLUENCE1_BASE_URL=https://yoursite.atlassian.net/wiki
+CONFLUENCE1_USERNAME=you@example.com
+CONFLUENCE1_API_TOKEN=your-api-token
+CONFLUENCE1_SPACE_KEY=ENG
+CONFLUENCE1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `base_url` | yes | — | Confluence base URL |
+| `api_token` | see Authentication | — | API token (Cloud basic) or Personal Access Token (Bearer); mutually exclusive with `password` |
+| `username` | see Authentication | — | Confluence username or email |
+| `password` | see Authentication | — | Confluence password (Server basic); mutually exclusive with `api_token` |
+| `cloud` | no | `true` | `true` for Confluence Cloud, `false` for Server/Data Center |
+| `oauth2` | see Authentication | — | OAuth2 credentials dict; mutually exclusive with token/password auth |
+| `cookies` | see Authentication | — | Session cookies dict; can combine with `oauth2` |
+| `space_key` | one discovery mode required | — | Load all pages from a space |
+| `page_ids` | one discovery mode required | — | Comma-separated page IDs to load |
+| `page_label` | one discovery mode required | — | Load all pages with this label |
+| `cql` | one discovery mode required | — | CQL query to select pages |
+| `folder_id` | one discovery mode required | — | Load all pages inside this folder |
+| `page_status` | no | — | Filter by page status, e.g. `current` (space_key mode only) |
+| `include_children` | no | `false` | Also load descendant pages (page_ids mode only) |
+| `max_pages` | no | `50` | Maximum pages to load |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Seconds to wait between API requests. Increase to avoid rate-limiting (e.g. `0.1`) |
+
+## Multiple Confluence Sources
+
+Add more `sources` entries (`confluence2`, `confluence3`, etc) with separate env vars per source.

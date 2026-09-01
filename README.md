@@ -42,6 +42,7 @@ interact with your knowledge with ease!
 * SerpAPI
 * Slack
 * OneDrive for Business
+* Confluence (Cloud and Server/Data Center)
 
 ## 🌐 Extra connectors
 
@@ -460,6 +461,62 @@ ONEDRIVE1_CLIENT_SECRET=your-azure-app-client-secret
 ONEDRIVE1_TENANT_ID=your-azure-tenant-id
 ONEDRIVE1_USER_PRINCIPAL_NAME=user@your-org.onmicrosoft.com
 ONEDRIVE1_SCHEDULES=3600
+```
+
+### Confluence Connector
+
+The Confluence connector ingests pages from Atlassian Confluence Cloud or Server/Data Center.
+It supports 5 discovery modes and 5 authentication strategies.
+
+**Discovery modes** (exactly one required):
+
+| Mode | Config key | Description |
+|------|-----------|-------------|
+| Space | `space_key` | All pages in a space |
+| Page IDs | `page_ids` | Comma-separated list of page IDs |
+| Label | `page_label` | All pages with a given label |
+| CQL | `cql` | Arbitrary CQL query |
+| Folder | `folder_id` | All pages inside a folder |
+
+**Auth strategies** (mutually exclusive):
+
+| Strategy | Keys | Use case |
+|----------|------|----------|
+| Cloud basic | `username` + `api_token` | Confluence Cloud (recommended) |
+| Server basic | `username` + `password` | Confluence Server / Data Center |
+| Bearer token | `api_token` only | Server/DC PAT — requires `cloud: false` |
+| OAuth2 | `oauth2`: `{client_id: "...", token: {access_token: "...", token_type: "..."}}` | Atlassian OAuth 2.0 |
+| Cookies | `cookies`: browser session cookies dict (e.g. from `atlassian.utils.parse_cookie_file()`) | Session-based auth |
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "confluence"
+    name: "confluence1"
+    config:
+      base_url: "${CONFLUENCE1_BASE_URL}"
+      username: "${CONFLUENCE1_USERNAME}"
+      api_token: "${CONFLUENCE1_API_TOKEN}"
+      space_key: "${CONFLUENCE1_SPACE_KEY}"
+      page_status: "current"        # optional: filter by status
+      max_pages: 50
+      schedules: "${CONFLUENCE1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+CONFLUENCE1_BASE_URL=https://yoursite.atlassian.net/wiki
+CONFLUENCE1_USERNAME=you@example.com
+CONFLUENCE1_API_TOKEN=your-api-token
+#CONFLUENCE1_PASSWORD=your-password  # mutually exclusive with API_TOKEN
+CONFLUENCE1_SPACE_KEY=ENG
+CONFLUENCE1_PAGE_IDS=123456,789012
+CONFLUENCE1_PAGE_LABEL=meeting-notes
+CONFLUENCE1_CQL=space = 'ENG' AND type = page
+CONFLUENCE1_FOLDER_ID=12345
+CONFLUENCE1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
