@@ -8,6 +8,7 @@ test-e2e:
 test-e2e-keep:
 	./tests/e2e/run.sh --keep-up
 
-# Fast syntax/wiring pre-flight; does not need Docker.
+# Fast syntax/wiring pre-flight and llm-stub unit tests; does not need Docker.
 test-e2e-validate:
 	python3 tests/e2e/validate.py
+	python3 -m unittest discover -s tests/e2e -p 'test_llm_stub.py' -q

@@ -55,9 +55,11 @@ Environment knobs:
 | `MAITION_E2E_PROJECT` | `maition-e2e` | Docker Compose project name              |
 | `E2E_FORCE_ENV`       | unset         | Required when `.env` already exists: backs up and overwrites `.env`/`.env.rag` with the stub templates for this run (restored on exit) |
 
-If `.env` already exists in the repo root, the runner **refuses to start** unless
-`E2E_FORCE_ENV=1` — journeys always use the fixed E2E accounts from
-`env.openwebui.e2e`, not whatever is in a developer checkout.
+If `.env` or `.env.rag` already exists in the repo root, the runner **refuses to start**
+unless `E2E_FORCE_ENV=1` — journeys always use the fixed E2E accounts from
+`env.openwebui.e2e`, not whatever is in a developer checkout. With
+`E2E_FORCE_ENV=1`, each existing file is backed up independently and restored
+on exit.
 
 For parallel runs on one host, set distinct `E2E_HTTP_PORT`, `LLM_STUB_HOST_PORT`,
 and `MAITION_E2E_PROJECT` values per run.

@@ -120,12 +120,28 @@ wait_for() {
 }
 
 api() {
-  # api METHOD PATH [JSON_BODY] [TOKEN]
-  local method="$1" path="$2" body="${3:-}" token="${4:-}"
-  local args=(-sS --max-time 30 -X "$method" "http://localhost:${HTTP_PORT}${path}")
+  # api METHOD PATH [JSON_BODY] [TOKEN] -> sets API_CODE and API_BODY
+  local method="$1" path="$2" body="${3:-}" token="${4:-}" tmp code
+  tmp="$(mktemp)"
+  local args=(-sS --max-time 30 -o "$tmp" -w '%{http_code}' -X "$method" "http://localhost:${HTTP_PORT}${path}")
   [[ -n "$body" ]] && args+=(-H "Content-Type: application/json" -d "$body")
   [[ -n "$token" ]] && args+=(-H "Authorization: Bearer $token")
-  curl "${args[@]}"
+  code=$(curl "${args[@]}") || code="000"
+  API_BODY="$(cat "$tmp")"
+  API_CODE="$code"
+  rm -f "$tmp"
+}
+
+api_expect() {
+  # api_expect EXPECTED_STATUS METHOD PATH [JSON_BODY] [TOKEN]
+  local expected="$1"
+  shift
+  api "$@"
+  if [[ "$API_CODE" != "$expected" ]]; then
+    fail "expected HTTP $expected for $2, got $API_CODE: $(printf '%s' "$API_BODY" | head -c 300)"
+    return 1
+  fi
+  return 0
 }
 
 jqget() { python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get(sys.argv[1],''))" "$1"; }
