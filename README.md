@@ -540,6 +540,12 @@ SHAREPOINT1_CLIENT_ID=your-azure-app-client-id
 SHAREPOINT1_CLIENT_SECRET=your-azure-app-client-secret
 SHAREPOINT1_TENANT_ID=your-azure-tenant-id
 SHAREPOINT1_SCHEDULES=3600
+
+# sharepoint2 (site pages example above) uses its own set of variables:
+SHAREPOINT2_CLIENT_ID=your-azure-app-client-id
+SHAREPOINT2_CLIENT_SECRET=your-azure-app-client-secret
+SHAREPOINT2_TENANT_ID=your-azure-tenant-id
+SHAREPOINT2_SCHEDULES=3600
 ```
 
 ## Embeddings and Inference
