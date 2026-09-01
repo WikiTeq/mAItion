@@ -49,11 +49,11 @@ sources:
       client_id: "${SHAREPOINT1_CLIENT_ID}"
       client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
       tenant_id: "${SHAREPOINT1_TENANT_ID}"
-      # sharepoint_site_id can be provided instead of sharepoint_site_name
+      # sharepoint_site_id can be provided instead of sharepoint_site_name.
+      # One of the two is always required to resolve the SharePoint site.
       sharepoint_site_name: "MySite"
-      # sharepoint_host_name and sharepoint_relative_url are passed through to
-      # the reader but do NOT replace sharepoint_site_name / sharepoint_site_id
-      # for site lookup. At least one of site_name or site_id is required.
+      # sharepoint_host_name and sharepoint_relative_url are optional and
+      # informational only — they do not affect site resolution.
       # sharepoint_host_name: "contoso.sharepoint.com"
       # sharepoint_relative_url: "sites/YourSiteName"
       # sharepoint_folder_id can be provided instead of sharepoint_folder_path
@@ -64,9 +64,40 @@ sources:
       schedules: "${SHAREPOINT1_SCHEDULES}"
 ```
 
-<Note>
-  In file mode, when `sharepoint_folder_path` is set, `sharepoint_site_name` is required (it cannot be resolved from `sharepoint_site_id` alone in that case).
-</Note>
+### File mode — with folder path
+
+```yaml
+sources:
+  - type: "sharepoint"
+    name: "sharepoint1"
+    config:
+      client_id: "${SHAREPOINT1_CLIENT_ID}"
+      client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
+      tenant_id: "${SHAREPOINT1_TENANT_ID}"
+      # sharepoint_site_name is required here — it cannot be resolved from
+      # sharepoint_site_id alone when sharepoint_folder_path is set.
+      sharepoint_site_name: "MySite"
+      sharepoint_folder_path: "Documents/Reports"
+      sharepoint_type: "file"
+      recursive: true
+      schedules: "${SHAREPOINT1_SCHEDULES}"
+```
+
+### File mode — with site ID
+
+```yaml
+sources:
+  - type: "sharepoint"
+    name: "sharepoint1"
+    config:
+      client_id: "${SHAREPOINT1_CLIENT_ID}"
+      client_secret: "${SHAREPOINT1_CLIENT_SECRET}"
+      tenant_id: "${SHAREPOINT1_TENANT_ID}"
+      sharepoint_site_id: "11111111-2222-3333-4444-555555555555"
+      sharepoint_type: "file"
+      recursive: true
+      schedules: "${SHAREPOINT1_SCHEDULES}"
+```
 
 ### Page mode
 
@@ -102,8 +133,8 @@ SHAREPOINT1_SCHEDULES=3600
 | `tenant_id` | yes | — | Azure tenant ID |
 | `sharepoint_site_name` | one of `sharepoint_site_name` / `sharepoint_site_id` | — | SharePoint site name to resolve. Required (not just `sharepoint_site_id`) when `sharepoint_folder_path` is set in file mode |
 | `sharepoint_site_id` | one of `sharepoint_site_name` / `sharepoint_site_id` | — | SharePoint site ID (alternative to `sharepoint_site_name`) |
-| `sharepoint_host_name` | no | — | Passed through to the reader; does not replace site name/ID lookup |
-| `sharepoint_relative_url` | no | — | Passed through to the reader; does not replace site name/ID lookup |
+| `sharepoint_host_name` | no | — | Informational only; does not affect site resolution. Site is always resolved via `sharepoint_site_name` or `sharepoint_site_id` |
+| `sharepoint_relative_url` | no | — | Informational only; does not affect site resolution. Site is always resolved via `sharepoint_site_name` or `sharepoint_site_id` |
 | `sharepoint_folder_path` | no (file mode) | — | Folder path to ingest files from; alternative to `sharepoint_folder_id` |
 | `sharepoint_folder_id` | no (file mode) | — | Folder ID to ingest files from; alternative to `sharepoint_folder_path` |
 | `drive_name` | no | — | Name of the document library / drive (file mode) |
