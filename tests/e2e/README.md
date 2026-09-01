@@ -51,8 +51,16 @@ Environment knobs:
 | Variable              | Default       | Purpose                                  |
 | --------------------- | ------------- | ---------------------------------------- |
 | `E2E_HTTP_PORT`       | `3100`        | Host port for the OpenWebUI web UI       |
+| `LLM_STUB_HOST_PORT`  | `8090`        | Host port for the llm-stub service       |
 | `MAITION_E2E_PROJECT` | `maition-e2e` | Docker Compose project name              |
-| `E2E_FORCE_ENV`       | unset         | Overwrite existing `.env`/`.env.rag` with the stub templates (originals are backed up and restored on exit); without it, reuse mode refuses to run unless `OPENAI_API_BASE_URL` points at `llm-stub` |
+| `E2E_FORCE_ENV`       | unset         | Required when `.env` already exists: backs up and overwrites `.env`/`.env.rag` with the stub templates for this run (restored on exit) |
+
+If `.env` already exists in the repo root, the runner **refuses to start** unless
+`E2E_FORCE_ENV=1` — journeys always use the fixed E2E accounts from
+`env.openwebui.e2e`, not whatever is in a developer checkout.
+
+For parallel runs on one host, set distinct `E2E_HTTP_PORT`, `LLM_STUB_HOST_PORT`,
+and `MAITION_E2E_PROJECT` values per run.
 
 ## Adding journeys
 

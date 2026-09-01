@@ -15,7 +15,15 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 PROJECT="${MAITION_E2E_PROJECT:-maition-e2e}"
 HTTP_PORT="${E2E_HTTP_PORT:-3100}"
+LLM_STUB_PORT="${LLM_STUB_HOST_PORT:-8090}"
 export HTTP_WEB_PORT="$HTTP_PORT"
+export LLM_STUB_HOST_PORT="$LLM_STUB_PORT"
+
+# Must stay in sync with tests/e2e/env.openwebui.e2e (validated by validate.py).
+E2E_ADMIN_EMAIL="admin@example123.com"
+E2E_ADMIN_PASS="q1w2e3r4!"
+E2E_USER_EMAIL="user@example123.com"
+E2E_USER_PASS="q1w2e3r4!"
 # compose.e2e.yaml uses this for its bind mounts (see comment there).
 export E2E_DIR="$SCRIPT_DIR"
 
@@ -122,27 +130,35 @@ api() {
 
 jqget() { python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get(sys.argv[1],''))" "$1"; }
 
-check_provider_guard() {
-  # In reuse-existing-.env mode, refuse to run against anything but the stub:
-  # otherwise Journey 1 traffic would hit the dev's real paid LLM provider.
-  local base_url
-  base_url="$(grep -E '^OPENAI_API_BASE_URL=' "$REPO_ROOT/.env" | tail -n 1 | cut -d= -f2- || true)"
-  base_url="${base_url//\"/}"
-  base_url="${base_url%\'}"
-  if [[ -z "$base_url" ]]; then
-    fail "reuse mode: no OPENAI_API_BASE_URL found in $REPO_ROOT/.env"
-    return 1
-  fi
-  case "$base_url" in
-    *llm-stub*)
-      return 0
-      ;;
-    *)
-      fail "refusing to run E2E: OPENAI_API_BASE_URL ($base_url) does not point at llm-stub."
-      fail "Journey traffic would hit your real LLM provider. Re-run with E2E_FORCE_ENV=1 to force the stub env, or point OPENAI_API_BASE_URL at http://llm-stub:8090/v1."
+check_port_free() {
+  local port="$1" label="$2"
+  if command -v ss >/dev/null 2>&1; then
+    if ss -tlnH "sport = :$port" 2>/dev/null | grep -q .; then
+      fail "port $port ($label) is already in use — set E2E_HTTP_PORT or LLM_STUB_HOST_PORT for parallel runs"
       return 1
-      ;;
-  esac
+    fi
+    return 0
+  fi
+  if command -v nc >/dev/null 2>&1; then
+    if nc -z 127.0.0.1 "$port" 2>/dev/null; then
+      fail "port $port ($label) is already in use — set E2E_HTTP_PORT or LLM_STUB_HOST_PORT for parallel runs"
+      return 1
+    fi
+  fi
+  return 0
+}
+
+signin() {
+  # signin EMAIL PASSWORD -> sets SIGNIN_CODE and SIGNIN_BODY
+  local email="$1" password="$2" tmp code
+  tmp="$(mktemp)"
+  code=$(curl -sS --max-time 30 -o "$tmp" -w '%{http_code}' -X POST \
+    "http://localhost:${HTTP_PORT}/api/v1/auths/signin" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"$email\",\"password\":\"$password\"}") || code="000"
+  SIGNIN_BODY="$(cat "$tmp")"
+  SIGNIN_CODE="$code"
+  rm -f "$tmp"
 }
 
 # ---------------------------------------------------------------------------
@@ -154,10 +170,14 @@ journey_admin_login_and_chat() {
 
   log "Journey 1: admin login -> models -> chat completion -> chat persistence"
 
-  resp=$(api POST /api/v1/auths/signin '{"email":"admin@example123.com","password":"q1w2e3r4!"}')
-  token=$(printf '%s' "$resp" | jqget token)
-  if [[ -z "$token" || "$resp" == *"detail"* && "$resp" == *"$token"* ]]; then
-    fail "admin signin failed: $(printf '%s' "$resp" | head -c 300)"
+  signin "$E2E_ADMIN_EMAIL" "$E2E_ADMIN_PASS"
+  if [[ "$SIGNIN_CODE" != "200" ]]; then
+    fail "admin signin failed (HTTP $SIGNIN_CODE): $(printf '%s' "$SIGNIN_BODY" | head -c 300)"
+    return 1
+  fi
+  token=$(printf '%s' "$SIGNIN_BODY" | jqget token)
+  if [[ -z "$token" ]]; then
+    fail "admin signin returned no token: $(printf '%s' "$SIGNIN_BODY" | head -c 300)"
     return 1
   fi
   pass "admin signin returns JWT"
@@ -214,11 +234,15 @@ assert any(m.get("content")=="stubbed answer" for m in msgs), "assistant msg mis
 
 journey_regular_user_login() {
   log "Journey 2: regular user login"
-  local resp token
-  resp=$(api POST /api/v1/auths/signin '{"email":"user@example123.com","password":"q1w2e3r4!"}')
-  token=$(printf '%s' "$resp" | jqget token)
+  local token
+  signin "$E2E_USER_EMAIL" "$E2E_USER_PASS"
+  if [[ "$SIGNIN_CODE" != "200" ]]; then
+    fail "regular user signin failed (HTTP $SIGNIN_CODE): $(printf '%s' "$SIGNIN_BODY" | head -c 300)"
+    return 1
+  fi
+  token=$(printf '%s' "$SIGNIN_BODY" | jqget token)
   if [[ -z "$token" ]]; then
-    fail "regular user signin failed: $(printf '%s' "$resp" | head -c 300)"
+    fail "regular user signin returned no token: $(printf '%s' "$SIGNIN_BODY" | head -c 300)"
     return 1
   fi
   pass "regular user signin returns JWT"
@@ -227,10 +251,14 @@ journey_regular_user_login() {
 journey_admin_config_endpoints() {
   log "Journey 3: admin config endpoints reachable"
   local resp token
-  resp=$(api POST /api/v1/auths/signin '{"email":"admin@example123.com","password":"q1w2e3r4!"}')
-  token=$(printf '%s' "$resp" | jqget token)
+  signin "$E2E_ADMIN_EMAIL" "$E2E_ADMIN_PASS"
+  if [[ "$SIGNIN_CODE" != "200" ]]; then
+    fail "signin for config journey failed (HTTP $SIGNIN_CODE)"
+    return 1
+  fi
+  token=$(printf '%s' "$SIGNIN_BODY" | jqget token)
   if [[ -z "$token" ]]; then
-    fail "signin for config journey failed"
+    fail "signin for config journey returned no token"
     return 1
   fi
   resp=$(api GET /api/config "" "$token")
@@ -256,37 +284,38 @@ main() {
 
   # Provision throwaway env files from the committed E2E templates. The repo
   # ships only examples (.env.openwebui.example etc.) and compose requires
-  # real ones; both are gitignored so this never touches a dev's own setup.
-  if [[ ! -f "$REPO_ROOT/.env" || "${E2E_FORCE_ENV:-0}" == "1" ]] ; then
-    if [[ -f "$REPO_ROOT/.env" && "${E2E_FORCE_ENV:-0}" == "1" ]]; then
-      ENV_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/maition-e2e-env-backup.XXXXXX")"
-      chmod 700 "$ENV_BACKUP_DIR"
-      cp "$REPO_ROOT/.env" "$ENV_BACKUP_DIR/.env.bak"
-      ENV_FILE_STATE_OPENWEBUI=backed_up
-      log "Backed up existing .env to $ENV_BACKUP_DIR before overwrite"
-    fi
-    if [[ -f "$REPO_ROOT/.env.rag" ]]; then
-      if [[ "${E2E_FORCE_ENV:-0}" == "1" ]]; then
-        [[ -n "$ENV_BACKUP_DIR" ]] || { ENV_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/maition-e2e-env-backup.XXXXXX")"; chmod 700 "$ENV_BACKUP_DIR"; }
-        cp "$REPO_ROOT/.env.rag" "$ENV_BACKUP_DIR/.env.rag.bak"
-        ENV_FILE_STATE_RAG=backed_up
-        log "Backed up existing .env.rag to $ENV_BACKUP_DIR before overwrite"
-      fi
-    elif [[ "${E2E_FORCE_ENV:-0}" == "1" ]]; then
-      log "No existing .env.rag found; provisioning from tests/e2e template"
-    fi
-    log "Provisioning .env / .env.rag from tests/e2e templates"
-    cp "$SCRIPT_DIR/env.openwebui.e2e" "$REPO_ROOT/.env"
-    cp "$SCRIPT_DIR/env.rag.e2e" "$REPO_ROOT/.env.rag"
-    [[ -z "$ENV_FILE_STATE_OPENWEBUI" ]] && ENV_FILE_STATE_OPENWEBUI=provisioned
-    [[ -z "$ENV_FILE_STATE_RAG" ]] && ENV_FILE_STATE_RAG=provisioned
-  else
-    log "Using existing $REPO_ROOT/.env (E2E credentials may differ)"
-    check_provider_guard || { cleanup; exit 1; }
+  # real ones; both are gitignored. Refuse to clobber an existing dev .env
+  # unless E2E_FORCE_ENV=1 (backs up and restores on exit).
+  if [[ -f "$REPO_ROOT/.env" && "${E2E_FORCE_ENV:-0}" != "1" ]]; then
+    log "refusing to run: $REPO_ROOT/.env already exists."
+    log "E2E journeys require the committed stub templates (see tests/e2e/env.openwebui.e2e)."
+    log "Re-run with E2E_FORCE_ENV=1 to back up and overwrite .env/.env.rag for this run."
+    exit 1
   fi
+
+  if [[ -f "$REPO_ROOT/.env" && "${E2E_FORCE_ENV:-0}" == "1" ]]; then
+    ENV_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/maition-e2e-env-backup.XXXXXX")"
+    chmod 700 "$ENV_BACKUP_DIR"
+    cp "$REPO_ROOT/.env" "$ENV_BACKUP_DIR/.env.bak"
+    ENV_FILE_STATE_OPENWEBUI=backed_up
+    log "Backed up existing .env to $ENV_BACKUP_DIR before overwrite"
+    if [[ -f "$REPO_ROOT/.env.rag" ]]; then
+      cp "$REPO_ROOT/.env.rag" "$ENV_BACKUP_DIR/.env.rag.bak"
+      ENV_FILE_STATE_RAG=backed_up
+      log "Backed up existing .env.rag to $ENV_BACKUP_DIR before overwrite"
+    fi
+  fi
+
+  log "Provisioning .env / .env.rag from tests/e2e templates"
+  cp "$SCRIPT_DIR/env.openwebui.e2e" "$REPO_ROOT/.env"
+  cp "$SCRIPT_DIR/env.rag.e2e" "$REPO_ROOT/.env.rag"
+  [[ -z "$ENV_FILE_STATE_OPENWEBUI" ]] && ENV_FILE_STATE_OPENWEBUI=provisioned
+  [[ -z "$ENV_FILE_STATE_RAG" ]] && ENV_FILE_STATE_RAG=provisioned
   trap cleanup EXIT
 
-  log "Using project '$PROJECT'; web UI will bind http://localhost:${HTTP_PORT}"
+  log "Using project '$PROJECT'; web UI http://localhost:${HTTP_PORT}; llm-stub 127.0.0.1:${LLM_STUB_PORT}"
+  check_port_free "$HTTP_PORT" "OpenWebUI" || exit 1
+  check_port_free "$LLM_STUB_PORT" "llm-stub" || exit 1
   log "Booting core stack (postgres, redis, llm-stub, openwebui)..."
 
   dc down --remove-orphans --volumes >/dev/null 2>&1 || true
@@ -302,9 +331,9 @@ main() {
   i=0
   while [ "$i" -lt 40 ]; do
     admin_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST "http://localhost:${HTTP_PORT}/api/v1/auths/signin" \
-      -H "Content-Type: application/json" -d '{"email":"admin@example123.com","password":"q1w2e3r4!"}')
+      -H "Content-Type: application/json" -d "{\"email\":\"$E2E_ADMIN_EMAIL\",\"password\":\"$E2E_ADMIN_PASS\"}")
     user_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST "http://localhost:${HTTP_PORT}/api/v1/auths/signin" \
-      -H "Content-Type: application/json" -d '{"email":"user@example123.com","password":"q1w2e3r4!"}')
+      -H "Content-Type: application/json" -d "{\"email\":\"$E2E_USER_EMAIL\",\"password\":\"$E2E_USER_PASS\"}")
     [[ "$admin_code" == "200" && "$user_code" == "200" ]] && { ok=1; break; }
     sleep 3
     i=$((i + 1))

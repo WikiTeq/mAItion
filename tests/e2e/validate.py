@@ -2,9 +2,9 @@
 """Syntax and wiring validation for the E2E harness.
 
 Runs without Docker: checks Python syntax of the stub server, parses compose
-files, verifies required files exist and are executable, and confirms the
-runner's journeys reference real OpenWebUI endpoints. Intended as a fast
-pre-flight for environments without a Docker daemon.
+files, verifies required files exist and are executable, confirms the
+runner's journeys reference documented OpenWebUI endpoints, and checks that
+run.sh credentials stay in sync with env.openwebui.e2e.
 """
 
 import os
@@ -20,13 +20,33 @@ REQUIRED = [
     "env.openwebui.e2e",
     "env.rag.e2e",
     "__init__.py",
+    "test_llm_stub.py",
 ]
+
+# Journey endpoints documented in tests/e2e/README.md; run.sh must reference each.
+REQUIRED_RUNNER_ENDPOINTS = (
+    "/api/v1/auths/signin",
+    "/openai/models",
+    "/api/v1/chats/new",
+    "/openai/chat/completions",
+    "/api/v1/chats/",
+    "/api/config",
+    "/health",
+)
+
+CREDENTIAL_MAP = (
+    ("E2E_ADMIN_EMAIL", "X_WEBUI_ADMIN_EMAIL"),
+    ("E2E_ADMIN_PASS", "X_WEBUI_ADMIN_PASS"),
+    ("E2E_USER_EMAIL", "X_WEBUI_USER_EMAIL"),
+    ("E2E_USER_PASS", "X_WEBUI_USER_PASS"),
+)
 
 
 def check_python_syntax():
-    path = os.path.join(HERE, "llm_stub.py")
-    py_compile.compile(path, doraise=True)
-    print(f"OK   python syntax: {path}")
+    for name in ("llm_stub.py", "validate.py", "test_llm_stub.py"):
+        path = os.path.join(HERE, name)
+        py_compile.compile(path, doraise=True)
+        print(f"OK   python syntax: {name}")
     return True
 
 
@@ -41,21 +61,40 @@ def check_files():
             print(f"OK   present: {name}")
     runner = os.path.join(HERE, "run.sh")
     if os.path.exists(runner) and not os.access(runner, os.X_OK):
-        print(f"FAIL run.sh is not executable")
+        print("FAIL run.sh is not executable")
         ok = False
     return ok
 
 
-# Journey endpoints documented in tests/e2e/README.md; run.sh must reference each.
-REQUIRED_RUNNER_ENDPOINTS = (
-    "/api/v1/auths/signin",
-    "/openai/models",
-    "/api/v1/chats/new",
-    "/openai/chat/completions",
-    "/api/v1/chats/",
-    "/api/config",
-    "/health",
-)
+def _parse_env_file(path):
+    values = {}
+    with open(path) as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, _, value = line.partition("=")
+                values[key.strip()] = value.strip()
+    return values
+
+
+def check_credential_sync():
+    env_path = os.path.join(HERE, "env.openwebui.e2e")
+    runner_path = os.path.join(HERE, "run.sh")
+    env_vals = _parse_env_file(env_path)
+    with open(runner_path) as fh:
+        runner = fh.read()
+    ok = True
+    for runner_var, env_key in CREDENTIAL_MAP:
+        expected = env_vals.get(env_key, "")
+        needle = f'{runner_var}="{expected}"'
+        if needle not in runner:
+            print(f"FAIL run.sh {runner_var} does not match {env_key} in env.openwebui.e2e")
+            ok = False
+    if ok:
+        print("OK   run.sh E2E credentials match env.openwebui.e2e")
+    return ok
 
 
 def check_runner_endpoints():
@@ -110,9 +149,13 @@ def check_compose_yaml():
 
 
 def main():
-    results = [check_python_syntax(), check_files(), check_runner_endpoints()]
-    r = check_compose_yaml()
-    results.append(r)
+    results = [
+        check_python_syntax(),
+        check_files(),
+        check_credential_sync(),
+        check_runner_endpoints(),
+        check_compose_yaml(),
+    ]
     if all(results):
         print("\nAll E2E harness pre-flight checks passed.")
         return 0
