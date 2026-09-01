@@ -79,7 +79,8 @@
 						"group": "Tools",
 						"pages": [
 							"tools/image-resizer",
-							"tools/web-search"
+							"tools/web-search",
+							"tools/roat-retrieval"
 						]
 					},
 					{

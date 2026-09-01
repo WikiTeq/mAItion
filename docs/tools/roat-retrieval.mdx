@@ -1,0 +1,59 @@
+---
+title: "Knowledge Base Search"
+description: "Configure the ROAT Knowledge Base Search tool, the Workspace Tool that lets the LLM query mAItion's knowledge base on demand."
+keywords:
+  - mAItion
+  - tool
+  - workspace tool
+  - knowledge base
+  - ROAT
+  - retrieval
+---
+
+The **Knowledge Base Search** tool (`roat_retrieval`) is a mAItion Workspace Tool. It lets the LLM decide, on its own, when to call the knowledge base to answer a question.
+
+Use it for questions about internal documents, company processes, or organization-specific topics. Skip it for general knowledge questions (math, programming syntax, public facts) that don't need internal data.
+
+The knowledge base is powered by [ROAT (rag-of-all-trades)](https://github.com/WikiTeq/rag-of-all-trades), mAItion's RAG backend.
+
+## Valves
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `rag_service_url` | **yes** | `""` | Full URL to the ROAT query endpoint. Empty by default — the tool returns an error and will not run until this is set. |
+| `rag_service_api_key` | no | `""` | Bearer token for the ROAT API. Leave blank if the API doesn't require one. |
+| `rag_service_timeout` | no | `30` | Request timeout, in seconds. |
+| `top_k` | no | `20` | Number of top results to retrieve from the knowledge base. |
+| `max_document_preview_chars` | no | `0` | Maximum characters shown in the document preview of each source citation. `0` means unlimited. |
+| `video_metadata_field` | no | `"video_url"` | Metadata field name to check for a video URL. When a result's metadata has one, the tool prepends a hidden marker to its response that the Video Inject Filter turns into an inline player — this valve has no effect unless that filter is also enabled. |
+
+Valves can be edited after install from **Workspace → Tools** in mAItion.
+
+## Configuration via ENV
+
+<Note>
+Knowledge Base Search is always installed — there is no opt-in flag. The ENV variables below only affect what it connects to, and only apply during first-start initialization (the setup that runs only once, the first time the container boots, gated on a marker file). On an already-running instance, configure the resulting valves manually from the admin UI instead.
+</Note>
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `ROAT_API_URL` | yes | `http://api:8000` | Base URL of the ROAT API — the host and port only, with no path suffix. Used to set the tool's `rag_service_url` valve at first start. |
+| `ROAT_API_KEY` | no | `12345` | Bearer token for the ROAT API. Used to set the tool's `rag_service_api_key` valve at first start. |
+
+Example `.env`:
+
+```bash
+ROAT_API_URL=http://api:8000
+ROAT_API_KEY=12345
+```
+
+If you configure `rag_service_url` manually later (for example after changing `ROAT_API_URL` post-install), remember to include the `/api/v1/query` path — the bare host URL alone will not work.
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| `Error: rag_service_url is not configured in Tool Valves.` | The `rag_service_url` valve is empty. Set it via ENV (see above) or manually from Workspace → Tools in mAItion. |
+| `Error: the knowledge base rejected this request (<status>). ...` | The ROAT API returned an HTTP error — check the status code and detail in the message, and confirm `rag_service_api_key` is correct. |
+| `Error: could not reach the knowledge base. ...` | The `api` service is unreachable from `rag_service_url` — check the `api` service is up and the URL/network path is correct. |
+| `No relevant information was found in the knowledge base for this query.` | Not an error — the search ran but found nothing. Confirm a connector has indexed data relevant to the query. |
