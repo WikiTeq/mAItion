@@ -1,0 +1,96 @@
+---
+title: "MediaWiki Search & Write Tool"
+description: "Configure the MediaWiki Search & Write Tool, the Workspace Tool that lets the LLM search and save pages on your MediaWiki wiki."
+keywords:
+  - mAItion
+  - tool
+  - workspace tool
+  - MediaWiki
+  - wiki
+  - search
+  - write
+---
+
+The **MediaWiki Search & Write Tool** (`mediawiki`) is a mAItion Workspace Tool. It gives the LLM two on-demand functions: searching your wiki, and creating or updating wiki pages.
+
+Use `search_wiki` when the user asks to look something up on the wiki. Use `save_to_wiki` when the user asks to save, write, or update content on the wiki.
+
+## Authentication
+
+`username` and `password` are optional. The tool connects **anonymously** when both are empty, and only attempts to log in when both are set. Credentials are not required for every wiki — only wikis that restrict the relevant action reject the request.
+
+Two distinct failure modes can occur, and the tool reports them differently: **authentication** failure (the supplied `username`/`password` are wrong — the tool reports this directly), and **authorization** failure (the acting user, whether anonymous or logged in, lacks permission for that specific action on this wiki — MediaWiki denies the request itself, independent of whether login succeeded).
+
+When credentials are needed, use a [BotPassword](https://www.mediawiki.org/wiki/Manual:Bot_passwords) (Special:BotPasswords on your wiki) rather than a real account password.
+
+## Connecting to the Wiki
+
+`wiki_url` must be the full URL to your wiki's `api.php` script (for example `https://wiki.example.com/w/api.php`), starting with `http://` or `https://` and including a resolvable host. The tool can derive a working site path even from a URL that doesn't literally end in `/api.php`, but the supported and documented form is the full `api.php` URL.
+
+## Valves
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `wiki_url` | **yes** | `""` | Full URL to the MediaWiki `api.php` script. Empty by default — the tool returns an error and will not run until this is set. |
+| `username` | no | `""` | MediaWiki username. For production wikis, use a BotPassword. |
+| `password` | no | `""` | MediaWiki password or BotPassword token. |
+| `timeout` | no | `30` | Request timeout, in seconds. |
+| `edit_summary` | no | `"Saved via mAItion AI assistant"` | Edit summary recorded in the wiki page history. |
+| `max_search_results` | no | `10` | Maximum number of search results to return. Effective range 1–20 — values outside this range are clamped at runtime, not rejected. |
+| `max_page_chars` | no | `20000` | Maximum characters per page in search results; longer pages are truncated. Valid range 1–500,000, enforced at the schema level. |
+
+Tool id: `mediawiki`. Display name: "MediaWiki Search & Write Tool". Valves can be edited after install from **Workspace → Tools** in mAItion.
+
+## Enabling via ENV
+
+This tool is opt-in. Installing it requires both of these:
+
+- `TOOL_MEDIAWIKI_ENABLED=True`
+- `MEDIAWIKI_API_URL` set to a non-empty value
+
+If `MEDIAWIKI_API_URL` is missing while the flag is `True`, the entrypoint script skips
+the install and prints a warning to the container logs — it does not fail the boot, so
+the omission is easy to miss.
+
+`MEDIAWIKI_USERNAME` and `MEDIAWIKI_PASSWORD` are optional — set them if the wiki needs
+credentials. In `.env`:
+
+```bash
+TOOL_MEDIAWIKI_ENABLED=True
+MEDIAWIKI_API_URL=https://wiki.example.com/w/api.php
+MEDIAWIKI_USERNAME=
+MEDIAWIKI_PASSWORD=
+```
+
+At install, only three valves are set from ENV:
+
+- `wiki_url` ← `MEDIAWIKI_API_URL`
+- `username` ← `MEDIAWIKI_USERNAME`
+- `password` ← `MEDIAWIKI_PASSWORD`
+
+`timeout`, `edit_summary`, `max_search_results`, and `max_page_chars` are **not** configurable via ENV. They stay at their defaults above unless changed later from Workspace → Tools.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `TOOL_MEDIAWIKI_ENABLED=True` on an already-running instance does not install it retroactively.
+</Note>
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| `Error: wiki_url is not configured.` | The `wiki_url` valve is empty. Set it via ENV (see above) or manually from Workspace → Tools. |
+| `Error: wiki_url must start with http:// or https://. ...` / `Error: wiki_url has no host. ...` | The `wiki_url` valve isn't a valid URL. |
+| `Error: search query cannot be empty.` / `Error: page title cannot be empty.` | An empty query or title was passed to the tool. |
+| `Error: authentication failed. ...` | Login failed — check `username`/`password`. |
+| `Error: this wiki requires authentication to search.` / `...to write.` | MediaWiki denied the request (`readapidenied`/`writeapidenied`/`permissiondenied`) — the acting user, anonymous or logged in, lacks the right for that action. If anonymous, configure `username` and `password`; if already logged in, the account itself lacks the required right. |
+| `Error: page '<title>' is protected.` | The page can't be edited by this account (save only). |
+| `Error: could not connect to the wiki. ...` | `wiki_url` is unreachable — check the URL and network path. |
+| `Error: page title exceeds maximum length of 255 characters.` | The title is longer than 255 characters (save only). |
+| `Error: Page title must not contain ':'. ...` | Only main-namespace pages are supported — the title contains a `:` (save only). |
+| `Error: Page title contains an illegal character: ...` | The title contains `# < > [ ] \| { }` or a control character (save only). |
+| `Error: content exceeds maximum allowed size of 2 MB.` | The page content exceeds the byte-size limit, measured on UTF-8-encoded bytes, not characters (save only). |
+| `Error: wiki API returned an error (<code>). ...` | The wiki's API returned an error not covered above; the error code is included in the message. |
+| `Error: unexpected error during search. ...` / `Error: an unexpected error occurred while saving. ...` | An unhandled error occurred. Check server logs. |
+| `No wiki pages found matching '<query>'.` | Not an error — the search ran but found nothing. |
+| `(Page not found — may have been deleted)` / `(Content unavailable)` | Not an error — one search result's page content couldn't be fetched; the rest of the search still returns normally. |
+| `Saved "<title>" to the wiki, but the page URL could not be determined.` | Not an error — the save succeeded; the response just didn't return a link (save only). |

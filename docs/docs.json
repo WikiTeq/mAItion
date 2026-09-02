@@ -81,7 +81,8 @@
 						"pages": [
 							"tools/image-resizer",
 							"tools/web-search",
-							"tools/roat-retrieval"
+							"tools/roat-retrieval",
+							"tools/mediawiki-tool"
 						]
 					},
 					{
