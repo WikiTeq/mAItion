@@ -88,7 +88,9 @@ def _get_filename_from_extras(extras: dict) -> str | None:
     return extras.get("key") or extras.get("filename") or extras.get("name") or None
 
 
-def _find_video_url(references: list, field: str = "video_url") -> tuple[str | None, str | None]:
+def _find_video_url(
+    references: list, field: str = "video_url"
+) -> tuple[str | None, str | None]:
     """Return (video_url, source_name) from the highest-scored ref with extras.<field>."""
 
     def score_key(ref):
@@ -139,13 +141,19 @@ def _call_rag_service(
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     url = url.strip()
-    log.info("Calling ROAT: query_length=%d has_filters=%s", len(query), bool(metadata_filters))
+    log.info(
+        "Calling ROAT: query_length=%d has_filters=%s",
+        len(query),
+        bool(metadata_filters),
+    )
     response = requests.post(url, json=payload, headers=headers, timeout=timeout)
     response.raise_for_status()
     return response.json()
 
 
-def _format_context_and_sources(rag_result: dict, max_document_preview_chars: int = 0) -> tuple[str, list]:
+def _format_context_and_sources(
+    rag_result: dict, max_document_preview_chars: int = 0
+) -> tuple[str, list]:
     references = rag_result.get("references", []) or []
     raw_chunks = rag_result.get("raw") or []
 
@@ -172,11 +180,19 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
             continue
 
         filename = _get_filename_from_extras(extras)
-        source_name = ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
+        source_name = (
+            ref.get("title") or ref.get("source_name") or filename or f"Source {i + 1}"
+        )
 
         metadata_fields = {"title": source_name}
         metadata_fields.update(
-            {k: v for k, v in extras.items() if k not in _internal_fields and k not in ("url", "id") and v is not None}
+            {
+                k: v
+                for k, v in extras.items()
+                if k not in _internal_fields
+                and k not in ("url", "id")
+                and v is not None
+            }
         )
         url = ref.get("url") or extras.get("url")
         if url:
@@ -197,7 +213,13 @@ def _format_context_and_sources(rag_result: dict, max_document_preview_chars: in
 
         source_obj = {
             "source": {"name": source_name, "id": to_source_id(source_name)},
-            "document": [text[:max_document_preview_chars] if max_document_preview_chars > 0 else text],
+            "document": [
+                (
+                    text[:max_document_preview_chars]
+                    if max_document_preview_chars > 0
+                    else text
+                )
+            ],
             "metadata": [
                 {
                     "source": source_name,
@@ -355,10 +377,17 @@ class Tools:
 
         async def emit(description: str, done: bool = False) -> None:
             if __event_emitter__:
-                await __event_emitter__({"type": "status", "data": {"description": description, "done": done}})
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {"description": description, "done": done},
+                    }
+                )
 
         if not self.valves.rag_service_url:
-            await emit("Knowledge base URL is not configured in Tool Valves.", done=True)
+            await emit(
+                "Knowledge base URL is not configured in Tool Valves.", done=True
+            )
             return "Error: rag_service_url is not configured in Tool Valves."
 
         await emit("Searching knowledge base…")
@@ -384,14 +413,18 @@ class Tools:
             detail = _extract_http_error_detail(e)
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("The knowledge base rejected this request.", done=True)
-            status_code = e.response.status_code if e.response is not None else "unknown"
+            status_code = (
+                e.response.status_code if e.response is not None else "unknown"
+            )
             return f"Error: the knowledge base rejected this request ({status_code}). {detail}"
         except Exception as e:
             log.error("ROAT request failed: %s", e, exc_info=True)
             await emit("Failed to reach the knowledge base.", done=True)
             return f"Error: could not reach the knowledge base. {_truncate(str(e))}"
 
-        context, sources = _format_context_and_sources(rag_result, self.valves.max_document_preview_chars)
+        context, sources = _format_context_and_sources(
+            rag_result, self.valves.max_document_preview_chars
+        )
 
         if not context:
             await emit("No relevant information found.", done=True)
@@ -403,11 +436,15 @@ class Tools:
         _store_turn_sources(__request__, sources)
 
         await emit(f"Found {len(sources)} relevant source(s).", done=True)
-        log.info("Returning context with %d sources (%d chars)", len(sources), len(context))
+        log.info(
+            "Returning context with %d sources (%d chars)", len(sources), len(context)
+        )
 
         if os.environ.get("FUNCTION_VIDEO_INJECT_ENABLED", "") == "True":
             references = rag_result.get("references", []) or []
-            video_url, _ = _find_video_url(references, field=self.valves.video_metadata_field)
+            video_url, _ = _find_video_url(
+                references, field=self.valves.video_metadata_field
+            )
             if video_url:
                 log.info("Embedding video marker for %s", video_url[:80])
                 return f"<!--VIDEO:{video_url}-->{context}"

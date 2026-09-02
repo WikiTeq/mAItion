@@ -1,0 +1,31 @@
+name: Format check
+
+# Checks that tools/ and functions/ (the Tool/Function code OWUI reformats
+# with black when a user saves it through its web editor) stay formatted
+# with the same black version and defaults OWUI itself uses. See
+# requirements-dev.txt and pyproject.toml for the pinned version/config.
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  black-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install black
+        run: pip install -r requirements-dev.txt
+
+      - name: Check formatting (tools/ and functions/)
+        run: black --check --diff tools/ functions/
