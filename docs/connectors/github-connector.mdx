@@ -24,6 +24,12 @@ Two authentication methods are supported (mutually exclusive):
 - **Personal Access Token** (`personal_token`): a GitHub PAT with access to the target repository.
 - **GitHub App** (`github_app_id` + `github_app_installation_id` + `github_app_private_key`): all three fields are required together when using GitHub App authentication.
 
+**Minimum permissions:**
+
+- Repository contents: read — required for both PAT and GitHub App auth, to fetch repository files.
+- Issues: read — required in addition to the above when `include_issues` is `true`.
+- For GitHub App auth, the app installation must include the target repository.
+
 ## Environment Variables
 
 Set these in `.env.rag`:
