@@ -169,7 +169,8 @@ sources:
   #- type: "github"
   #  name: "github1"
   #  config:
-  #    # Auth — use one of: personal_token OR github_app_id + github_app_installation_id + github_app_private_key
+  #    # Auth — mutually exclusive: personal_token OR github_app_id + github_app_installation_id + github_app_private_key
+  #    # Remove/comment out personal_token if using GitHub App auth.
   #    personal_token: "${GITHUB1_PERSONAL_TOKEN}"
   #    #github_app_id: "${GITHUB1_APP_ID}"
   #    #github_app_installation_id: "${GITHUB1_APP_INSTALLATION_ID}"
