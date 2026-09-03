@@ -1,0 +1,28 @@
+name: E2E harness pre-flight
+
+on:
+  pull_request:
+    paths:
+      - 'tests/e2e/**'
+      - 'Makefile'
+      - '.github/workflows/e2e-harness.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'tests/e2e/**'
+      - 'Makefile'
+      - '.github/workflows/e2e-harness.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PyYAML for compose validation
+        run: timeout 120 python3 -m pip install --disable-pip-version-check pyyaml
+
+      - name: Pre-flight validate + llm-stub unit tests
+        run: timeout 120 make test-e2e-validate
