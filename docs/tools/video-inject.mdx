@@ -1,0 +1,30 @@
+---
+title: "Video Inject Filter"
+description: "Configure the Video Inject Filter, which appends an inline video player to responses that reference a video."
+keywords:
+  - mAItion
+  - filter
+  - video
+  - YouTube
+  - inline player
+---
+
+The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**. It runs automatically on every response once enabled — the LLM never calls it directly. It looks for a `<!--VIDEO:https://...-->` marker in the conversation. The Knowledge Base Search tool can emit one when a retrieved source has a video URL.
+
+## Valves
+
+This filter has no configurable valves.
+
+## Enabling via ENV
+
+The filter can be enabled via ENV. Set in `.env`:
+
+```bash
+FUNCTION_VIDEO_INJECT_ENABLED=True
+```
+
+`FUNCTION_VIDEO_INJECT_ENABLED=True` is the only required condition to install.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `FUNCTION_VIDEO_INJECT_ENABLED=True` on an already-running instance does not install it retroactively.
+</Note>

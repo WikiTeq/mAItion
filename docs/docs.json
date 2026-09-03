@@ -83,7 +83,8 @@
 							"tools/image-resizer",
 							"tools/web-search",
 							"tools/roat-retrieval",
-							"tools/mediawiki-tool"
+							"tools/mediawiki-tool",
+							"tools/video-inject"
 						]
 					},
 					{
