@@ -119,6 +119,51 @@ Two components handle RAG service communication:
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
 - **Web Search Tool** (`tools/web_search.py`) — an optional Workspace Tool that lets the LLM search the web via the Tavily API. Enable with `TOOL_WEB_SEARCH_ENABLED=True` in `.env`, then either set `TOOL_WEB_SEARCH_API_KEY` to auto-configure the key on install, or set the `tavily_api_key` valve manually from Workspace → Tools.
 
+## HTTPS with Caddy
+
+mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery. The `compose.caddy.yaml` overlay also starts a dedicated `redis-caddy` sidecar that Caddy uses as a cache backend: static assets (images, CSS, JS, fonts) are cached for one year with immutable headers, and `manifest.json` is cached for 24 hours. Dynamic chat and API requests bypass the cache entirely and are streamed directly to the browser.
+
+### Requirements
+
+- A public domain (A/AAAA record pointing to your server)
+- Ports **80** and **443** open and publicly reachable (required for the LetsEncrypt HTTP-01 challenge). Set `CADDY_HTTP_PORT` / `CADDY_HTTPS_PORT` in `.env` if you need to publish Caddy on different host ports.
+
+### Setup
+
+1. Add the following to your `.env` file:
+
+   ```bash
+   DOMAIN=maition.example.com
+   ACME_EMAIL=admin@example.com
+   WEBUI_URL=https://maition.example.com
+   ```
+
+   Setting `DOMAIN` to an `http://` URL (e.g. `DOMAIN=http://localhost`) bypasses TLS termination entirely — Caddy will serve the app on plain HTTP. Use this only for local testing.
+
+2. Start the stack with the Caddy overlay by setting `COMPOSE_FILE` so plain `docker compose` picks it up automatically:
+
+   ```bash
+   export COMPOSE_FILE=compose.yaml:compose.caddy.yaml
+   docker compose up -d
+   ```
+
+   Or pass the overlay explicitly with `-f`:
+
+   ```bash
+   docker compose -f compose.yaml -f compose.caddy.yaml up -d
+   ```
+
+   Either way, the overlay clears OpenWebUI's host port binding so only Caddy is externally reachable. Caddy will automatically obtain and renew a TLS certificate, and HTTP requests are redirected to HTTPS automatically.
+
+### Troubleshooting
+
+- **Certificate not issued** — check that ports 80 and 443 are reachable from the public internet and your DNS record is pointing to this server. Run `docker compose logs caddy` to see the ACME challenge output.
+- **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it, or set `CADDY_HTTP_PORT`/`CADDY_HTTPS_PORT` in `.env` to publish Caddy on different host ports — note that LetsEncrypt's HTTP-01 challenge and normal HTTPS access require the public internet to reach ports 80/443, so this only works if you also forward those public ports to your chosen ones, or you're not relying on public TLS (e.g. local testing).
+
+### Certificate persistence
+
+TLS certificates are stored in the `caddy_data` Docker volume. They survive `docker compose down` but are removed by `docker compose down -v`. Do not use `-v` if you want to preserve certificates.
+
 ## Connectors configuration
 
 The service supports multiple data sources, including multiple data sources of the same type, each with its own
