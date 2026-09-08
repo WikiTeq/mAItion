@@ -1,0 +1,139 @@
+---
+title: "MCP Client"
+description: "Connect Claude Desktop, Codex CLI, and other MCP clients to mAItion's chat models via openwebui-mcp."
+keywords:
+  - mAItion
+  - MCP
+  - MCP client
+  - Claude Desktop
+  - Codex CLI
+  - tool-calling
+---
+
+[openwebui-mcp](https://github.com/WikiTeq/openwebui-mcp) is an MCP server that lets MCP clients — Claude Desktop, Codex CLI, and other MCP-compatible tools — send prompts to mAItion's chat models, with tool-calling support when the selected model has it. The client connects to `openwebui-mcp`, and `openwebui-mcp` calls mAItion's chat API on the client's behalf. mAItion itself does not become an MCP endpoint in this flow — it is the model being asked, one layer behind the bridge.
+
+## Prerequisites
+
+- mAItion is running (`docker compose up -d`) and healthy
+- An API key exists for the mAItion instance (see [Configure](#configure))
+- Python 3.11 or newer, for running `openwebui-mcp`
+- The chat model you plan to use supports tool calling, if you want tool-calling behavior from `ask`
+
+## Install
+
+Run `openwebui-mcp` straight from PyPI — no local checkout needed:
+
+```bash
+uvx openwebui-mcp --help
+```
+
+Or install it as a persistent tool:
+
+```bash
+uv tool install openwebui-mcp
+openwebui-mcp --help
+```
+
+## Configure
+
+Set these as environment variables, or in a `.env` file `openwebui-mcp` reads at startup.
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `OPENWEBUI_BASE_URL` | yes | — | The URL of your mAItion instance, e.g. `http://localhost:3000` for a local Docker Compose setup. Aliases: `OPENWEBUI_URL`, `OWUI_URL` |
+| `OPENWEBUI_API_KEY` | yes | — | An API key for the mAItion instance. Generate one from Account settings in the mAItion web UI (verify the exact path against your running instance — this can move between versions). Aliases: `OPENWEBUI_TOKEN`, `OWUI_API_KEY`, `OWUI_TOKEN` |
+| `OPENWEBUI_DEFAULT_MODEL` | no | none | The model `ask` uses when the caller does not pass one. Alias: `OWUI_DEFAULT_MODEL` |
+| `OPENWEBUI_ENFORCE_DEFAULT_MODEL` | no | `false` | When `true`, `ask` always uses `OPENWEBUI_DEFAULT_MODEL`, ignoring any model the client passes. Alias: `OWUI_ENFORCE_DEFAULT_MODEL` |
+| `OPENWEBUI_ASK_DESCRIPTION` | no | built-in description | Replaces the first line of the `ask` tool's description shown to MCP clients |
+| `OPENWEBUI_INSTRUCTIONS` | no | none | Alias: `OWUI_INSTRUCTIONS`. Server-level instructions passed to connecting MCP clients |
+| `OPENWEBUI_MCP_TOKEN` | no | none | A bearer token MCP clients must send to `openwebui-mcp` itself. Only relevant for HTTP-based transports — a `stdio` setup, as covered on this page, does not need it |
+| `OWUI_TIMEOUT_MS` | no | `120000` | Timeout, in milliseconds, for a chat call to mAItion |
+| `OPENWEBUI_CA_BUNDLE` | no | none | Path to a CA certificate to trust when mAItion is served over HTTPS with a self-signed or private certificate. Alias: `OWUI_CA_BUNDLE` |
+| `OPENWEBUI_SSL_VERIFY` | no | `true` | Set to `false` to skip TLS certificate verification on `ask`/`list_models` requests. Does not cover tool-calling traffic, which keeps verifying regardless. Prefer `OPENWEBUI_CA_BUNDLE` instead — disabling verification exposes your API key and chat traffic to interception. Alias: `OWUI_SSL_VERIFY` |
+
+<Note>
+`OPENWEBUI_BASE_URL=http://localhost:3000` matches mAItion's default Docker Compose port mapping (`HTTP_WEB_PORT`, default `3000`). If you have seen `http://localhost:8080` in `openwebui-mcp`'s own examples, that assumes a bare Open WebUI install without mAItion's port mapping — use `3000`, or your configured `HTTP_WEB_PORT`, for a standard mAItion setup.
+</Note>
+
+## Connect a Client
+
+The examples below use `stdio` transport, where the client spawns and manages the `openwebui-mcp` process directly. This is the default and the simplest setup.
+
+### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "openwebui": {
+      "command": "uvx",
+      "args": ["openwebui-mcp"],
+      "env": {
+        "OPENWEBUI_BASE_URL": "http://localhost:3000",
+        "OPENWEBUI_API_KEY": "<your-maition-api-key>"
+      }
+    }
+  }
+}
+```
+
+### Codex CLI
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.owui]
+command = "uvx"
+args = ["openwebui-mcp"]
+default_tools_approval_mode = "auto"
+
+[mcp_servers.owui.env]
+OPENWEBUI_BASE_URL = "http://localhost:3000"
+OPENWEBUI_API_KEY = "<your-maition-api-key>"
+```
+
+<Note>
+`default_tools_approval_mode = "auto"` lets Codex call `ask` and `list_models` without asking for per-call approval each time. `ask` forwards whatever prompt Codex sends to mAItion, so this trades a manual approval step for convenience. Drop the line, or set it per-tool, if you want to review each call first.
+</Note>
+
+## Available Tools
+
+### `ask`
+
+Sends a prompt to a mAItion chat model and returns its answer.
+
+- `prompt` (required) — the message to send
+- `model` (optional) — which model to ask. If omitted, `openwebui-mcp` uses `OPENWEBUI_DEFAULT_MODEL`; if that is also unset, the call fails
+- `system` (optional) — a system prompt for the conversation
+- `temperature` (optional) — sampling temperature override
+- `use_tools` (optional, default `true`) — whether the model's attached tools are enabled for this call
+- `history` (optional) — prior turns to give the model conversation context
+
+<Note>
+`ask` is stateless: each call starts a fresh conversation on the mAItion side. It does not remember earlier calls. To keep context across questions, pass the earlier exchange through `history`, or include it in `prompt`.
+</Note>
+
+### `list_models`
+
+Lists the chat models the connected mAItion user can see, with each model's id, display name, and attached tool ids.
+
+## Verify the Connection
+
+After connecting a client, check that it lists `ask` and `list_models` under its available tools — most MCP clients show this in a tools or connections panel.
+
+As a smoke test, ask the client to call `list_models`. A successful response confirms `openwebui-mcp` can reach mAItion and the API key is valid.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `openwebui-mcp` fails to start, or the client shows no tools | mAItion not reachable at `OPENWEBUI_BASE_URL` | Confirm mAItion is running and the URL is correct for your setup |
+| `ask` or `list_models` fails with an authentication error from mAItion | Missing or incorrect `OPENWEBUI_API_KEY` | Generate a new API key from your mAItion account settings and update the config |
+| MCP client gets `401` connecting to `openwebui-mcp` | `OPENWEBUI_MCP_TOKEN` is set, and the client is not sending a matching bearer token | Check the client sends `Authorization: Bearer <token>` matching `OPENWEBUI_MCP_TOKEN`, or unset it for a `stdio` setup where it is not needed |
+| `ask` fails with no model error | No `model` argument passed, and `OPENWEBUI_DEFAULT_MODEL` is not set | Set `OPENWEBUI_DEFAULT_MODEL`, or have the client pass `model` explicitly |
+| `CERTIFICATE_VERIFY_FAILED` | mAItion is served over HTTPS with a certificate `openwebui-mcp` does not trust | Set `OPENWEBUI_CA_BUNDLE` to the correct CA certificate |
+
+## See also
+
+[MCP Server](/features/mcp-server) — the other direction: expose mAItion's retrieval tools as an MCP endpoint for other systems to call.

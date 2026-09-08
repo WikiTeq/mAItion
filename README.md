@@ -164,6 +164,8 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
 
 TLS certificates are stored in the `caddy_data` Docker volume. They survive `docker compose down` but are removed by `docker compose down -v`. Do not use `-v` if you want to preserve certificates.
 
+You can also reach mAItion from an MCP client (Claude Desktop, Codex CLI, and others) using [openwebui-mcp](https://github.com/WikiTeq/openwebui-mcp), an MCP server that bridges MCP clients to mAItion's chat models. Run it with `uvx openwebui-mcp`, pointing `OPENWEBUI_BASE_URL` and `OPENWEBUI_API_KEY` at your mAItion instance. See [MCP Client](https://docs.maition.com/features/mcp-client) for full setup instructions.
+
 ## Connectors configuration
 
 The service supports multiple data sources, including multiple data sources of the same type, each with its own
