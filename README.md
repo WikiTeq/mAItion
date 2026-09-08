@@ -119,6 +119,8 @@ Two components handle RAG service communication:
 - **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
 - **Web Search Tool** (`tools/web_search.py`) — an optional Workspace Tool that lets the LLM search the web via the Tavily API. Enable with `TOOL_WEB_SEARCH_ENABLED=True` in `.env`, then either set `TOOL_WEB_SEARCH_API_KEY` to auto-configure the key on install, or set the `tavily_api_key` valve manually from Workspace → Tools.
 
+You can also reach mAItion from an MCP client (Claude Desktop, Codex CLI, and others) using [openwebui-mcp](https://github.com/WikiTeq/openwebui-mcp), an MCP server that bridges MCP clients to mAItion's chat models. Run it with `uvx openwebui-mcp`, pointing `OPENWEBUI_BASE_URL` and `OPENWEBUI_API_KEY` at your mAItion instance. See [MCP Client](https://docs.maition.com/features/mcp-client) for full setup instructions.
+
 ## Connectors configuration
 
 The service supports multiple data sources, including multiple data sources of the same type, each with its own
