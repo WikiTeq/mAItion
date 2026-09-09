@@ -94,7 +94,8 @@
 							"configuration/frontend-env",
 							"configuration/backend-env",
 							"configuration/sso",
-							"configuration/workspace-models"
+							"configuration/workspace-models",
+							"configuration/caddy"
 						]
 					}
 				]

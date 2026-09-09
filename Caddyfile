@@ -1,0 +1,47 @@
+{
+	email {$ACME_EMAIL}
+	order cache before rewrite
+	cache {
+		ttl 8766h
+		default_cache_control public, max-age=31536000
+		mode bypass
+		redis {
+			url redis-caddy:6379
+		}
+	}
+}
+
+{$DOMAIN} {
+	@static {
+		path *.jpg *.jpeg *.png *.webp *.gif *.ico *.svg
+		path *.css *.js *.woff *.woff2 *.ttf *.map
+	}
+
+	@manifest {
+		path /manifest.json
+	}
+
+	handle @static {
+		cache
+		reverse_proxy openwebui:8080 {
+			header_down -Cache-Control
+			header_down -Set-Cookie
+			header_down +Cache-Control "public, max-age=31536000, immutable"
+		}
+	}
+
+	handle @manifest {
+		cache
+		reverse_proxy openwebui:8080 {
+			header_down -Cache-Control
+			header_down -Set-Cookie
+			header_down Cache-Control "public, max-age=86400"
+		}
+	}
+
+	handle {
+		reverse_proxy openwebui:8080 {
+			flush_interval -1
+		}
+	}
+}
