@@ -163,14 +163,18 @@ class Tools:
                 done=True,
                 hidden=False,
             )
-            return f"Error: Tavily rejected the request ({e}). Check the query and valves."
+            return (
+                f"Error: Tavily rejected the request ({e}). Check the query and valves."
+            )
         except TavilyTimeoutError:
             await emit(
                 f"Error: search timed out after {self.valves.timeout}s.",
                 done=True,
                 hidden=False,
             )
-            return f"Error: Tavily search timed out after {self.valves.timeout} seconds."
+            return (
+                f"Error: Tavily search timed out after {self.valves.timeout} seconds."
+            )
         except Exception:
             log.error("Unexpected error during Tavily search", exc_info=True)
             await emit(

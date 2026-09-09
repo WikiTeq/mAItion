@@ -72,14 +72,18 @@ def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
     wiki_url = wiki_url.strip()
 
     if not wiki_url.startswith("http://") and not wiki_url.startswith("https://"):
-        raise ValueError("wiki_url must start with http:// or https://. Example: https://wiki.example.com/w/api.php")
+        raise ValueError(
+            "wiki_url must start with http:// or https://. Example: https://wiki.example.com/w/api.php"
+        )
 
     parsed = urlparse(wiki_url)
     scheme = parsed.scheme
 
     netloc = parsed.hostname or ""
     if not netloc:
-        raise ValueError("wiki_url has no host. Example: https://wiki.example.com/w/api.php")
+        raise ValueError(
+            "wiki_url has no host. Example: https://wiki.example.com/w/api.php"
+        )
     if parsed.port:
         netloc = f"{netloc}:{parsed.port}"
     host = netloc
@@ -184,7 +188,9 @@ def _store_turn_sources(request, sources: list) -> None:
         log.debug("Could not store sources on request state", exc_info=True)
 
 
-def _connect_site(host: str, path: str, scheme: str, timeout: int, username: str, password: str):
+def _connect_site(
+    host: str, path: str, scheme: str, timeout: int, username: str, password: str
+):
     """Connect to a MediaWiki site, logging in only when credentials are provided."""
     # Lazy import: OWUI loads this file before installing requirements, so mwclient
     # is not available at module load time — only at call time.
@@ -290,14 +296,20 @@ class Tools:
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
-            await emit("Error: MediaWiki URL is not configured in Tool Valves.", done=True, hidden=False)
+            await emit(
+                "Error: MediaWiki URL is not configured in Tool Valves.",
+                done=True,
+                hidden=False,
+            )
             return "Error: wiki_url is not configured."
         query = query.strip()
         if not query:
             await emit("Error: search query cannot be empty.", done=True, hidden=False)
             return "Error: search query cannot be empty."
 
-        effective_limit = max(1, min(self.valves.max_search_results, MAX_SEARCH_RESULTS))
+        effective_limit = max(
+            1, min(self.valves.max_search_results, MAX_SEARCH_RESULTS)
+        )
 
         # --- Parse wiki URL ---
         try:
@@ -331,9 +343,7 @@ class Tools:
         except Exception as e:
             log.error("mwclient connection error", exc_info=True)
             await emit("Error: could not connect to the wiki.", done=True, hidden=False)
-            return (
-                f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
-            )
+            return f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
 
         await emit("Fetching wiki site info…")
         article_path, origin = await asyncio.to_thread(_get_site_info, site)
@@ -352,15 +362,25 @@ class Tools:
             titles = await asyncio.to_thread(_search)
         except mwclient.errors.APIError as e:
             if e.code in ("readapidenied", "permissiondenied"):
-                await emit("Error: this wiki requires login to search.", done=True, hidden=False)
+                await emit(
+                    "Error: this wiki requires login to search.",
+                    done=True,
+                    hidden=False,
+                )
                 return "Error: this wiki requires authentication to search. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
-            await emit(f"Error: wiki search failed ({e.code}).", done=True, hidden=False)
+            await emit(
+                f"Error: wiki search failed ({e.code}).", done=True, hidden=False
+            )
             return f"Error: wiki API returned an error ({e.code})."
         except Exception as e:
             log.error("Unexpected error during search: %s", e, exc_info=True)
-            await emit("Error: unexpected error during search.", done=True, hidden=False)
-            return f"Error: unexpected error during search. Details: {_truncate(str(e))}"
+            await emit(
+                "Error: unexpected error during search.", done=True, hidden=False
+            )
+            return (
+                f"Error: unexpected error during search. Details: {_truncate(str(e))}"
+            )
 
         if not titles:
             await emit("No results found.", done=True, hidden=False)
@@ -437,7 +457,10 @@ class Tools:
         sections = []
         sources = []
         cap = self.valves.max_page_chars
-        _fetch_errors = {"(Page not found — may have been deleted)", "(Content unavailable)"}
+        _fetch_errors = {
+            "(Page not found — may have been deleted)",
+            "(Content unavailable)",
+        }
         for i, (title, content) in enumerate(pages, start=1):
             # Check for a fetch failure before truncating — a low max_page_chars
             # valve can truncate a sentinel string so it no longer matches
@@ -470,7 +493,10 @@ class Tools:
         _store_turn_sources(__request__, sources)
 
         await emit(f"Found {len(pages)} result(s) for '{query}'.", done=True)
-        return f"Search results for '{query}' ({len(pages)} page(s)):\n\n" + "\n---\n\n".join(sections)
+        return (
+            f"Search results for '{query}' ({len(pages)} page(s)):\n\n"
+            + "\n---\n\n".join(sections)
+        )
 
     async def save_to_wiki(
         self,
@@ -525,7 +551,11 @@ class Tools:
 
         # --- Validate configuration ---
         if not self.valves.wiki_url:
-            await emit("Error: MediaWiki URL is not configured in Tool Valves.", done=True, hidden=False)
+            await emit(
+                "Error: MediaWiki URL is not configured in Tool Valves.",
+                done=True,
+                hidden=False,
+            )
             return "Error: wiki_url is not configured."
         # --- Validate inputs ---
         title = title.strip()
@@ -586,9 +616,7 @@ class Tools:
                 done=True,
                 hidden=False,
             )
-            return (
-                f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
-            )
+            return f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
 
         await emit(f"Saving page '{title}'…")
 
@@ -600,11 +628,17 @@ class Tools:
         try:
             await asyncio.to_thread(_save)
         except mwclient.errors.ProtectedPageError:
-            await emit(f"Error: page '{title}' is protected and cannot be edited.", done=True, hidden=False)
+            await emit(
+                f"Error: page '{title}' is protected and cannot be edited.",
+                done=True,
+                hidden=False,
+            )
             return f"Error: page '{title}' is protected."
         except mwclient.errors.APIError as e:
             if e.code in ("writeapidenied", "permissiondenied"):
-                await emit("Error: this wiki requires login to write.", done=True, hidden=False)
+                await emit(
+                    "Error: this wiki requires login to write.", done=True, hidden=False
+                )
                 return "Error: this wiki requires authentication to write. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
             await emit(f"Error: wiki save failed ({e.code}).", done=True, hidden=False)
@@ -614,7 +648,11 @@ class Tools:
             )
         except Exception as e:
             log.error("Unexpected error saving page: %s", e, exc_info=True)
-            await emit("Error: an unexpected error occurred while saving.", done=True, hidden=False)
+            await emit(
+                "Error: an unexpected error occurred while saving.",
+                done=True,
+                hidden=False,
+            )
             return f"Error: an unexpected error occurred while saving. Details: {_truncate(str(e))}"
 
         # --- Build canonical page URL (blocking — run in thread) ---
