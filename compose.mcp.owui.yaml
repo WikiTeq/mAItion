@@ -4,6 +4,10 @@ services:
     # Check for a newer sha-<commit> tag at https://github.com/vedmaka/openwebui-mcp/pkgs/container/openwebui-mcp
     image: ghcr.io/vedmaka/openwebui-mcp:sha-5ea11df7698748250fb50b31e1fcd06a583f69be
     command: [ "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "${MCP_PORT:-8001}" ]
+    environment:
+      # unset OPENWEBUI_MCP_TOKEN leaves the bridge open to any listener (per
+      # upstream's own docs), so require it explicitly rather than default to that
+      OPENWEBUI_MCP_TOKEN: "${OPENWEBUI_MCP_TOKEN:?Set OPENWEBUI_MCP_TOKEN in .env — the MCP bridge refuses to start without it}"
     env_file:
       - .env
     ports:
