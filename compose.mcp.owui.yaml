@@ -3,17 +3,28 @@ services:
     # openwebui-mcp has no semver release yet; pinned to its latest built commit.
     # Check for a newer sha-<commit> tag at https://github.com/vedmaka/openwebui-mcp/pkgs/container/openwebui-mcp
     image: ghcr.io/vedmaka/openwebui-mcp:sha-5ea11df7698748250fb50b31e1fcd06a583f69be
-    command: [ "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "${MCP_PORT:-8001}" ]
+    command: [ "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8001" ]
+    restart: unless-stopped
     environment:
+      OPENWEBUI_BASE_URL: "${MCP_OPENWEBUI_BASE_URL:-http://openwebui:8080}"
+      OPENWEBUI_API_KEY: "${MCP_OPENWEBUI_API_KEY}"
+      OPENWEBUI_DEFAULT_MODEL: "${MCP_OPENWEBUI_DEFAULT_MODEL:-}"
+      OPENWEBUI_ENFORCE_DEFAULT_MODEL: "${MCP_OPENWEBUI_ENFORCE_DEFAULT_MODEL:-false}"
+      OPENWEBUI_ASK_DESCRIPTION: "${MCP_OPENWEBUI_ASK_DESCRIPTION:-}"
+      OPENWEBUI_INSTRUCTIONS: "${MCP_OPENWEBUI_INSTRUCTIONS:-}"
       # unset OPENWEBUI_MCP_TOKEN leaves the bridge open to any listener (per
       # upstream's own docs), so require it explicitly rather than default to that
-      OPENWEBUI_MCP_TOKEN: "${OPENWEBUI_MCP_TOKEN:?Set OPENWEBUI_MCP_TOKEN in .env — the MCP bridge refuses to start without it}"
-    env_file:
-      - .env
+      OPENWEBUI_MCP_TOKEN: "${MCP_OPENWEBUI_MCP_TOKEN:?Set MCP_OPENWEBUI_MCP_TOKEN in .env — the MCP bridge refuses to start without it}"
+      OWUI_TIMEOUT_MS: "${MCP_OWUI_TIMEOUT_MS:-120000}"
+      OPENWEBUI_CA_BUNDLE: "${MCP_OPENWEBUI_CA_BUNDLE:-}"
+      OPENWEBUI_SSL_VERIFY: "${MCP_OPENWEBUI_SSL_VERIFY:-true}"
     ports:
-      - "${MCP_PORT:-8001}:${MCP_PORT:-8001}"
+      - "${MCP_PORT:-8001}:8001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # to use MCP_OPENWEBUI_CA_BUNDLE, uncomment and point at your CA file:
+    #volumes:
+    #  - ./path/to/ca.pem:/etc/mcp-owui/ca.pem:ro
     depends_on:
       openwebui:
         condition: service_healthy
