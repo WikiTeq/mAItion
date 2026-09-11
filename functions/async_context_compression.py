@@ -353,17 +353,26 @@ from open_webui.main import app as webui_app
 
 try:
     from open_webui.models.chats import Chats
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - filter runs inside OpenWebUI
+except (
+    ModuleNotFoundError,
+    ImportError,
+):  # pragma: no cover - filter runs inside OpenWebUI
     Chats = None
 
 try:
     from open_webui.models.access_grants import AccessGrants
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - optional in older OpenWebUI
+except (
+    ModuleNotFoundError,
+    ImportError,
+):  # pragma: no cover - optional in older OpenWebUI
     AccessGrants = None
 
 try:
     from open_webui.config import ENABLE_ADMIN_CHAT_ACCESS
-except (ModuleNotFoundError, ImportError):  # pragma: no cover - optional in older OpenWebUI
+except (
+    ModuleNotFoundError,
+    ImportError,
+):  # pragma: no cover - optional in older OpenWebUI
     ENABLE_ADMIN_CHAT_ACCESS = False
 
 # Open WebUI internal database (re-use shared connection)
@@ -504,11 +513,13 @@ def _call_db_sync(method, *args, **kwargs):
     """
     if iscoroutinefunction(method):
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(asyncio.run, method(*args, **kwargs)).result()
     res = method(*args, **kwargs)
     if asyncio.iscoroutine(res):
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(asyncio.run, res).result()
     return res
@@ -528,9 +539,11 @@ class ChatSummary(owui_Base):
             "covered_refs_hash",
             unique=True,
         ),
-        {"extend_existing": True, "schema": owui_schema}
-        if owui_schema
-        else {"extend_existing": True},
+        (
+            {"extend_existing": True, "schema": owui_schema}
+            if owui_schema
+            else {"extend_existing": True}
+        ),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -1255,9 +1268,7 @@ class Filter:
         )
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
-    def _normalize_message_refs(
-        self, refs: Any
-    ) -> Optional[List[Dict[str, str]]]:
+    def _normalize_message_refs(self, refs: Any) -> Optional[List[Dict[str, str]]]:
         """Validate refs loaded from DB or summary marker metadata."""
         if not isinstance(refs, list):
             return None
@@ -1878,7 +1889,10 @@ class Filter:
             if isinstance(history_messages, dict) and history_messages:
                 walk_anchor = None
                 anchor_source = None
-                if isinstance(anchor_message_id, str) and anchor_message_id in history_messages:
+                if (
+                    isinstance(anchor_message_id, str)
+                    and anchor_message_id in history_messages
+                ):
                     walk_anchor = anchor_message_id
                     anchor_source = "user_message_id"
                 if not walk_anchor:
@@ -1898,24 +1912,23 @@ class Filter:
                 # user_message_id, the normal case).  If not, the body and DB
                 # walk are on different branches — the v1.7.3 fix is actively
                 # steering the DB walk onto the body's branch.
-                current_id_in_history = history.get("currentId") or history.get("current_id")
+                current_id_in_history = history.get("currentId") or history.get(
+                    "current_id"
+                )
                 same_branch = False
                 if walk_anchor and current_id_in_history:
                     cursor = current_id_in_history
                     visited = set()
                     while (
-                        cursor
-                        and cursor in history_messages
-                        and cursor not in visited
+                        cursor and cursor in history_messages and cursor not in visited
                     ):
                         if cursor == walk_anchor:
                             same_branch = True
                             break
                         visited.add(cursor)
-                        cursor = (
-                            history_messages[cursor].get("parentId")
-                            or history_messages[cursor].get("parent_id")
-                        )
+                        cursor = history_messages[cursor].get(
+                            "parentId"
+                        ) or history_messages[cursor].get("parent_id")
                 self._last_db_walk_anchor = {
                     "anchor": walk_anchor,
                     "source": anchor_source,
@@ -1977,7 +1990,9 @@ class Filter:
         try:
             chat_record = await _call_db(Chats.get_chat_by_id, chat_id)
         except Exception as exc:
-            logger.warning(f"[Chat Load] Failed fallback fetch for chat {chat_id}: {exc}")
+            logger.warning(
+                f"[Chat Load] Failed fallback fetch for chat {chat_id}: {exc}"
+            )
             return []
         if not chat_record:
             return []
@@ -2149,9 +2164,7 @@ class Filter:
         safe_summary = self._prepare_summary_for_injection(summary)
         guarded_summary = self._build_summary_safety_guard(lang) + safe_summary
         return (
-            f"<{tag}>\n"
-            + self._escape_reference_text(guarded_summary)
-            + f"\n</{tag}>"
+            f"<{tag}>\n" + self._escape_reference_text(guarded_summary) + f"\n</{tag}>"
         )
 
     def _build_generated_referenced_summary_content(
@@ -2256,7 +2269,8 @@ class Filter:
             summary_candidate = summary[:mid].rstrip()
             if mid < len(summary):
                 summary_candidate = (
-                    summary_candidate + "\n[truncated to preserve latest referenced tail]"
+                    summary_candidate
+                    + "\n[truncated to preserve latest referenced tail]"
                 )
             candidate = build_with_summary(summary_candidate or marker)
             candidate_tokens = _estimate_text_tokens(candidate)
@@ -2480,7 +2494,11 @@ class Filter:
 
         body_ref = self._message_ref(body_message)
         db_ref = self._message_ref(unfolded_db_message)
-        if body_ref is not None and db_ref is not None and body_ref["id"] != db_ref["id"]:
+        if (
+            body_ref is not None
+            and db_ref is not None
+            and body_ref["id"] != db_ref["id"]
+        ):
             return False
 
         body_tool_call_id = body_message.get("tool_call_id")
@@ -2505,9 +2523,8 @@ class Filter:
         if body_message.get("role") == "tool" and metadata.get("is_trimmed"):
             return True
 
-        if (
-            body_message.get("role") == "assistant"
-            and metadata.get("tool_outputs_trimmed")
+        if body_message.get("role") == "assistant" and metadata.get(
+            "tool_outputs_trimmed"
         ):
             return True
 
@@ -2586,17 +2603,14 @@ class Filter:
         unfolded_messages, db_to_body_boundaries = (
             self._unfold_db_branch_for_body_ref_fallback(db_messages)
         )
-        if (
-            len(body_messages) == len(unfolded_messages)
-            and all(
-                self._body_message_matches_unfolded_db_message(
-                    body_message,
-                    unfolded_message,
-                )
-                for body_message, unfolded_message in zip(
-                    body_messages,
-                    unfolded_messages,
-                )
+        if len(body_messages) == len(unfolded_messages) and all(
+            self._body_message_matches_unfolded_db_message(
+                body_message,
+                unfolded_message,
+            )
+            for body_message, unfolded_message in zip(
+                body_messages,
+                unfolded_messages,
             )
         ):
             return db_to_body_boundaries
@@ -3324,9 +3338,7 @@ class Filter:
         dropped: list[str] = []
         with self._db_engine.begin() as connection:
             for name in names_to_drop:
-                qualified = (
-                    f'{owui_schema}."{name}"' if owui_schema else f'"{name}"'
-                )
+                qualified = f'{owui_schema}."{name}"' if owui_schema else f'"{name}"'
                 try:
                     connection.execute(
                         sqlalchemy_text(f"DROP INDEX IF EXISTS {qualified}")
@@ -3864,8 +3876,7 @@ class Filter:
                 )
                 remaining_direct_budget = max(
                     0,
-                    remaining_direct_budget
-                    - _estimate_text_tokens(referenced_content),
+                    remaining_direct_budget - _estimate_text_tokens(referenced_content),
                 )
                 referenced_summaries.append(
                     {
@@ -4410,9 +4421,7 @@ class Filter:
         # saved with a different protected_head_count; hashing refs_json (which
         # embeds the head count when non-zero) keeps those as separate rows.
         refs_hash = (
-            hashlib.sha256(refs_json.encode("utf-8")).hexdigest()
-            if refs_json
-            else None
+            hashlib.sha256(refs_json.encode("utf-8")).hexdigest() if refs_json else None
         )
         branch_tip_id = normalized_refs[-1]["id"] if normalized_refs else None
         if not (normalized_refs and refs_json and refs_hash):
@@ -4523,9 +4532,7 @@ class Filter:
                         pass
                     return snapshots
 
-                snapshots = (
-                    session.query(ChatSummary).filter_by(chat_id=chat_id).all()
-                )
+                snapshots = session.query(ChatSummary).filter_by(chat_id=chat_id).all()
                 for snapshot in snapshots:
                     try:
                         session.expunge(snapshot)
@@ -4663,9 +4670,7 @@ class Filter:
         if isinstance(output, list):
             return "\n".join(
                 part
-                for part in (
-                    self._extract_output_text_content(item) for item in output
-                )
+                for part in (self._extract_output_text_content(item) for item in output)
                 if part
             )
 
@@ -5874,8 +5879,8 @@ class Filter:
             compressed_count = self._summary_snapshot_current_coverage_count(
                 summary_snapshot
             )
-            body_compressed_count = (
-                self._summary_snapshot_current_body_coverage_count(summary_snapshot)
+            body_compressed_count = self._summary_snapshot_current_body_coverage_count(
+                summary_snapshot
             )
             covered_refs = self._summary_snapshot_current_coverage_refs(
                 summary_snapshot
@@ -5915,9 +5920,7 @@ class Filter:
                 lang,
                 start_index,
                 covered_refs,
-                self._summary_snapshot_current_protected_head_count(
-                    summary_snapshot
-                ),
+                self._summary_snapshot_current_protected_head_count(summary_snapshot),
             )
 
             if external_refs:
@@ -6658,10 +6661,11 @@ class Filter:
                 )
                 summary_msg_for_check = messages[summary_index]
                 # In the outlet's reinjected view, tail is everything after summary_index
-                tail_messages_for_check = messages[summary_index + 1:]
+                tail_messages_for_check = messages[summary_index + 1 :]
                 # Preserved system messages in the gap (between keep_first and summary)
                 preserved_system_for_check = [
-                    m for m in messages[effective_keep_first:summary_index]
+                    m
+                    for m in messages[effective_keep_first:summary_index]
                     if isinstance(m, dict) and m.get("role") == "system"
                 ]
 
@@ -7013,7 +7017,9 @@ class Filter:
                     chat_id,
                     messages,
                 )
-                previous_summary = previous_snapshot.summary if previous_snapshot else None
+                previous_summary = (
+                    previous_snapshot.summary if previous_snapshot else None
+                )
                 if previous_summary:
                     previous_summary_base_progress = (
                         self._summary_snapshot_current_coverage_count(previous_snapshot)
@@ -7188,9 +7194,7 @@ class Filter:
                 )
                 protected_head_count = min(
                     saved_compressed_count,
-                    self._summary_marker_protected_head_count(
-                        messages[summary_index]
-                    ),
+                    self._summary_marker_protected_head_count(messages[summary_index]),
                 )
 
             # 6. Save new summary
@@ -7743,11 +7747,15 @@ Return only the XML working memory:
                     if isinstance(attributes, dict)
                     else ""
                 )
-                if item_type in {
-                    "reasoning",
-                    "reasoning_text",
-                    "reasoning_summary_text",
-                } or attribute_type == "reasoning_content":
+                if (
+                    item_type
+                    in {
+                        "reasoning",
+                        "reasoning_text",
+                        "reasoning_summary_text",
+                    }
+                    or attribute_type == "reasoning_content"
+                ):
                     return ""
 
                 for key in ("text", "output_text", "content"):
