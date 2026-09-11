@@ -1,0 +1,9 @@
+{
+  "id": "async_context_compression",
+  "name": "Async Context Compression",
+  "type": "filter",
+  "meta": {
+    "description": "Reduces token consumption in long conversations while maintaining coherence through intelligent summarization and message compression."
+  },
+  "content": ""
+}
