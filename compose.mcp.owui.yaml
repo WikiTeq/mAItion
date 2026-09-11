@@ -22,9 +22,6 @@ services:
       - "${MCP_PORT:-8001}:8001"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # to use MCP_OPENWEBUI_CA_BUNDLE, uncomment and point at your CA file:
-    #volumes:
-    #  - ./path/to/ca.pem:/etc/mcp-owui/ca.pem:ro
     depends_on:
       openwebui:
         condition: service_healthy
