@@ -485,7 +485,7 @@ install_async_context_compression_filter() {
     jq --rawfile content "/etc/async_context_compression.py" \
       '.content=$content' /etc/async_context_compression.json > "${DATA_RAW_FILE}"
 
-    CREATE_RESPONSE=$(curl -fsS -X POST "http://localhost:8080/api/v1/functions/create" \
+    CREATE_RESPONSE=$(curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/create" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json" \
       --data-binary "@${DATA_RAW_FILE}")
@@ -502,13 +502,13 @@ install_async_context_compression_filter() {
 
     echo ""
     echo "[Custom entrypoint] Enabling Async Context Compression Filter..."
-    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
+    curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json"
 
     echo ""
     echo "[Custom entrypoint] Enabling Async Context Compression Filter globally..."
-    curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
+    curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json"
 }
