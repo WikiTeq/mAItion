@@ -21,6 +21,12 @@
 		path /manifest.json
 	}
 
+	handle /mcp* {
+		reverse_proxy mcp-owui:8001 {
+			flush_interval -1
+		}
+	}
+
 	handle @static {
 		cache
 		reverse_proxy openwebui:8080 {
