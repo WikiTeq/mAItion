@@ -2,7 +2,7 @@ services:
   mcp-owui:
     # openwebui-mcp has no semver release yet; pinned to its latest built commit.
     # Check for a newer sha-<commit> tag at https://github.com/vedmaka/openwebui-mcp/pkgs/container/openwebui-mcp
-    image: ghcr.io/vedmaka/openwebui-mcp:sha-5ea11df7698748250fb50b31e1fcd06a583f69be
+    image: ghcr.io/vedmaka/openwebui-mcp:sha-6b28eda047b1b978e6b26978d713d3f22422df56
     command: [ "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8001" ]
     restart: unless-stopped
     environment:
