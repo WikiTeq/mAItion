@@ -1,0 +1,44 @@
+---
+title: "Async Context Compression Filter"
+description: "Configure the Async Context Compression Filter, which summarizes and trims long conversations to reduce token usage."
+keywords:
+  - mAItion
+  - filter
+  - context
+  - compression
+  - summarization
+  - tokens
+---
+
+The **Async Context Compression Filter** (`async_context_compression`) is a mAItion **Filter**, not a Workspace Tool. It runs automatically on every message, summarizing and trimming older parts of a long conversation once the token count crosses a threshold, so the model keeps receiving requests it can handle without losing the conversation's context.
+
+## Valves
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `compression_threshold_tokens` | no | `64000` | Total conversation token count that triggers compression. |
+| `max_context_tokens` | no | `128000` | Hard limit for context. Messages beyond this are trimmed even if compression has already run. |
+| `keep_first` | no | `0` | Number of initial non-system messages to always keep, in addition to all system messages. |
+| `keep_last` | no | `6` | Number of most recent messages to always keep in full. |
+| `summary_model` | no | unset | Model ID used to generate summaries. When unset, uses the current conversation's model. |
+| `max_summary_tokens` | no | `16384` | Maximum length of a generated summary, in tokens. |
+| `compression_style` | no | `balanced` | Summary compactness: `aggressive`, `balanced`, or `faithful`. |
+| `tool_trim_threshold_chars` | no | `600` | Character length at which native tool outputs are trimmed. |
+
+Every valve, including `summary_model` and the compression thresholds, can be edited after install from the filter's settings in mAItion. Set `summary_model` and the thresholds deliberately — they affect response cost and conversation coherence more directly than a typical valve.
+
+## Enabling via ENV
+
+The filter can be enabled via ENV. Set in `.env`:
+
+```bash
+FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLED=True
+```
+
+`FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLED=True` is the only required condition to install. Every valve stays at its default until changed from the filter's settings.
+
+The database user mAItion connects with needs permission to create tables for this filter's summaries to persist between requests.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLED=True` on an already-running instance does not install it retroactively.
+</Note>

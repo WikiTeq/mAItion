@@ -268,6 +268,7 @@ do_first_start() {
     install_get_sources_tool
     install_video_inject_filter
     install_image_resizer_filter
+    install_async_context_compression_filter
 
     touch /app/backend/data/.first_start
 }
@@ -461,6 +462,53 @@ install_image_resizer_filter() {
     echo ""
     echo "[Custom entrypoint] Enabling Image Resizer Filter globally..."
     curl -fsS -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json"
+}
+
+install_async_context_compression_filter() {
+    if [ "$FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLED" != "True" ]; then
+        return
+    fi
+
+    echo ""
+    echo "[Custom entrypoint] Installing Async Context Compression Filter..."
+
+    # This filter's source is far larger than the other two (~340KB vs a few KB),
+    # too large to round-trip through a shell variable and a jq --argjson CLI
+    # argument without hitting the container's argument-list size limit
+    # ("Argument list too long"). --rawfile streams the file straight into jq
+    # instead, and the merged JSON is written to a temp file rather than held
+    # in a shell variable, so curl reads it with --data-binary @file instead of
+    # passing it as a CLI argument too.
+    DATA_RAW_FILE=$(mktemp)
+    jq --rawfile content "/etc/async_context_compression.py" \
+      '.content=$content' /etc/async_context_compression.json > "${DATA_RAW_FILE}"
+
+    CREATE_RESPONSE=$(curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/create" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-binary "@${DATA_RAW_FILE}")
+    rm -f "${DATA_RAW_FILE}"
+
+    FILTER_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
+    if [ -z "$FILTER_ID" ]; then
+        echo "[Custom entrypoint] WARNING: Async Context Compression Filter install failed" >&2
+        echo "${CREATE_RESPONSE}" >&2
+        return
+    fi
+
+    echo "[Custom entrypoint] Async Context Compression Filter created with id: ${FILTER_ID}"
+
+    echo ""
+    echo "[Custom entrypoint] Enabling Async Context Compression Filter..."
+    curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json"
+
+    echo ""
+    echo "[Custom entrypoint] Enabling Async Context Compression Filter globally..."
+    curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json"
 }
