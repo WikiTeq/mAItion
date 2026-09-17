@@ -121,12 +121,12 @@ Two components handle RAG service communication:
 
 ## HTTPS with Caddy
 
-mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via LetsEncrypt and speeds up static asset delivery. The `compose.caddy.yaml` overlay also starts a dedicated `redis-caddy` sidecar that Caddy uses as a cache backend: static assets (images, CSS, JS, fonts) are cached for one year with immutable headers, and `manifest.json` is cached for 24 hours. Dynamic chat and API requests bypass the cache entirely and are streamed directly to the browser.
+mAItion serves all traffic — including static assets — through Open WebUI's Uvicorn server. For production deployments, adding Caddy as a caching reverse proxy provides automatic TLS certificate issuance via Let's Encrypt and speeds up static asset delivery. The `compose.caddy.yaml` overlay also starts a dedicated `redis-caddy` sidecar that Caddy uses as a cache backend: static assets (images, CSS, JS, fonts) are cached for one year with immutable headers, and `manifest.json` is cached for 24 hours. Dynamic chat and API requests bypass the cache entirely and are streamed directly to the browser.
 
 ### Requirements
 
 - A public domain (A/AAAA record pointing to your server)
-- Ports **80** and **443** open and publicly reachable (required for the LetsEncrypt HTTP-01 challenge). Set `CADDY_HTTP_PORT` / `CADDY_HTTPS_PORT` in `.env` if you need to publish Caddy on different host ports.
+- Ports **80** and **443** open and publicly reachable (required for the Let's Encrypt HTTP-01 challenge). Set `CADDY_HTTP_PORT` / `CADDY_HTTPS_PORT` in `.env` if you need to publish Caddy on different host ports.
 
 ### Setup
 
@@ -158,7 +158,7 @@ mAItion serves all traffic — including static assets — through Open WebUI's 
 ### Troubleshooting
 
 - **Certificate not issued** — check that ports 80 and 443 are reachable from the public internet and your DNS record is pointing to this server. Run `docker compose logs caddy` to see the ACME challenge output.
-- **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it, or set `CADDY_HTTP_PORT`/`CADDY_HTTPS_PORT` in `.env` to publish Caddy on different host ports — note that LetsEncrypt's HTTP-01 challenge and normal HTTPS access require the public internet to reach ports 80/443, so this only works if you also forward those public ports to your chosen ones, or you're not relying on public TLS (e.g. local testing).
+- **Port 80/443 already in use** — another reverse proxy (Traefik, Nginx, etc.) is likely running on the host. Either stop it, or set `CADDY_HTTP_PORT`/`CADDY_HTTPS_PORT` in `.env` to publish Caddy on different host ports — note that Let's Encrypt's HTTP-01 challenge and normal HTTPS access require the public internet to reach ports 80/443, so this only works if you also forward those public ports to your chosen ones, or you're not relying on public TLS (e.g. local testing).
 
 ### Certificate persistence
 
