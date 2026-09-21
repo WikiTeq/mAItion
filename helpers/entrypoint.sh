@@ -511,6 +511,39 @@ install_async_context_compression_filter() {
     curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/toggle/global" \
       -H "Authorization: Bearer ${API_KEY}" \
       -H "Content-Type: application/json"
+
+    echo ""
+    echo "[Custom entrypoint] Configuring Async Context Compression Filter valves..."
+
+    # Every other True/False env var in this file (e.g. FUNCTION_*_ENABLED) uses
+    # Python-style capitalization, but jq --argjson requires strict lowercase
+    # JSON booleans. Normalize case here so FUNCTION_ASYNC_CONTEXT_COMPRESSION_
+    # ENABLE_TOOL_OUTPUT_TRIMMING=True (matching that convention) doesn't crash
+    # the whole first-start with "invalid JSON text passed to --argjson".
+    ENABLE_TOOL_OUTPUT_TRIMMING_JSON=$(echo "${FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLE_TOOL_OUTPUT_TRIMMING:-false}" | tr '[:upper:]' '[:lower:]')
+
+    # POST /valves/update rebuilds the filter's Valves model from only the keys
+    # in this payload (open_webui/routers/functions.py: Valves(**form_data)),
+    # falling back to the filter's own coded defaults for every other valve.
+    # So this only needs to carry the 5 valves this deployment overrides.
+    VALVES_JSON=$(jq -n \
+      --argjson compression_threshold_tokens "${FUNCTION_ASYNC_CONTEXT_COMPRESSION_COMPRESSION_THRESHOLD_TOKENS:-256000}" \
+      --argjson max_context_tokens "${FUNCTION_ASYNC_CONTEXT_COMPRESSION_MAX_CONTEXT_TOKENS:-512000}" \
+      --argjson max_summary_tokens "${FUNCTION_ASYNC_CONTEXT_COMPRESSION_MAX_SUMMARY_TOKENS:-64000}" \
+      --argjson enable_tool_output_trimming "${ENABLE_TOOL_OUTPUT_TRIMMING_JSON}" \
+      --argjson tool_trim_threshold_chars "${FUNCTION_ASYNC_CONTEXT_COMPRESSION_TOOL_TRIM_THRESHOLD_CHARS:-10000}" \
+      '{
+        compression_threshold_tokens: $compression_threshold_tokens,
+        max_context_tokens: $max_context_tokens,
+        max_summary_tokens: $max_summary_tokens,
+        enable_tool_output_trimming: $enable_tool_output_trimming,
+        tool_trim_threshold_chars: $tool_trim_threshold_chars
+      }')
+
+    curl -fsS --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/functions/id/${FILTER_ID}/valves/update" \
+      -H "Authorization: Bearer ${API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data-raw "${VALVES_JSON}"
 }
 
 start_healthz_server
