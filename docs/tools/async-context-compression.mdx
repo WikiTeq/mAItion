@@ -26,7 +26,7 @@ The **Async Context Compression Filter** (`async_context_compression`) is a mAIt
 | `enable_tool_output_trimming` | no | `false` | Whether native tool outputs get trimmed once they exceed `tool_trim_threshold_chars`. |
 | `tool_trim_threshold_chars` | no | `10000` | Character length at which native tool outputs are trimmed. |
 
-`summary_model`, `keep_first`, `keep_last`, and `compression_style` can be edited after install from the filter's settings in mAItion. The other 5 valves in the table above are set at install time from the env vars below, and can also be edited afterward from the filter's settings.
+All 9 valves in the table above can be edited after install from the filter's settings in mAItion. `compression_threshold_tokens`, `max_context_tokens`, `max_summary_tokens`, `enable_tool_output_trimming`, and `tool_trim_threshold_chars` are additionally set at install time from the env vars below; the other 4 valves start at the filter's own coded default and have no env var.
 
 ## Enabling via ENV
 
