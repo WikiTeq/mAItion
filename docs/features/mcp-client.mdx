@@ -16,7 +16,7 @@ keywords:
 
 - mAItion is running (`docker compose up -d`) and healthy
 - An API key exists for the mAItion instance (see [Configure](#configure))
-- Python 3.11 or newer, for running `openwebui-mcp`
+- Python 3.11 or newer, and [`uv`](https://docs.astral.sh/uv/getting-started/installation/) installed, for running `openwebui-mcp`
 - The chat model you plan to use supports tool calling, if you want tool-calling behavior from `ask`
 
 ## Install
@@ -40,7 +40,7 @@ Set these as environment variables, or in a `.env` file `openwebui-mcp` reads at
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `OPENWEBUI_BASE_URL` | yes | — | The URL of your mAItion instance, e.g. `http://localhost:3000` for a local Docker Compose setup. Aliases: `OPENWEBUI_URL`, `OWUI_URL` |
+| `OPENWEBUI_BASE_URL` | yes | — | The URL of your mAItion instance. Use HTTPS for non-local deployments. HTTP is for local loopback only, such as `http://localhost:3000`. Aliases: `OPENWEBUI_URL`, `OWUI_URL` |
 | `OPENWEBUI_API_KEY` | yes | — | An API key for the mAItion instance. Generate one from Account settings in the mAItion web UI (verify the exact path against your running instance — this can move between versions). Aliases: `OPENWEBUI_TOKEN`, `OWUI_API_KEY`, `OWUI_TOKEN` |
 | `OPENWEBUI_DEFAULT_MODEL` | no | none | The model `ask` uses when the caller does not pass one. Alias: `OWUI_DEFAULT_MODEL` |
 | `OPENWEBUI_ENFORCE_DEFAULT_MODEL` | no | `false` | When `true`, `ask` always uses `OPENWEBUI_DEFAULT_MODEL`, ignoring any model the client passes. Alias: `OWUI_ENFORCE_DEFAULT_MODEL` |
@@ -136,4 +136,4 @@ As a smoke test, ask the client to call `list_models`. A successful response con
 
 ## See also
 
-[MCP Server](/features/mcp-server) — the other direction: expose mAItion's retrieval tools as an MCP endpoint for other systems to call.
+[MCP Server](/features/mcp-server) — the other direction: expose the underlying ROAT retrieval tools (not mAItion's chat models) as an MCP endpoint for other systems to call.
