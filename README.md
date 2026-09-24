@@ -587,7 +587,7 @@ GITHUB1_SCHEDULES=3600
 
 ### GitLab Connector
 
-The GitLab connector ingests repository files and optionally issues from a GitLab project or group.
+The GitLab connector ingests repository files and optionally issues from a GitLab project.
 Supports GitLab.com and self-hosted instances via a Personal Access Token with `read_api` scope.
 
 ```yaml
@@ -599,8 +599,7 @@ sources:
     config:
       gitlab_url: "${GITLAB1_URL}"          # e.g. https://gitlab.com
       personal_token: "${GITLAB1_TOKEN}"
-      project_id: 12345678                  # integer project ID; required for repository file ingestion
-      #group_id: 999                        # optional; does not select a repository — only used for group-level issue queries when include_issues is true; mutually exclusive with project_id for issue queries
+      project_id: 12345678                  # integer project ID, required
       ref: "main"                           # optional, branch/tag/commit, default "main"
       #path: "docs"                         # optional, limit to sub-directory
       #file_path: "README.md"               # optional, single file only
