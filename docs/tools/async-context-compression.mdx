@@ -1,0 +1,55 @@
+---
+title: "Async Context Compression Filter"
+description: "Configure the Async Context Compression Filter, which summarizes and trims long conversations to reduce token usage."
+keywords:
+  - mAItion
+  - filter
+  - context
+  - compression
+  - summarization
+  - tokens
+---
+
+The **Async Context Compression Filter** (`async_context_compression`) is a mAItion **Filter**, not a Workspace Tool. It runs automatically on every message, summarizing and trimming older parts of a long conversation once the token count crosses a threshold, so the model keeps receiving requests it can handle without losing the conversation's context.
+
+## Valves
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `compression_threshold_tokens` | no | `256000` | Total conversation token count that triggers compression. |
+| `max_context_tokens` | no | `512000` | Hard limit for context. Messages beyond this are trimmed even if compression has already run. |
+| `keep_first` | no | `0` | Number of initial non-system messages to always keep, in addition to all system messages. |
+| `keep_last` | no | `6` | Number of most recent messages to always keep in full. |
+| `summary_model` | no | unset | Model ID used to generate summaries. When unset, uses the current conversation's model. |
+| `max_summary_tokens` | no | `64000` | Maximum length of a generated summary, in tokens. |
+| `compression_style` | no | `balanced` | Summary compactness: `aggressive`, `balanced`, or `faithful`. |
+| `enable_tool_output_trimming` | no | `false` | Whether native tool outputs get trimmed once they exceed `tool_trim_threshold_chars`. |
+| `tool_trim_threshold_chars` | no | `10000` | Character length at which native tool outputs are trimmed. |
+
+All 9 valves in the table above can be edited after install from the filter's settings in mAItion. `compression_threshold_tokens`, `max_context_tokens`, `max_summary_tokens`, `enable_tool_output_trimming`, and `tool_trim_threshold_chars` are additionally set at install time from the env vars below; the other 4 valves start at the filter's own coded default and have no env var.
+
+## Enabling via ENV
+
+The filter can be enabled via ENV. Set in `.env`:
+
+```bash
+FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLED=True
+```
+
+`FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLED=True` is the only required condition to install. Optionally, set any of the following to override the defaults shown in the Valves table above:
+
+```bash
+FUNCTION_ASYNC_CONTEXT_COMPRESSION_COMPRESSION_THRESHOLD_TOKENS=256000
+FUNCTION_ASYNC_CONTEXT_COMPRESSION_MAX_CONTEXT_TOKENS=512000
+FUNCTION_ASYNC_CONTEXT_COMPRESSION_MAX_SUMMARY_TOKENS=64000
+FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLE_TOOL_OUTPUT_TRIMMING=False
+FUNCTION_ASYNC_CONTEXT_COMPRESSION_TOOL_TRIM_THRESHOLD_CHARS=10000
+```
+
+Any of these left unset falls back to the default shown in the Valves table above.
+
+The database user mAItion connects with needs permission to create tables for this filter's summaries to persist between requests.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `FUNCTION_ASYNC_CONTEXT_COMPRESSION_ENABLED=True` on an already-running instance does not install it retroactively.
+</Note>
