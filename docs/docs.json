@@ -88,7 +88,8 @@
 							"tools/web-search",
 							"tools/roat-retrieval",
 							"tools/mediawiki-tool",
-							"tools/video-inject"
+							"tools/video-inject",
+							"tools/async-context-compression"
 						]
 					},
 					{
