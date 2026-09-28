@@ -78,7 +78,8 @@
 							"connectors/imap-connector",
 							"connectors/notion-connector",
 							"connectors/dropbox-connector",
-							"connectors/confluence-connector"
+							"connectors/confluence-connector",
+							"connectors/gitlab-connector"
 						]
 					},
 					{
