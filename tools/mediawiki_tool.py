@@ -122,11 +122,20 @@ class HostOverrideAdapter:
                 # Force (not setdefault) so a Host key from the headers valve
                 # can't silently defeat the Host/SNI guarantee this adapter exists for.
                 request.headers["Host"] = _host_header_from_url(parsed)
-                if parsed.hostname:
-                    request.url = parsed._replace(
-                        netloc=_netloc_with_ip(parsed, self._dest_ip)
-                    ).geturl()
-                return super().send(request, **kwargs)
+                if not parsed.hostname:
+                    return super().send(request, **kwargs)
+                original_url = request.url
+                request.url = parsed._replace(
+                    netloc=_netloc_with_ip(parsed, self._dest_ip)
+                ).geturl()
+                try:
+                    response = super().send(request, **kwargs)
+                finally:
+                    request.url = original_url
+                # Keep the canonical URL so Response.url and relative redirects
+                # resolve against the hostname (and stay on this adapter), not the IP.
+                response.url = original_url
+                return response
 
         return _HostOverrideAdapter(dest_ip=dest_ip, dest_hostname=dest_hostname)
 
@@ -451,7 +460,8 @@ class Tools:
             default="",
             description=(
                 "Optional IP to connect to while keeping the wiki hostname for Host/SNI "
-                "(like curl --resolve). Leave empty for normal DNS resolution."
+                "(like curl --resolve). Connects directly and ignores any HTTP(S) proxy. "
+                "Leave empty for normal DNS resolution."
             ),
         )
         user_agent: str = Field(
