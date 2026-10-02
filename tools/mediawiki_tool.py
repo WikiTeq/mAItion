@@ -128,9 +128,7 @@ class HostOverrideAdapter:
                     ).geturl()
                 return super().send(request, **kwargs)
 
-        return _HostOverrideAdapter(
-            dest_ip=dest_ip, dest_hostname=dest_hostname
-        )
+        return _HostOverrideAdapter(dest_ip=dest_ip, dest_hostname=dest_hostname)
 
 
 def _hostname_for_sni(host: str) -> str:
@@ -353,10 +351,7 @@ def _connect_site(
     custom_headers = _parse_headers(headers)
 
     use_custom_session = (
-        (not verify_ssl)
-        or bool(resolve_ip)
-        or bool(custom_headers)
-        or bool(user_agent)
+        (not verify_ssl) or bool(resolve_ip) or bool(custom_headers) or bool(user_agent)
     )
 
     if not use_custom_session:
