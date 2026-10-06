@@ -84,7 +84,8 @@
 							"connectors/box-connector",
 							"connectors/outlook-connector",
 							"connectors/gitlab-connector",
-							"connectors/trello-connector"
+							"connectors/trello-connector",
+							"connectors/database-connector"
 						]
 					},
 					{
