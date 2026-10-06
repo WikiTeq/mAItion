@@ -1,0 +1,113 @@
+---
+title: "Database"
+description: "Configure the mAItion Database connector to ingest rows from MySQL and PostgreSQL into the knowledge base."
+keywords:
+  - mAItion
+  - Database connector
+  - Database ingestion
+  - MySQL
+  - PostgreSQL
+  - connectors
+---
+
+Use the Database Connector to ingest the result of a SQL `SELECT` query from a [MySQL](https://www.mysql.com/) or [PostgreSQL](https://www.postgresql.org/) database into the mAItion knowledge base. Each returned row becomes one indexed document.
+
+## What It Does
+
+- runs a pre-configured `SELECT` query against a MySQL or PostgreSQL database
+- indexes the `content` column of every row as the body of a document
+- optionally stores extra columns as document metadata
+- runs ingestion on configurable schedules
+
+One connector type covers both databases. Add one source for each database you want to ingest.
+
+## Query Requirements
+
+The query must return these four columns. Use SQL `AS` aliases to map your own column names to them:
+
+| Column | Description |
+|---|---|
+| `id` | Unique row identifier |
+| `title` | Human-readable name of the item |
+| `updated_at` | Last modification timestamp (ISO-8601 string or a date/time value) |
+| `content` | Main text body to index |
+
+If the query does not return one of these columns, the ingestion fails and the error names the missing columns.
+
+A row is indexed again when its `id` or `updated_at` value changes. Make sure `updated_at` changes every time `content` changes, otherwise edits to a row can be missed.
+
+Example with aliases:
+
+```sql
+SELECT employee_id AS id,
+       full_name   AS title,
+       updated_at,
+       bio         AS content,
+       department
+FROM employees
+```
+
+<Note>
+  Use a **read-only** database account in the connection string. The connector only checks that the query starts with `SELECT` or `WITH`, so it cannot guarantee that a query does not change data.
+</Note>
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `DB_POSTGRES1_CONNECTION_STRING`: [SQLAlchemy connection string](https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls) for the PostgreSQL source (example: `postgresql+psycopg2://user:password@db-host:5432/dbname`)
+- `DB_POSTGRES1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+- `DB_MYSQL1_CONNECTION_STRING`: SQLAlchemy connection string for the MySQL source (example: `mysql+pymysql://user:password@db-host:3306/dbname`)
+- `DB_MYSQL1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+The database drivers ship with the RAG image. Use a host name that the mAItion containers can reach, because `localhost` points to the container itself. URL-encode special characters in the password (for example `@` becomes `%40`).
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "database"
+    name: "postgres1"
+    enabled: true  # optional, default: true
+    config:
+      type: "postgres"                       # "postgres" or "mysql"
+      connection_string: "${DB_POSTGRES1_CONNECTION_STRING}"
+      query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
+      metadata_columns: "author,year"        # optional, extra columns stored as metadata
+      schedules: "${DB_POSTGRES1_SCHEDULES}"
+
+  - type: "database"
+    name: "mysql1"
+    config:
+      type: "mysql"
+      connection_string: "${DB_MYSQL1_CONNECTION_STRING}"
+      query: "SELECT id, title, updated_at, content FROM articles"
+      schedules: "${DB_MYSQL1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+# PostgreSQL
+DB_POSTGRES1_CONNECTION_STRING=postgresql+psycopg2://user:pass@db-host/mydb
+DB_POSTGRES1_SCHEDULES=3600
+
+# MySQL
+DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@db-host/mydb
+DB_MYSQL1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `type` | yes | — | Database type: `postgres` or `mysql` |
+| `connection_string` | yes | — | SQLAlchemy connection string. Use a read-only database account |
+| `query` | yes | — | `SELECT` (or `WITH ... SELECT`) statement that returns `id`, `title`, `updated_at` and `content` |
+| `metadata_columns` | no | — | Comma-separated list of extra columns from the query to store as document metadata |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Database Sources
+
+Add more `sources` entries (`postgres2`, `mysql2`, etc) with separate env vars per source.
