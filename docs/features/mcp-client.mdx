@@ -10,7 +10,7 @@ keywords:
   - tool-calling
 ---
 
-[openwebui-mcp](https://github.com/WikiTeq/openwebui-mcp) is an MCP server that lets MCP clients — Claude Desktop, Codex CLI, and other MCP-compatible tools — send prompts to mAItion's chat models, with tool-calling support when the selected model has it. The client connects to `openwebui-mcp`, and `openwebui-mcp` calls mAItion's chat API on the client's behalf. mAItion itself does not become an MCP endpoint in this flow — it is the model being asked, one layer behind the bridge.
+[openwebui-mcp](https://github.com/vedmaka/openwebui-mcp) is an MCP server that lets MCP clients — Claude Desktop, Codex CLI, and other MCP-compatible tools — send prompts to mAItion's chat models, with tool-calling support when the selected model has it. The client connects to `openwebui-mcp`, and `openwebui-mcp` calls mAItion's chat API on the client's behalf. mAItion itself does not become an MCP endpoint in this flow — it is the model being asked, one layer behind the bridge.
 
 ## Prerequisites
 
@@ -103,29 +103,43 @@ OPENWEBUI_API_KEY = "<your-maition-api-key>"
 
 Run `openwebui-mcp` once as an HTTP server, and let each user connect with their own mAItion API key. The server holds no mAItion key of its own, so every request runs as the user who sent it.
 
-Start the server:
+<Note>
+Per-user API keys are not in the PyPI release yet. PyPI version 0.1.3 and older still use a server-wide `OPENWEBUI_API_KEY` and a separate `OPENWEBUI_MCP_TOKEN`. For a shared endpoint, run the current upstream code instead:
+
+```bash
+uvx --prerelease=allow --from git+https://github.com/vedmaka/openwebui-mcp@ae647d4 openwebui-mcp --help
+```
+
+You can also use the Docker image `ghcr.io/vedmaka/openwebui-mcp:sha-ae647d44cc07135b0630ee4d0f2474407a05a4b2`.
+</Note>
+
+Start the server on a private interface:
 
 ```bash
 OPENWEBUI_BASE_URL=https://maition.example.com \
-  uvx openwebui-mcp --transport streamable-http --host 0.0.0.0 --port 8000
+  uvx --prerelease=allow --from git+https://github.com/vedmaka/openwebui-mcp@ae647d4 openwebui-mcp \
+  --transport streamable-http --host 127.0.0.1 --port 8000
 ```
+
+The server speaks plain HTTP. Put a reverse proxy or tunnel that terminates HTTPS in front of it, and give clients the public HTTPS address, for example `https://mcp.example.com/mcp`. Do not expose port 8000 directly.
 
 Each client supplies its own key in one of two ways:
 
-1. **`apiKey` query parameter** on the MCP URL: `https://<host>:8000/mcp?apiKey=<your-maition-api-key>`. Use this for clients that cannot set custom headers, such as Claude on the web.
-2. **`Authorization: Bearer <your-maition-api-key>` header.** Use this when the client lets you set headers. It keeps the key out of URLs and access logs.
+1. **`Authorization: Bearer <your-maition-api-key>` header.** Use this when the client lets you set headers. It keeps the key out of URLs and access logs.
+2. **`apiKey` query parameter** on the MCP URL: `https://mcp.example.com/mcp?apiKey=<your-maition-api-key>`. Use this for clients that cannot set custom headers, such as Claude on the web.
 
 If a request has both, the header wins.
 
 <Warning>
-A key in the URL can appear in access logs. Serve the endpoint over HTTPS and keep the full URL private. Use the `Authorization` header if your client supports it.
+A key in the URL can appear in access logs. Keep the full URL private, and use the `Authorization` header if your client supports it.
 </Warning>
 
-Example for Codex CLI, in `~/.codex/config.toml`:
+Example for Codex CLI, in `~/.codex/config.toml`. Codex reads the key from the `MAITION_API_KEY` environment variable, so the key stays out of the file:
 
 ```toml
 [mcp_servers.owui]
-url = "https://<host>:8000/mcp?apiKey=<your-maition-api-key>"
+url = "https://mcp.example.com/mcp"
+bearer_token_env_var = "MAITION_API_KEY"
 ```
 
 <Note>
