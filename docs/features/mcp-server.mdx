@@ -9,7 +9,11 @@ keywords:
   - RAG API
 ---
 
-The mAItion MCP server exposes the retrieval API as a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint. This lets any MCP-compatible system — agents, orchestration frameworks, or custom integrations — call mAItion's retrieval tools programmatically.
+The mAItion MCP server exposes the retrieval API — the underlying [rag-of-all-trades](https://github.com/WikiTeq/rag-of-all-trades) (ROAT) endpoints — as a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint. This lets any MCP-compatible system — agents, orchestration frameworks, or custom integrations — call mAItion's retrieval tools programmatically.
+
+<Note>
+This grants access to ROAT's retrieval tools only (`retrieve_chunks`, `rephrase_chunks`), not to mAItion's chat models. To have an MCP client talk to mAItion's chat models instead, see [MCP Client](/features/mcp-client).
+</Note>
 
 ## Prerequisites
 
