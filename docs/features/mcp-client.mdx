@@ -41,12 +41,11 @@ Set these as environment variables, or in a `.env` file `openwebui-mcp` reads at
 | Field | Required | Default | Description |
 |---|---|---|---|
 | `OPENWEBUI_BASE_URL` | yes | — | The URL of your mAItion instance. Use HTTPS for non-local deployments. HTTP is for local loopback only, such as `http://localhost:3000`. Aliases: `OPENWEBUI_URL`, `OWUI_URL` |
-| `OPENWEBUI_API_KEY` | yes | — | An API key for the mAItion instance. Generate one from Account settings in the mAItion web UI (verify the exact path against your running instance — this can move between versions). Aliases: `OPENWEBUI_TOKEN`, `OWUI_API_KEY`, `OWUI_TOKEN` |
+| `OPENWEBUI_API_KEY` | stdio only | — | An API key for the mAItion instance, used only with the `stdio` transport. Streamable HTTP and SSE never read it: each caller sends their own key instead (see [Shared HTTP Endpoint](#shared-http-endpoint)). Generate a key from Account settings in the mAItion web UI (verify the exact path against your running instance — this can move between versions). Aliases: `OPENWEBUI_TOKEN`, `OWUI_API_KEY`, `OWUI_TOKEN` |
 | `OPENWEBUI_DEFAULT_MODEL` | no | none | The model `ask` uses when the caller does not pass one. Alias: `OWUI_DEFAULT_MODEL` |
 | `OPENWEBUI_ENFORCE_DEFAULT_MODEL` | no | `false` | When `true`, `ask` always uses `OPENWEBUI_DEFAULT_MODEL`, ignoring any model the client passes. Alias: `OWUI_ENFORCE_DEFAULT_MODEL` |
 | `OPENWEBUI_ASK_DESCRIPTION` | no | built-in description | Replaces the first line of the `ask` tool's description shown to MCP clients |
 | `OPENWEBUI_INSTRUCTIONS` | no | none | Alias: `OWUI_INSTRUCTIONS`. Server-level instructions passed to connecting MCP clients |
-| `OPENWEBUI_MCP_TOKEN` | no | none | A bearer token MCP clients must send to `openwebui-mcp` itself. Only relevant for HTTP-based transports — a `stdio` setup, as covered on this page, does not need it |
 | `OWUI_TIMEOUT_MS` | no | `120000` | Timeout, in milliseconds, for a chat call to mAItion |
 | `OPENWEBUI_CA_BUNDLE` | no | none | Path to a CA certificate to trust when mAItion is served over HTTPS with a self-signed or private certificate. Alias: `OWUI_CA_BUNDLE` |
 | `OPENWEBUI_SSL_VERIFY` | no | `true` | Set to `false` to skip TLS certificate verification on `ask`/`list_models` requests. Does not cover tool-calling traffic, which keeps verifying regardless. Prefer `OPENWEBUI_CA_BUNDLE` instead — disabling verification exposes your API key and chat traffic to interception. Alias: `OWUI_SSL_VERIFY` |
@@ -57,7 +56,10 @@ Set these as environment variables, or in a `.env` file `openwebui-mcp` reads at
 
 ## Connect a Client
 
-The examples below use `stdio` transport, where the client spawns and manages the `openwebui-mcp` process directly. This is the default and the simplest setup.
+`openwebui-mcp` supports two ways to connect:
+
+- **`stdio`**: the client starts the `openwebui-mcp` process and uses the `OPENWEBUI_API_KEY` set in its config. This is the default and the simplest setup for one user. The next two sections use it.
+- **Streamable HTTP**: one running `openwebui-mcp` server that many users share. Each user sends their own mAItion API key. See [Shared HTTP Endpoint](#shared-http-endpoint).
 
 ### Claude Desktop
 
@@ -97,6 +99,41 @@ OPENWEBUI_API_KEY = "<your-maition-api-key>"
 `default_tools_approval_mode = "auto"` lets Codex call `ask` and `list_models` without asking for per-call approval each time. `ask` forwards whatever prompt Codex sends to mAItion, so this trades a manual approval step for convenience. Drop the line, or set it per-tool, if you want to review each call first.
 </Note>
 
+## Shared HTTP Endpoint
+
+Run `openwebui-mcp` once as an HTTP server, and let each user connect with their own mAItion API key. The server holds no mAItion key of its own, so every request runs as the user who sent it.
+
+Start the server:
+
+```bash
+OPENWEBUI_BASE_URL=https://maition.example.com \
+  uvx openwebui-mcp --transport streamable-http --host 0.0.0.0 --port 8000
+```
+
+Each client supplies its own key in one of two ways:
+
+1. **`apiKey` query parameter** on the MCP URL: `https://<host>:8000/mcp?apiKey=<your-maition-api-key>`. Use this for clients that cannot set custom headers, such as Claude on the web.
+2. **`Authorization: Bearer <your-maition-api-key>` header.** Use this when the client lets you set headers. It keeps the key out of URLs and access logs.
+
+If a request has both, the header wins.
+
+<Warning>
+A key in the URL can appear in access logs. Serve the endpoint over HTTPS and keep the full URL private. Use the `Authorization` header if your client supports it.
+</Warning>
+
+Example for Codex CLI, in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.owui]
+url = "https://<host>:8000/mcp?apiKey=<your-maition-api-key>"
+```
+
+<Note>
+The URL path must be `/mcp`. A request to the bare host returns `404`.
+
+SSE (`--transport sse`, endpoint `/sse`) accepts only the `Authorization` header, not `apiKey`. Use streamable HTTP for new setups.
+</Note>
+
 ## Available Tools
 
 ### `ask`
@@ -129,8 +166,10 @@ As a smoke test, ask the client to call `list_models`. A successful response con
 | Symptom | Cause | Fix |
 |---|---|---|
 | `openwebui-mcp` fails to start, or the client shows no tools | mAItion not reachable at `OPENWEBUI_BASE_URL` | Confirm mAItion is running and the URL is correct for your setup |
-| `ask` or `list_models` fails with an authentication error from mAItion | Missing or incorrect `OPENWEBUI_API_KEY` | Generate a new API key from your mAItion account settings and update the config |
-| MCP client gets `401` connecting to `openwebui-mcp` | `OPENWEBUI_MCP_TOKEN` is set, and the client is not sending a matching bearer token | Check the client sends `Authorization: Bearer <token>` matching `OPENWEBUI_MCP_TOKEN`, or unset it for a `stdio` setup where it is not needed |
+| `ask` or `list_models` fails with an authentication error from mAItion | Missing or incorrect API key | Generate a new API key from your mAItion account settings. Update `OPENWEBUI_API_KEY` (stdio), or the `apiKey` parameter or `Authorization` header (HTTP) |
+| `ask` or `list_models` fails with "no Open WebUI identity supplied" | HTTP request with no `apiKey` parameter and no `Authorization: Bearer` header, or `stdio` with no `OPENWEBUI_API_KEY` | Send a key as described in [Shared HTTP Endpoint](#shared-http-endpoint), or set `OPENWEBUI_API_KEY` for `stdio` |
+| `OPENWEBUI_API_KEY` is set but ignored over HTTP | Streamable HTTP and SSE never read `OPENWEBUI_API_KEY` | Send the key per request with `apiKey` or the `Authorization` header |
+| `404` when connecting over HTTP | Client URL has no path | Use the full `/mcp` URL (streamable HTTP) or `/sse` (SSE) |
 | `ask` fails with no model error | No `model` argument passed, and `OPENWEBUI_DEFAULT_MODEL` is not set | Set `OPENWEBUI_DEFAULT_MODEL`, or have the client pass `model` explicitly |
 | `CERTIFICATE_VERIFY_FAILED` | mAItion is served over HTTPS with a certificate `openwebui-mcp` does not trust | Set `OPENWEBUI_CA_BUNDLE` to the correct CA certificate |
 
