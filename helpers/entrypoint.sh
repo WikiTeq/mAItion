@@ -219,6 +219,10 @@ do_first_start() {
                     WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
                       '.meta.toolIds += ["mediawiki_read"]')
                 fi
+                if mediawiki_tool_enabled WRITE; then
+                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
+                      '.meta.toolIds += ["mediawiki_write"]')
+                fi
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
                   -H "Authorization: Bearer ${API_KEY}" \
                   -H "Content-Type: application/json" \
@@ -264,6 +268,7 @@ do_first_start() {
       --data-raw "{\"suggestions\":[]}"
 
     install_mediawiki_tool read "MediaWiki Search Tool"
+    install_mediawiki_tool write "MediaWiki Write Tool"
     install_web_search_tool
     install_get_sources_tool
     install_video_inject_filter
@@ -273,8 +278,8 @@ do_first_start() {
     touch /app/backend/data/.first_start
 }
 
-# The MediaWiki Search Tool is enabled by TOOL_MEDIAWIKI_READ_ENABLED.
-# The old TOOL_MEDIAWIKI_ENABLED flag still enables it.
+# A MediaWiki tool is enabled by its own flag (TOOL_MEDIAWIKI_<READ|WRITE>_ENABLED).
+# The old TOOL_MEDIAWIKI_ENABLED flag still enables both tools.
 mediawiki_tool_enabled() {
     local flag="TOOL_MEDIAWIKI_$1_ENABLED"
     [ "${!flag}" == "True" ] || [ "$TOOL_MEDIAWIKI_ENABLED" == "True" ]
