@@ -139,7 +139,7 @@ SHAREPOINT1_SCHEDULES=3600
 | `sharepoint_folder_id` | no (file mode) | — | Folder ID to ingest files from; alternative to `sharepoint_folder_path` |
 | `drive_name` | no | — | Name of the document library / drive (file mode) |
 | `sharepoint_type` | no | `file` | `file` to ingest files, or `page` to ingest site pages |
-| `recursive` | no | `true` | Recurse into subfolders in file mode |
+| `recursive` | no | `true` | Recurse into subfolders in file mode. `false` only takes effect when `sharepoint_folder_path` is also set. Without it (drive root), the upstream reader always traverses subfolders ([run-llama/llama_index#22320](https://github.com/run-llama/llama_index/issues/22320)) |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
 
 ## Multiple SharePoint Sources
