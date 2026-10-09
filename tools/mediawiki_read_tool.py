@@ -1,10 +1,10 @@
 """
-title: MediaWiki Search & Write Tool
+title: MediaWiki Search Tool
 author: WikiTeq
 date: 2025-04-30
 version: 1.0
 license: MIT
-description: Allows creating new or updating existing MediaWiki pages when the user asks to save or update something to the wiki/knowledge base. Allows AI to search the wiki for pages.
+description: Allows AI to search the MediaWiki wiki for pages and read their content.
 requirements: mwclient>=0.10.1, pydantic>=2.0.0, markdownify>=0.13.1
 """
 
@@ -20,8 +20,6 @@ from pydantic import BaseModel, Field
 
 log = logging.getLogger(__name__)
 
-MAX_TITLE_LENGTH = 255
-MAX_CONTENT_LENGTH = 2_000_000  # 2 MB, MediaWiki default max
 MAX_SEARCH_RESULTS = 20
 MAX_ERROR_DETAIL_CHARS = 500
 
@@ -32,10 +30,6 @@ def _truncate(text: str, limit: int = MAX_ERROR_DETAIL_CHARS) -> str:
         return text
     suffix = "... (truncated)"
     return text[: limit - len(suffix)] + suffix
-
-
-# Characters illegal in MediaWiki page titles: #<>[]|{} plus control chars 0-31 and DEL (127)
-_ILLEGAL_TITLE_CHARS = re.compile(r"[#<>\[\]|{}\x00-\x1f\x7f]")
 
 
 def to_source_id(text: str) -> str:
@@ -100,21 +94,6 @@ def _parse_wiki_url(wiki_url: str) -> tuple[str, str, str]:
         path = path_stripped.rstrip("/") + "/"
 
     return host, path, scheme
-
-
-def _validate_title(title: str) -> None:
-    """Raise ValueError if title is invalid for NS_MAIN writes."""
-    if ":" in title:
-        raise ValueError(
-            "Page title must not contain ':'. Only NS_MAIN (main namespace) pages are supported. "
-            "Use a plain title like 'Meeting Notes 2025-04-30'."
-        )
-    m = _ILLEGAL_TITLE_CHARS.search(title)
-    if m:
-        raise ValueError(
-            f"Page title contains an illegal character: {m.group()!r}. "
-            "Titles must not contain: # < > [ ] | { } or control characters."
-        )
 
 
 def _build_page_url(title: str, article_path: str, origin: str | None) -> str | None:
@@ -226,10 +205,6 @@ class Tools:
         timeout: int = Field(
             default=30,
             description="Request timeout in seconds.",
-        )
-        edit_summary: str = Field(
-            default="Saved via mAItion AI assistant",
-            description="Edit summary recorded in the wiki page history.",
         )
         max_search_results: int = Field(
             default=10,
@@ -497,173 +472,3 @@ class Tools:
             f"Search results for '{query}' ({len(pages)} page(s)):\n\n"
             + "\n---\n\n".join(sections)
         )
-
-    async def save_to_wiki(
-        self,
-        title: str,
-        content: str,
-        __event_emitter__: Callable[[dict], Awaitable[None]] | None = None,
-    ) -> str:
-        """
-        Save content to a MediaWiki page. Use this tool when the user asks to:
-        - "save into wiki" / "save into knowledge base"
-        - "write to wiki" / "create a wiki page"
-        - "update the wiki page" / "add this to the wiki"
-
-        The tool creates a new page or updates an existing one with the given title and content.
-
-        IMPORTANT: Before calling this tool, convert the content to MediaWiki markup format.
-        Use == Headings ==, '''bold''', ''italic'', * bullet lists, # numbered lists,
-        [[Internal links]], and [https://example.com External links] as appropriate.
-
-        Title rules (MUST follow):
-        - Only main-namespace pages are supported — the title must NOT contain ':'
-        - Maximum length is 255 characters
-        - The following characters are ILLEGAL and must not appear in the title:
-          # < > [ ] | { } and any control characters (ASCII 0-31 and 127)
-
-        After this tool returns successfully, respond with only the page URL.
-        Do NOT repeat or summarise the page content.
-
-        Content size limit: 2,000,000 characters maximum.
-
-        Args:
-            title: The wiki page title (e.g. "Meeting Notes 2025-04-30")
-            content: The page content formatted as MediaWiki markup
-
-        Returns:
-            A URL to the created or updated wiki page, or an error message.
-        """
-        import mwclient
-
-        async def emit(message: str, done: bool = False, hidden: bool = True) -> None:
-            if __event_emitter__:
-                await __event_emitter__(
-                    {
-                        "type": "status",
-                        "data": {
-                            "description": message,
-                            "done": done,
-                            "hidden": hidden,
-                        },
-                    }
-                )
-
-        # --- Validate configuration ---
-        if not self.valves.wiki_url:
-            await emit(
-                "Error: MediaWiki URL is not configured in Tool Valves.",
-                done=True,
-                hidden=False,
-            )
-            return "Error: wiki_url is not configured."
-        # --- Validate inputs ---
-        title = title.strip()
-        if not title:
-            msg = "Error: page title cannot be empty."
-            await emit(msg, done=True, hidden=False)
-            return msg
-        if len(title) > MAX_TITLE_LENGTH:
-            msg = f"Error: page title exceeds maximum length of {MAX_TITLE_LENGTH} characters."
-            await emit(msg, done=True, hidden=False)
-            return msg
-        if len(content.encode("utf-8")) > MAX_CONTENT_LENGTH:
-            msg = f"Error: content exceeds maximum allowed size of {MAX_CONTENT_LENGTH // 1_000_000} MB."
-            await emit(msg, done=True, hidden=False)
-            return msg
-
-        # --- Title validation (namespace + illegal chars) ---
-        try:
-            _validate_title(title)
-        except ValueError as e:
-            await emit(f"Error: {e}", done=True, hidden=False)
-            return f"Error: {e}"
-
-        # --- Parse wiki URL ---
-        try:
-            host, path, scheme = _parse_wiki_url(self.valves.wiki_url)
-        except ValueError as e:
-            await emit(f"Error: {e}", done=True, hidden=False)
-            return f"Error: {e}"
-
-        await emit(f"Connecting to {host}…")
-
-        # --- Connect and optionally authenticate (blocking — run in thread) ---
-        try:
-            site = await asyncio.to_thread(
-                _connect_site,
-                host,
-                path,
-                scheme,
-                self.valves.timeout,
-                self.valves.username,
-                self.valves.password,
-            )
-        except mwclient.errors.LoginError as e:
-            await emit(
-                "Error: authentication failed. Check your username and password in Tool Valves.",
-                done=True,
-                hidden=False,
-            )
-            return (
-                "Error: authentication failed. If using a BotPassword, the format is 'Username@BotName'. "
-                f"Details: {_truncate(str(e))}"
-            )
-        except Exception as e:
-            log.error("mwclient connection error", exc_info=True)
-            await emit(
-                "Error: could not connect to the wiki.",
-                done=True,
-                hidden=False,
-            )
-            return f"Error: could not connect to the wiki. Check the wiki_url in Tool Valves. Details: {_truncate(str(e))}"
-
-        await emit(f"Saving page '{title}'…")
-
-        # --- Save the page (blocking — run in thread) ---
-        def _save():
-            page = site.pages[title]
-            page.save(content, summary=self.valves.edit_summary)
-
-        try:
-            await asyncio.to_thread(_save)
-        except mwclient.errors.ProtectedPageError:
-            await emit(
-                f"Error: page '{title}' is protected and cannot be edited.",
-                done=True,
-                hidden=False,
-            )
-            return f"Error: page '{title}' is protected."
-        except mwclient.errors.APIError as e:
-            if e.code in ("writeapidenied", "permissiondenied"):
-                await emit(
-                    "Error: this wiki requires login to write.", done=True, hidden=False
-                )
-                return "Error: this wiki requires authentication to write. Please configure username and password in Tool Valves."
-            log.error("MediaWiki API error: %s", e.code)
-            await emit(f"Error: wiki save failed ({e.code}).", done=True, hidden=False)
-            return (
-                f"Error: wiki API returned an error ({e.code}). Check page title and permissions. "
-                f"Details: {_truncate(str(e))}"
-            )
-        except Exception as e:
-            log.error("Unexpected error saving page: %s", e, exc_info=True)
-            await emit(
-                "Error: an unexpected error occurred while saving.",
-                done=True,
-                hidden=False,
-            )
-            return f"Error: an unexpected error occurred while saving. Details: {_truncate(str(e))}"
-
-        # --- Build canonical page URL (blocking — run in thread) ---
-        await emit("Fetching page URL…")
-
-        article_path, origin = await asyncio.to_thread(_get_site_info, site)
-        page_url = _build_page_url(title, article_path, origin)
-
-        if page_url:
-            await emit(f"Saved: {page_url}", done=True)
-            return page_url
-
-        await emit(f'Saved "{title}", but could not determine its URL.', done=True)
-        return f'Saved "{title}" to the wiki, but the page URL could not be determined.'

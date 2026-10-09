@@ -18,8 +18,8 @@ services:
       - open-webui-cache:/root/.cache
       - ./tools/roat_retrieval.py:/etc/roat_retrieval.py
       - ./tools/roat_retrieval.json:/etc/roat_retrieval.json
-      - ./tools/mediawiki_tool.py:/etc/mediawiki_tool.py
-      - ./tools/mediawiki_tool.json:/etc/mediawiki_tool.json
+      - ./tools/mediawiki_read_tool.py:/etc/mediawiki_read_tool.py
+      - ./tools/mediawiki_read_tool.json:/etc/mediawiki_read_tool.json
       - ./tools/web_search.py:/etc/web_search.py
       - ./tools/web_search.json:/etc/web_search.json
       - ./tools/get_sources.py:/etc/get_sources.py

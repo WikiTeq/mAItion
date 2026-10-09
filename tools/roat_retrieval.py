@@ -65,7 +65,7 @@ def to_source_id(text: str) -> str:
     non-ASCII characters (e.g. "日本語") strip down to an empty slug, in which
     case the id falls back to the digest alone.
 
-    Duplicated verbatim in mediawiki_tool.py — OWUI loads each tool's source
+    Duplicated verbatim in mediawiki_read_tool.py — OWUI loads each tool's source
     as an independent module (no shared import path between tools), so keep
     both copies in sync if this changes.
     """
@@ -112,7 +112,7 @@ def _find_video_url(
 def _store_turn_sources(request, sources: list) -> None:
     """Append sources to __request__.state._wikiteq_sources for get_sources tool.
 
-    Duplicated verbatim in mediawiki_tool.py — see to_source_id() above for why.
+    Duplicated verbatim in mediawiki_read_tool.py — see to_source_id() above for why.
     """
     if not request or not sources:
         return

@@ -1,0 +1,9 @@
+{
+	"id": "mediawiki_read",
+	"name": "MediaWiki Search Tool",
+	"content": "",
+	"meta": {
+		"description": "Search and read MediaWiki pages",
+		"manifest": {}
+	}
+}
