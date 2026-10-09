@@ -53,8 +53,6 @@ These tools are opt-in. Installing a tool requires both of these:
 - Its own flag set to `True`: `TOOL_MEDIAWIKI_READ_ENABLED` for the Search Tool, `TOOL_MEDIAWIKI_WRITE_ENABLED` for the Write Tool
 - `MEDIAWIKI_API_URL` set to a non-empty value
 
-The older `TOOL_MEDIAWIKI_ENABLED=True` flag still works. It enables both tools.
-
 If `MEDIAWIKI_API_URL` is missing while a flag is `True`, the entrypoint script skips
 that tool's install and prints a warning to the container logs — it does not fail the boot, so
 the omission is easy to miss.

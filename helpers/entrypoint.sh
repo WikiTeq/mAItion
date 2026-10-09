@@ -279,10 +279,9 @@ do_first_start() {
 }
 
 # A MediaWiki tool is enabled by its own flag (TOOL_MEDIAWIKI_<READ|WRITE>_ENABLED).
-# The old TOOL_MEDIAWIKI_ENABLED flag still enables both tools.
 mediawiki_tool_enabled() {
     local flag="TOOL_MEDIAWIKI_$1_ENABLED"
-    [ "${!flag}" == "True" ] || [ "$TOOL_MEDIAWIKI_ENABLED" == "True" ]
+    [ "${!flag}" == "True" ]
 }
 
 # Usage: install_mediawiki_tool <read|write> <label>
