@@ -215,9 +215,13 @@ do_first_start() {
                       '.params.system = (.params.system + "\n\n" + $append)')
                 fi
 
-                if [ "$TOOL_MEDIAWIKI_ENABLED" == "True" ]; then
+                if mediawiki_tool_enabled READ; then
                     WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
-                      '.meta.toolIds += ["mediawiki"]')
+                      '.meta.toolIds += ["mediawiki_read"]')
+                fi
+                if mediawiki_tool_enabled WRITE; then
+                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
+                      '.meta.toolIds += ["mediawiki_write"]')
                 fi
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
                   -H "Authorization: Bearer ${API_KEY}" \
@@ -263,7 +267,8 @@ do_first_start() {
       -H "Content-Type: application/json" \
       --data-raw "{\"suggestions\":[]}"
 
-    install_mediawiki_tool
+    install_mediawiki_tool read "MediaWiki Search Tool"
+    install_mediawiki_tool write "MediaWiki Write Tool"
     install_web_search_tool
     install_get_sources_tool
     install_video_inject_filter
@@ -273,21 +278,33 @@ do_first_start() {
     touch /app/backend/data/.first_start
 }
 
+# A MediaWiki tool is enabled by its own flag (TOOL_MEDIAWIKI_<READ|WRITE>_ENABLED).
+mediawiki_tool_enabled() {
+    local flag="TOOL_MEDIAWIKI_$1_ENABLED"
+    [ "${!flag}" == "True" ]
+}
+
+# Usage: install_mediawiki_tool <read|write> <label>
 install_mediawiki_tool() {
-    if [ "$TOOL_MEDIAWIKI_ENABLED" != "True" ]; then
+    local kind="$1"
+    local label="$2"
+    local upper
+    upper=$(echo "$kind" | tr '[:lower:]' '[:upper:]')
+
+    if ! mediawiki_tool_enabled "$upper"; then
         return
     fi
 
     if [ -z "$MEDIAWIKI_API_URL" ]; then
-        echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_ENABLED=True but MEDIAWIKI_API_URL is not set. Skipping MediaWiki Tool install." >&2
+        echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_${upper}_ENABLED=True but MEDIAWIKI_API_URL is not set. Skipping ${label} install." >&2
         return
     fi
 
     echo ""
-    echo "[Custom entrypoint] Installing MediaWiki Tool..."
+    echo "[Custom entrypoint] Installing ${label}..."
 
-    TOOL_CODE=$(jq -Rs . < "/etc/mediawiki_tool.py")
-    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/mediawiki_tool.json)
+    TOOL_CODE=$(jq -Rs . < "/etc/mediawiki_${kind}_tool.py")
+    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/mediawiki_${kind}_tool.json)
 
     CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
       -H "Authorization: Bearer ${API_KEY}" \
@@ -296,15 +313,15 @@ install_mediawiki_tool() {
 
     TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
     if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] WARNING: MediaWiki Tool install failed"
+        echo "[Custom entrypoint] WARNING: ${label} install failed"
         echo "${CREATE_RESPONSE}"
         return
     fi
 
-    echo "[Custom entrypoint] MediaWiki Tool created with id: ${TOOL_ID}"
+    echo "[Custom entrypoint] ${label} created with id: ${TOOL_ID}"
 
     echo ""
-    echo "[Custom entrypoint] Configuring MediaWiki Tool valves..."
+    echo "[Custom entrypoint] Configuring ${label} valves..."
     VALVES_JSON=$(jq -n \
       --arg wiki "${MEDIAWIKI_API_URL}" \
       --arg user "${MEDIAWIKI_USERNAME:-}" \
