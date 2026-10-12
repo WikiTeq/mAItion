@@ -215,11 +215,11 @@ do_first_start() {
                       '.params.system = (.params.system + "\n\n" + $append)')
                 fi
 
-                if mediawiki_tool_enabled READ; then
+                if mediawiki_tool_enabled READ && [ -n "$MEDIAWIKI_API_URL" ]; then
                     WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
                       '.meta.toolIds += ["mediawiki_read"]')
                 fi
-                if mediawiki_tool_enabled WRITE; then
+                if mediawiki_tool_enabled WRITE && [ -n "$MEDIAWIKI_API_URL" ]; then
                     WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
                       '.meta.toolIds += ["mediawiki_write"]')
                 fi
@@ -572,7 +572,7 @@ pip install hf_xet
 # Tool Python requirements must be installed here because runtime pip install
 # (ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS) is disabled — it is incompatible
 # with multi-worker deployments and unreliable across container restarts.
-pip install "mwclient>=0.10.1"
+pip install "mwclient>=0.11.0"
 pip install "pyyaml>=6.0"
 pip install "tavily-python>=0.5.0"
 pip install "markdownify>=0.13.1"
