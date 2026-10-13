@@ -64,6 +64,7 @@
 					{
 						"group": "Connectors",
 						"pages": [
+							"connectors/bookstack-connector",
 							"connectors/s3-connector",
 							"connectors/mediawiki-connector",
 							"connectors/serpapi-connector",
