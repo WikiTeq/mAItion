@@ -1,0 +1,9 @@
+{
+    "id": "mediawiki_write",
+    "name": "MediaWiki Write Tool",
+    "content": "",
+    "meta": {
+        "description": "Create or update MediaWiki pages",
+        "manifest": {}
+    }
+}

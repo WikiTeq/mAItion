@@ -126,7 +126,7 @@ class Tools:
 
             lines = [f"=== Source {i}: {name} ==="]
             # source_id may be a real URL (web_search.py) or a to_source_id()
-            # slug (roat_retrieval.py/mediawiki_tool.py) — either way it's
+            # slug (roat_retrieval.py/mediawiki_read_tool.py) — either way it's
             # useful for citation formatting, so always surface it distinctly
             # from the URL line below rather than dropping it when the two
             # happen to match.
@@ -153,7 +153,7 @@ def _normalize_source(source) -> dict | None:
     """Validate a raw entry from _wikiteq_sources against the shared source
     schema, returning it unchanged or None if malformed.
 
-    Every source-emitting tool (web_search, roat_retrieval, mediawiki_tool)
+    Every source-emitting tool (web_search, roat_retrieval, mediawiki_read_tool)
     is expected to produce the same shape: {"source": {"name", "id", "url"?},
     "document": [str, ...], "metadata": [...]}. A malformed entry (source.source
     not a dict, document not a non-empty list of strings) would otherwise raise
@@ -193,7 +193,7 @@ def _extract_url(source: dict) -> str:
     Tries real URL fields first — top-level "url", then source.url — before
     falling back to source.id, since source.id is not trustworthy as a URL
     for every emitter: web_search.py populates it with a real URL, but
-    roat_retrieval.py/mediawiki_tool.py populate it with a to_source_id()
+    roat_retrieval.py/mediawiki_read_tool.py populate it with a to_source_id()
     slug (e.g. "some-kb-doc"), which is not a URL. Only accept source.id
     when it actually looks like one, and only once url/source.url are absent.
 
