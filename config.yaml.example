@@ -241,8 +241,9 @@ sources:
   #- type: "outlook"
   #  name: "outlook1"
   #  config:
-  #    # Mail.Read app permission grants access to every mailbox in the tenant by default;
-  #    # restrict with RBAC for Applications in Exchange Online
+  #    # Entra ID Mail.Read app permission is unscoped (every mailbox in the tenant).
+  #    # To restrict, assign the scoped "Application Mail.Read" role via RBAC for Applications
+  #    # in Exchange Online, then remove the unscoped Mail.Read grant from Entra ID.
   #    client_id: "${OUTLOOK1_CLIENT_ID}"
   #    client_secret: "${OUTLOOK1_CLIENT_SECRET}"
   #    tenant_id: "${OUTLOOK1_TENANT_ID}"
