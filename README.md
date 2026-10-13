@@ -48,6 +48,7 @@ interact with your knowledge with ease!
 * Dropbox (files and folders with flexible path, extension, and directory filters)
 * Confluence (Cloud and Server/Data Center)
 * BookStack
+* Outlook (Microsoft 365 / Entra ID mailboxes via Microsoft Graph)
 
 ## 🌐 Extra connectors
 
@@ -764,6 +765,52 @@ BOOKSTACK1_BASE_URL=https://wiki.example.com
 BOOKSTACK1_TOKEN_ID=your-token-id
 BOOKSTACK1_TOKEN_SECRET=your-token-secret
 BOOKSTACK1_SCHEDULES=3600
+```
+
+### Outlook Connector
+
+The Outlook connector ingests emails from a Microsoft 365 mailbox via the Microsoft Graph API.
+Authenticates directly against Microsoft Entra ID using the OAuth2 client credentials flow
+(app-only, non-interactive) and fetches messages via Graph.
+
+> **Note:** Client credentials authentication (app-only flow) is only supported for
+> **Microsoft 365 / Entra ID work or school accounts**. Personal Microsoft accounts are not supported.
+> Requires an Azure app registration that can read the target mailbox.
+>
+> **Warning:** The Entra ID `Mail.Read` **application** permission (with admin consent) is
+> unscoped and grants access to **every mailbox in the tenant** — `user_email` only selects
+> which mailbox this connector queries, it does not restrict what the app registration can reach.
+> To limit access, assign the **Application Mail.Read** role with a management scope using
+> [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac)
+> (the successor to the older Application Access Policy mechanism), then **remove the unscoped
+> `Mail.Read` grant from Entra ID**. The two grants combine as a union, so if the Entra ID grant
+> stays, the scope has no effect.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "outlook"
+    name: "outlook1"
+    config:
+      client_id: "${OUTLOOK1_CLIENT_ID}"
+      client_secret: "${OUTLOOK1_CLIENT_SECRET}"
+      tenant_id: "${OUTLOOK1_TENANT_ID}"
+      user_email: "${OUTLOOK1_USER_EMAIL}"
+      folder: "Inbox"           # optional, default Inbox; custom display names are resolved automatically
+      num_mails: 100            # optional, default 10
+      html_to_text: true        # optional, default true; set to false to keep raw HTML email bodies
+      schedules: "${OUTLOOK1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+OUTLOOK1_CLIENT_ID=your-azure-app-client-id
+OUTLOOK1_CLIENT_SECRET=your-azure-app-client-secret
+OUTLOOK1_TENANT_ID=your-azure-tenant-id
+OUTLOOK1_USER_EMAIL=user@company.onmicrosoft.com
+OUTLOOK1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
