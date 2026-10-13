@@ -60,7 +60,6 @@ Over 100 extra connectors are available at request, including the most popular o
 * Microsoft Teams
 * Microsoft Office 365
 * Box
-* Dropbox
 * Trello
 * Web scraper
 * YouTube
