@@ -77,16 +77,19 @@ on `CREATE_CUSTOM_WORKSPACE_MODEL`:
 Both cases require first-start bootstrap to run, `ENABLE_OPENAI_API=True`, and
 `OPENAI_DEFAULT_MODEL` to be set — this is not unconditional behavior.
 
-### Runtime overrides
+### Install-time overrides
 
 A few environment variables modify the installed model before it's created:
 
 - The entrypoint always overwrites the file's `base_model_id` with
-  `OPENAI_DEFAULT_MODEL` at runtime. Whatever value the file itself has for
+  `OPENAI_DEFAULT_MODEL`. Whatever value the file itself has for
   `base_model_id` is ignored.
-- `OWUI_MODEL_PROMPT`, if set, fully replaces the file's `params.system` prompt.
-- `OWUI_MODEL_PROMPT_APPEND`, if set, appends to the system prompt (bundled or
+- `OWUI_MODEL_PROMPT`, if not empty, fully replaces the file's `params.system` prompt.
+- `OWUI_MODEL_PROMPT_APPEND`, if not empty, appends to the system prompt (bundled or
   already replaced by `OWUI_MODEL_PROMPT`), separated by a blank line.
+
+These overrides apply only when the model is installed. Changing them later does not
+update a model that already exists.
 
 ## JSON File Format
 
@@ -104,7 +107,7 @@ The following table documents the fields present in the bundled
 | `base_model_id` | No | — | Ignored at install time — the entrypoint always overwrites this with `OPENAI_DEFAULT_MODEL`. |
 | `name` | Yes | — | Display name shown in the model picker. |
 | `params.function_calling` | **Yes** | — | Must be exactly `"native"`. |
-| `params.system` | No | — | System prompt. Replaced by `OWUI_MODEL_PROMPT` or extended by `OWUI_MODEL_PROMPT_APPEND` if set. |
+| `params.system` | No | — | System prompt. Replaced by `OWUI_MODEL_PROMPT` or extended by `OWUI_MODEL_PROMPT_APPEND` if not empty. |
 | `params.reasoning_effort` | No | — | Reasoning effort hint for models that support it, e.g. `"medium"`. |
 | `meta.profile_image_url` | No | — | Avatar image for the model. Use a base64 data URI for portability rather than a static path. |
 | `meta.description` | No | `null` | Short description shown in the model picker. |
@@ -131,5 +134,5 @@ These environment variables control workspace model bootstrapping.
 | `ENABLE_OPENAI_API` | Yes, for this feature | `False` | Must be exactly `True` for workspace model bootstrap to run at all. |
 | `OPENAI_DEFAULT_MODEL` | Yes, for this feature | — | Must be a non-empty model ID. Used as `base_model_id` for any installed custom model. |
 | `CREATE_CUSTOM_WORKSPACE_MODEL` | No | unset | `True` installs the bundled `wikiteqcenturion.json`. A filename installs that file from `models/` instead. `False`/unset installs no custom model. |
-| `OWUI_MODEL_PROMPT` | No | unset | Fully replaces the installed model's system prompt. |
-| `OWUI_MODEL_PROMPT_APPEND` | No | unset | Appends to the installed model's system prompt (bundled or replaced), separated by a blank line. |
+| `OWUI_MODEL_PROMPT` | No | unset | Fully replaces the installed model's system prompt when not empty. |
+| `OWUI_MODEL_PROMPT_APPEND` | No | unset | Appends to the installed model's system prompt (bundled or replaced) when not empty, separated by a blank line. |
