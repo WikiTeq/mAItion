@@ -22,8 +22,25 @@ Use the Outlook Connector to ingest emails from a Microsoft 365 mailbox via the 
 
 Only the client credentials flow (app-only) is supported. This requires:
 
-- An Azure app registration with the `Mail.Read` **application** permission and admin consent granted.
+- An Azure app registration that can read the target mailbox, using one of the two options below.
 - A **Microsoft 365 / Entra ID work or school account** mailbox. Personal Microsoft accounts are not supported — client credentials flow is not available for them.
+
+### Mailbox Access Options
+
+<Warning>
+  The Entra ID `Mail.Read` **application** permission is unscoped: it grants access to **every mailbox in the tenant**. The `user_email` setting only selects which mailbox this connector queries. It does not limit what the app registration can reach.
+</Warning>
+
+| Option | Setup | Reach |
+|---|---|---|
+| Unscoped (simple) | Grant the `Mail.Read` application permission in Entra ID and give admin consent | All mailboxes in the tenant |
+| Scoped (recommended) | Assign the **Application Mail.Read** role in Exchange Online with a management scope that covers only the mailboxes you need | Only the scoped mailboxes |
+
+To use the scoped option, follow [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac): create a management scope, register the app's service principal in Exchange with `New-ServicePrincipal`, then assign the role with `New-ManagementRoleAssignment -Role "Application Mail.Read" -CustomResourceScope <scope>`.
+
+<Warning>
+  After you assign the scoped role, **remove the unscoped `Mail.Read` grant from Entra ID**. The two grants combine as a union, so if the Entra ID grant stays, the app keeps access to every mailbox and the scope has no effect.
+</Warning>
 
 ## Required Environment Variables
 
