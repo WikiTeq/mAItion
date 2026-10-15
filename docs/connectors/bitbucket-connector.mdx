@@ -1,0 +1,84 @@
+---
+title: "Bitbucket"
+description: "Configure the mAItion Bitbucket connector to ingest repository files from a Bitbucket Cloud repository."
+keywords:
+  - mAItion
+  - Bitbucket connector
+  - Bitbucket ingestion
+  - connectors
+---
+
+Use the Bitbucket Connector to ingest repository files from a [Bitbucket Cloud](https://bitbucket.org) repository into the mAItion knowledge base.
+
+## What It Does
+
+- fetches files from a Bitbucket Cloud repository at a given branch
+- walks the repository tree recursively
+- filters files by extension and by directory
+- runs ingestion on configurable schedules
+
+## Authentication
+
+The connector authenticates with your Bitbucket username and a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/). App passwords are not supported. Create the API token with the `read:repository:bitbucket` scope.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `BITBUCKET1_USERNAME` (required): Bitbucket username
+- `BITBUCKET1_API_TOKEN` (required): Bitbucket API token
+- `BITBUCKET1_WORKSPACE` (required): workspace slug
+- `BITBUCKET1_REPO` (required): repository slug
+- `BITBUCKET1_BRANCH` (optional): branch to ingest from. If not set, the default branch of the repository is used
+- `BITBUCKET1_SCHEDULES` (optional): ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "bitbucket"
+    name: "bitbucket1"
+    enabled: true  # optional, default: true
+    config:
+      username: "${BITBUCKET1_USERNAME}"
+      api_token: "${BITBUCKET1_API_TOKEN}"
+      workspace: "${BITBUCKET1_WORKSPACE}"
+      repo: "${BITBUCKET1_REPO}"
+      branch: "${BITBUCKET1_BRANCH}"    # optional, defaults to the repository default branch
+      include_extensions: "md,txt"      # optional, comma-separated (mutually exclusive with exclude_extensions)
+      #exclude_extensions: ""           # optional (mutually exclusive with include_extensions)
+      include_directories: "docs"       # optional, comma-separated (mutually exclusive with exclude_directories)
+      #exclude_directories: ""          # optional (mutually exclusive with include_directories)
+      schedules: "${BITBUCKET1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+BITBUCKET1_USERNAME=your-bitbucket-username
+BITBUCKET1_API_TOKEN=your-api-token
+BITBUCKET1_WORKSPACE=your-workspace-slug
+BITBUCKET1_REPO=your-repo-slug
+BITBUCKET1_BRANCH=main
+BITBUCKET1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `username` | yes | — | Bitbucket username |
+| `api_token` | yes | — | Bitbucket API token |
+| `workspace` | yes | — | Workspace slug |
+| `repo` | yes | — | Repository slug |
+| `branch` | no | repository default branch | Branch to ingest from |
+| `include_extensions` | no | — | Comma-separated file extensions to include, e.g. `md,txt` (mutually exclusive with `exclude_extensions`) |
+| `exclude_extensions` | no | — | Comma-separated file extensions to exclude (mutually exclusive with `include_extensions`) |
+| `include_directories` | no | — | Comma-separated directories to include (mutually exclusive with `exclude_directories`) |
+| `exclude_directories` | no | — | Comma-separated directories to exclude (mutually exclusive with `include_directories`) |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Bitbucket Sources
+
+Add more `sources` entries (`bitbucket2`, `bitbucket3`, etc) with separate env vars per source.
