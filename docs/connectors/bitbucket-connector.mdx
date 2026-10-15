@@ -44,7 +44,7 @@ sources:
       api_token: "${BITBUCKET1_API_TOKEN}"
       workspace: "${BITBUCKET1_WORKSPACE}"
       repo: "${BITBUCKET1_REPO}"
-      branch: "${BITBUCKET1_BRANCH}"    # optional, defaults to the repository default branch
+      #branch: "${BITBUCKET1_BRANCH}"   # optional, defaults to the repository default branch
       include_extensions: "md,txt"      # optional, comma-separated (mutually exclusive with exclude_extensions)
       #exclude_extensions: ""           # optional (mutually exclusive with include_extensions)
       include_directories: "docs"       # optional, comma-separated (mutually exclusive with exclude_directories)
@@ -59,7 +59,7 @@ BITBUCKET1_USERNAME=your-bitbucket-username
 BITBUCKET1_API_TOKEN=your-api-token
 BITBUCKET1_WORKSPACE=your-workspace-slug
 BITBUCKET1_REPO=your-repo-slug
-BITBUCKET1_BRANCH=main
+#BITBUCKET1_BRANCH=main   # optional override example; unset uses the repository default branch
 BITBUCKET1_SCHEDULES=3600
 ```
 
