@@ -71,6 +71,7 @@
 							"connectors/jira-connector",
 							"connectors/pipedrive-connector",
 							"connectors/sharepoint-connector",
+							"connectors/gitbook-connector",
 							"connectors/web-connector",
 							"connectors/directory-connector",
 							"connectors/slack-connector",
