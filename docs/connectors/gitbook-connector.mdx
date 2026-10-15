@@ -1,0 +1,62 @@
+---
+title: "GitBook"
+description: "Configure the mAItion GitBook connector to ingest GitBook pages into the knowledge base."
+keywords:
+  - mAItion
+  - GitBook connector
+  - GitBook ingestion
+  - connectors
+---
+
+Use the GitBook Connector to ingest pages from [GitBook](https://www.gitbook.com/) spaces into the mAItion knowledge base.
+
+## What It Does
+
+- fetches pages from the configured GitBook spaces, or from all spaces the API token can access
+- converts page content to Markdown for indexing
+- stores the space ID, page ID, page title, page URL and parent page ID (if available) as metadata
+- re-indexes a page when its last update time changes
+- runs ingestion on configurable schedules
+
+## Authentication
+
+The connector authenticates with a GitBook API token. Generate one in your GitBook account settings under **Developer settings**.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `GITBOOK1_API_TOKEN`: GitBook API token
+- `GITBOOK1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "gitbook"
+    name: "gitbook1"
+    config:
+      api_token: "${GITBOOK1_API_TOKEN}"
+      schedules: "${GITBOOK1_SCHEDULES}"
+      #space_ids:                   # optional; if omitted, all accessible spaces are ingested
+      #  - "space_abc123"
+```
+
+## `.env.rag` Example
+
+```dotenv
+GITBOOK1_API_TOKEN=your-gitbook-api-token
+GITBOOK1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `api_token` | yes | — | GitBook API token |
+| `space_ids` | no | all accessible spaces | List of GitBook space IDs to ingest |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple GitBook Sources
+
+Add more `sources` entries (`gitbook2`, `gitbook3`, etc) with separate env vars per source.
