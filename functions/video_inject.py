@@ -156,9 +156,9 @@ class Filter:
                     if isinstance(part, dict) and isinstance(part.get("text"), str):
                         part["text"] = strip_markers(part["text"])
 
-        if self.valves.dedupe_videos_per_chat and _video_key(video_url) in _injected_keys(
-            messages
-        ):
+        if self.valves.dedupe_videos_per_chat and _video_key(
+            video_url
+        ) in _injected_keys(messages):
             log.info("video_inject: video already shown in this chat, skipping")
             return body
 
