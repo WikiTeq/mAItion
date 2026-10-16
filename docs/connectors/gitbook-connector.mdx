@@ -13,8 +13,8 @@ Use the GitBook Connector to ingest pages from [GitBook](https://www.gitbook.com
 ## What It Does
 
 - fetches pages from the configured GitBook spaces, or from all spaces the API token can access
-- converts page content to Markdown for indexing
-- stores the space ID, page ID, page title, page URL and parent page ID (if available) as metadata
+- fetches page content as Markdown from the GitBook API for indexing
+- stores the space ID, page ID, page title, page URL, parent page ID (if available), description, tags, and created and updated dates as metadata
 - re-indexes a page when its last update time changes
 - runs ingestion on configurable schedules
 
