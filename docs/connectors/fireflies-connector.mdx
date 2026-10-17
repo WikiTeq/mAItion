@@ -1,0 +1,72 @@
+---
+title: "Fireflies"
+description: "Configure the mAItion Fireflies connector to ingest meeting transcripts from Fireflies.ai."
+keywords:
+  - mAItion
+  - Fireflies connector
+  - connectors
+  - ingestion
+  - meeting transcripts
+---
+
+Use the Fireflies Connector to ingest meeting transcripts from [Fireflies.ai](https://fireflies.ai) into the mAItion knowledge base.
+
+## What It Does
+
+- fetches meeting transcripts from Fireflies.ai via its GraphQL API
+- builds the document content from the transcript summary (overview, outline or sentences, and notes)
+- stores metadata for each transcript: title, host email, organizer email, participants, date, transcript URL, duration, meeting link, speakers, keywords, gist, and action items
+- filters transcripts by keyword, date range, host, organizers, or channel
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `FIREFLIES_API_KEY`: Fireflies.ai API key
+- `FIREFLIES_SCHEDULES`: ingestion interval in seconds (example: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "fireflies"
+    name: "fireflies1"
+    config:
+      api_key: "${FIREFLIES_API_KEY}"
+      filter_keyword: ""            # optional, filter by title keyword
+      filter_fromDate: ""           # optional, ISO 8601 e.g. 2024-01-01T00:00:00.000Z
+      filter_toDate: ""             # optional, ISO 8601
+      filter_hostEmail: ""          # optional, filter by host email
+      filter_organizers: ""         # optional, comma-separated or YAML list
+      filter_channel_id: ""         # optional, filter by channel ID
+      max_items: 100                # optional, default 100
+      schedules: "${FIREFLIES_SCHEDULES}"
+      #request_delay: 0             # optional, delay in seconds between items (default: 0)
+```
+
+## `.env.rag` Example
+
+```dotenv
+FIREFLIES_API_KEY=your-fireflies-api-key
+FIREFLIES_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `api_key` | yes | — | Fireflies.ai API key |
+| `filter_keyword` | no | — | Only ingest transcripts whose title contains this keyword |
+| `filter_fromDate` | no | — | Only ingest transcripts from this date on (ISO 8601, for example `2024-01-01T00:00:00.000Z`) |
+| `filter_toDate` | no | — | Only ingest transcripts up to this date (ISO 8601) |
+| `filter_hostEmail` | no | — | Only ingest transcripts hosted by this email address |
+| `filter_organizers` | no | — | Only ingest transcripts from these organizer emails (comma-separated or YAML list) |
+| `filter_channel_id` | no | — | Only ingest transcripts from this channel ID |
+| `max_items` | no | `100` | Maximum number of transcripts to ingest |
+| `schedules` | no | — | Ingestion interval in seconds |
+| `request_delay` | no | `0` | Seconds to wait after each ingested item. Increase to avoid rate-limiting |
+
+## Multiple Fireflies Sources
+
+Add more `sources` entries (`fireflies2`, `fireflies3`, etc) with separate env vars per source.
