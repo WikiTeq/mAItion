@@ -48,6 +48,7 @@ interact with your knowledge with ease!
 * Dropbox (files and folders with flexible path, extension, and directory filters)
 * Confluence (Cloud and Server/Data Center)
 * BookStack
+* Bitbucket
 
 ## 🌐 Extra connectors
 
@@ -764,6 +765,42 @@ BOOKSTACK1_BASE_URL=https://wiki.example.com
 BOOKSTACK1_TOKEN_ID=your-token-id
 BOOKSTACK1_TOKEN_SECRET=your-token-secret
 BOOKSTACK1_SCHEDULES=3600
+```
+
+### Bitbucket Connector
+
+The Bitbucket connector ingests files from Bitbucket Cloud repositories via the Bitbucket REST API v2.0. Supports workspace/repository scoping, branch selection, recursive file walking, and include/exclude filtering on file extensions and directories.
+
+Authenticates with a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/) (not an app password) — create one scoped to `read:repository:bitbucket`.
+
+> **Note:** `include_extensions` and `exclude_extensions` are mutually exclusive. `include_directories` and `exclude_directories` are mutually exclusive.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "bitbucket"
+    name: "bitbucket1"
+    config:
+      username: "${BITBUCKET1_USERNAME}"
+      api_token: "${BITBUCKET1_API_TOKEN}"
+      workspace: "${BITBUCKET1_WORKSPACE}"
+      repo: "${BITBUCKET1_REPO}"
+      #branch: "${BITBUCKET1_BRANCH}"       # optional; defaults to the repo's actual default branch (resolved via API)
+      include_extensions: "md,txt"          # optional (mutually exclusive with exclude_extensions)
+      include_directories: "docs"           # optional (mutually exclusive with exclude_directories)
+      schedules: "${BITBUCKET1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+BITBUCKET1_USERNAME=your-bitbucket-username
+BITBUCKET1_API_TOKEN=your-api-token
+BITBUCKET1_WORKSPACE=your-workspace-slug
+BITBUCKET1_REPO=your-repo-slug
+#BITBUCKET1_BRANCH=master   # optional override example; unset uses the repo default branch
+BITBUCKET1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
