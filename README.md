@@ -845,7 +845,7 @@ BOOKSTACK1_SCHEDULES=3600
 
 ### Trello Connector
 
-The Trello connector ingests cards from Trello boards using the official `py-trello` SDK.
+The Trello connector ingests cards from Trello boards using the `py-trello` Python wrapper.
 Supports ingesting from specific boards or all accessible boards, with optional comment ingestion.
 Requires a [Trello API key and token](https://trello.com/power-ups/admin) with `read` scope.
 
