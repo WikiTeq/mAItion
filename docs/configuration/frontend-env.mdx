@@ -43,6 +43,19 @@ works. After first boot, you can disable it to run in single-user or private mod
 - `OPENAI_API_KEY`: provider API key
 - `OPENAI_DEFAULT_MODEL`: default model ID
 
+## Workspace Model (Optional)
+
+- `CREATE_CUSTOM_WORKSPACE_MODEL`: `True` installs the bundled model, or set a file name from `models/` to install that file
+- `OWUI_MODEL_PROMPT`: replaces the model's system prompt
+- `OWUI_MODEL_PROMPT_APPEND`: appends text to the model's system prompt, separated by a blank line
+
+The prompt variables apply only when `CREATE_CUSTOM_WORKSPACE_MODEL` installs a model.
+See [Workspace Models](/configuration/workspace-models) for details.
+
+<Note>
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `CREATE_CUSTOM_WORKSPACE_MODEL` on an already-running instance does not install it retroactively.
+</Note>
+
 ## Runtime
 
 - `ENV`: runtime mode (example: `dev`)
