@@ -1,0 +1,152 @@
+---
+title: "Box"
+description: "Configure the mAItion Box connector to ingest files from Box cloud storage into the knowledge base."
+keywords:
+  - mAItion
+  - Box connector
+  - Box cloud storage
+  - ingestion
+---
+
+Use the Box Connector to ingest files from [Box](https://www.box.com/) cloud storage into the mAItion knowledge base, using the [LlamaIndex Box reader](https://llamahub.ai/l/readers/llama-index-readers-box).
+
+## What It Does
+
+- discovers files by folder, file ID, full-text content search, or metadata search
+- supports CCG and JWT authentication
+- converts file content to Markdown for indexing
+- combines one or more ingestion modes in a single source
+- runs ingestion on configurable schedules
+
+## Authentication
+
+Two authentication methods are supported (`auth_type`):
+
+- **CCG** (`auth_type: ccg`, default) — Client Credentials Grant. Works at the enterprise level, or as a specific user when `box_user_id` is set.
+- **JWT** (`auth_type: jwt`) — server-side authentication with a private key. Requires a Box app configured for JWT auth.
+
+## Ingestion Modes
+
+At least one mode is required. Modes can be combined in a single source.
+
+| Mode | Config keys |
+|---|---|
+| Folder | `folder_id`, `is_recursive` |
+| File IDs | `file_ids` |
+| Content search | `search_query`, `search_file_extensions`, `search_ancestor_folder_ids` |
+| Metadata search | `metadata_template`, `metadata_ancestor_folder_id`, `metadata_query`, `metadata_query_params` |
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `BOX1_CLIENT_ID`: Box app client ID
+- `BOX1_CLIENT_SECRET`: Box app client secret
+- `BOX1_ENTERPRISE_ID`: Box enterprise ID — required for CCG auth, optional for JWT
+- `BOX1_USER_ID`: Box user ID — optional, acts as a specific user under CCG auth
+- `BOX1_JWT_KEY_ID`: public key ID — required for JWT auth
+- `BOX1_PRIVATE_KEY`: RSA private key — required for JWT auth
+- `BOX1_PRIVATE_KEY_PASSPHRASE`: private key passphrase — required for JWT auth
+- `BOX1_SCHEDULES`: ingestion interval(s) in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+### CCG auth, folder-based ingestion
+
+```yaml
+sources:
+  - type: "box"
+    name: "box1"
+    config:
+      auth_type: "ccg"                      # optional: "ccg" (default) or "jwt"
+      box_client_id: "${BOX1_CLIENT_ID}"
+      box_client_secret: "${BOX1_CLIENT_SECRET}"
+      box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
+      box_user_id: "${BOX1_USER_ID}"        # optional: act as a specific user
+      folder_id: "0"                        # "0" = root folder
+      is_recursive: true                    # optional, default false
+      schedules: "${BOX1_SCHEDULES}"
+```
+
+### JWT auth, file-ID ingestion
+
+```yaml
+sources:
+  - type: "box"
+    name: "box2"
+    config:
+      auth_type: "jwt"
+      box_client_id: "${BOX2_CLIENT_ID}"
+      box_client_secret: "${BOX2_CLIENT_SECRET}"
+      box_jwt_key_id: "${BOX2_JWT_KEY_ID}"
+      box_private_key: "${BOX2_PRIVATE_KEY}"
+      box_private_key_passphrase: "${BOX2_PRIVATE_KEY_PASSPHRASE}"
+      box_enterprise_id: "${BOX2_ENTERPRISE_ID}"  # optional for JWT
+      file_ids: "${BOX2_FILE_IDS}"                # comma-separated file IDs
+      schedules: "${BOX2_SCHEDULES}"
+```
+
+### Content search
+
+```yaml
+sources:
+  - type: "box"
+    name: "box-search"
+    config:
+      auth_type: "ccg"
+      box_client_id: "${BOX1_CLIENT_ID}"
+      box_client_secret: "${BOX1_CLIENT_SECRET}"
+      box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
+      search_query: "quarterly report"            # required for search mode
+      search_file_extensions: "pdf,docx"          # optional: filter by extension
+      search_ancestor_folder_ids: "0"             # optional: scope to folder(s)
+      schedules: "${BOX1_SCHEDULES}"
+```
+
+### Metadata search
+
+```yaml
+sources:
+  - type: "box"
+    name: "box-meta"
+    config:
+      auth_type: "ccg"
+      box_client_id: "${BOX1_CLIENT_ID}"
+      box_client_secret: "${BOX1_CLIENT_SECRET}"
+      box_enterprise_id: "${BOX1_ENTERPRISE_ID}"
+      metadata_template: "enterprise_12345.myTemplate"  # required for metadata search
+      metadata_ancestor_folder_id: "0"                  # required for metadata search
+      metadata_query: "status = :status"                # optional
+      metadata_query_params: "status=active"            # optional: key=value pairs
+      schedules: "${BOX1_SCHEDULES}"
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `auth_type` | no | `ccg` | `ccg` or `jwt` |
+| `box_client_id` | yes | — | Box app client ID |
+| `box_client_secret` | yes | — | Box app client secret |
+| `box_enterprise_id` | depends | — | Required for CCG auth, optional for JWT |
+| `box_user_id` | no | — | Acts as a specific user under CCG auth |
+| `box_jwt_key_id` | when `auth_type=jwt` | — | Public key ID |
+| `box_private_key` | when `auth_type=jwt` | — | RSA private key |
+| `box_private_key_passphrase` | when `auth_type=jwt` | — | Private key passphrase |
+| `folder_id` | no* | — | Box folder ID to ingest (`"0"` = root) |
+| `is_recursive` | no | `false` | Traverse subfolders when using `folder_id` |
+| `file_ids` | no* | — | Comma-separated Box file IDs |
+| `search_query` | no* | — | Full-text content search query |
+| `search_file_extensions` | no | — | Comma-separated extensions to filter search results |
+| `search_ancestor_folder_ids` | no | — | Comma-separated folder IDs to scope content search |
+| `metadata_template` | no* | — | Box metadata template key (e.g. `enterprise_12345.myTemplate`) |
+| `metadata_ancestor_folder_id` | no* | — | Folder ID to scope metadata search |
+| `metadata_query` | no | — | Metadata query filter expression |
+| `metadata_query_params` | no | — | Comma-separated `key=value` pairs for `metadata_query` placeholders |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+\* At least one ingestion mode must be configured. `folder_id` and `file_ids` can be combined in the same source — both are ingested. `metadata_template` and `metadata_ancestor_folder_id` are both required together to enable metadata search.
+
+## Multiple Box Sources
+
+Add more `sources` entries (`box2`, `box3`, etc.) with separate env vars per source.
