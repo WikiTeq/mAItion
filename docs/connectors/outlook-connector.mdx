@@ -36,7 +36,7 @@ Only the client credentials flow (app-only) is supported. This requires:
 | Unscoped (simple) | Grant the `Mail.Read` application permission in Entra ID and give admin consent | All mailboxes in the tenant |
 | Scoped (recommended) | Assign the **Application Mail.Read** role in Exchange Online with a management scope that covers only the mailboxes you need | Only the scoped mailboxes |
 
-To use the scoped option, follow [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac): create a management scope, register the app's service principal in Exchange with `New-ServicePrincipal`, then assign the role with `New-ManagementRoleAssignment -Role "Application Mail.Read" -CustomResourceScope <scope>`.
+To use the scoped option, follow [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac): create a management scope, register the app's service principal in Exchange with `New-ServicePrincipal`, then assign the role with `New-ManagementRoleAssignment -App <service-principal-id> -Role "Application Mail.Read" -CustomResourceScope <scope>`.
 
 <Warning>
   After you assign the scoped role, **remove the unscoped `Mail.Read` grant from Entra ID**. The two grants combine as a union, so if the Entra ID grant stays, the app keeps access to every mailbox and the scope has no effect.
