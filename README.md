@@ -48,6 +48,7 @@ interact with your knowledge with ease!
 * Dropbox (files and folders with flexible path, extension, and directory filters)
 * Confluence (Cloud and Server/Data Center)
 * BookStack
+* Trello (cards from configured boards or all boards, with optional comment ingestion)
 
 ## 🌐 Extra connectors
 
@@ -840,6 +841,36 @@ BOOKSTACK1_BASE_URL=https://wiki.example.com
 BOOKSTACK1_TOKEN_ID=your-token-id
 BOOKSTACK1_TOKEN_SECRET=your-token-secret
 BOOKSTACK1_SCHEDULES=3600
+```
+
+### Trello Connector
+
+The Trello connector ingests cards from Trello boards using the `py-trello` Python wrapper.
+Supports ingesting from specific boards or all accessible boards, with optional comment ingestion.
+Requires a [Trello API key and token](https://trello.com/apps/admin) with `read` scope.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "trello"
+    name: "trello1"
+    config:
+      api_key: "${TRELLO1_API_KEY}"
+      api_token: "${TRELLO1_API_TOKEN}"
+      #board_ids: "${TRELLO1_BOARD_IDS}"  # optional, comma-separated; omit to ingest all boards
+      load_comments: false                # optional, default false
+      max_comments: 10                    # optional, default 10
+      schedules: "${TRELLO1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+TRELLO1_API_KEY=your-trello-api-key
+TRELLO1_API_TOKEN=your-trello-api-token
+TRELLO1_BOARD_IDS=boardid1,boardid2
+TRELLO1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
