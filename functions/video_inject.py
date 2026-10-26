@@ -2,7 +2,7 @@
 title: Video Inject Filter
 author: WikiTeq
 date: 2025-05-20
-version: 1.1
+version: 1.2
 license: MIT
 description: Reads VIDEO markers from tool messages and appends an inline player after the assistant response. Direct video file URLs use an HTML5 <video> tag; YouTube URLs use a clickable thumbnail linking out to YouTube (OWUI strips raw <iframe> embeds, so an inline player isn't available for YouTube on our pinned version).
 """
@@ -13,7 +13,7 @@ from html import escape as html_escape
 from html import unescape
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 log = logging.getLogger(__name__)
 
@@ -63,9 +63,44 @@ def _extract_youtube_id(video_url: str) -> tuple[str | None, str | None]:
     return video_id, start_time
 
 
+_YT_THUMB_RE = re.compile(
+    r"!\[YouTube video thumbnail\]\(https://img\.youtube\.com/vi/([\w-]{11})/hqdefault\.jpg\)"
+)
+_VIDEO_SRC_RE = re.compile(r'<video controls[^>]*>\s*<source src="([^"]+)"')
+
+
+def _video_key(video_url: str) -> tuple[str, str]:
+    """Return the key that identifies a video for duplicate detection.
+
+    YouTube videos are keyed by ID, so the timestamp does not matter. Other
+    URLs are keyed by the full URL without a `#` fragment.
+    """
+    video_id, _ = _extract_youtube_id(video_url)
+    if video_id:
+        return "youtube", video_id
+    return "url", video_url.split("#", 1)[0]
+
+
+def _injected_keys(messages: list) -> set[tuple[str, str]]:
+    """Return the keys of players this filter already added to assistant messages."""
+    keys = set()
+    for msg in messages:
+        content = msg.get("content")
+        if msg.get("role") != "assistant" or not isinstance(content, str):
+            continue
+        for video_id in _YT_THUMB_RE.findall(content):
+            keys.add(("youtube", video_id))
+        for src in _VIDEO_SRC_RE.findall(content):
+            keys.add(_video_key(unescape(src)))
+    return keys
+
+
 class Filter:
     class Valves(BaseModel):
-        pass
+        dedupe_videos_per_chat: bool = Field(
+            default=True,
+            description="Do not show the same video more than once in a chat.",
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -120,6 +155,12 @@ class Filter:
                 for part in content:
                     if isinstance(part, dict) and isinstance(part.get("text"), str):
                         part["text"] = strip_markers(part["text"])
+
+        if self.valves.dedupe_videos_per_chat and _video_key(
+            video_url
+        ) in _injected_keys(messages):
+            log.info("video_inject: video already shown in this chat, skipping")
+            return body
 
         video_id, start_time = _extract_youtube_id(video_url)
         if video_id:
