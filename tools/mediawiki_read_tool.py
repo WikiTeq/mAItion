@@ -589,16 +589,14 @@ class Tools:
                 return "Error: this wiki requires authentication to search. Please configure username and password in Tool Valves."
             log.error("MediaWiki API error: %s", e.code)
             await emit(
-                f"Error: wiki search failed ({e.code}).", 
-                done=True, 
-                hidden=False
+                f"Error: wiki search failed ({e.code}).", done=True, hidden=False
             )
             return f"Error: wiki API returned an error ({e.code})."
         except Exception as e:
             log.error("Unexpected error during search: %s", e, exc_info=True)
             await emit(
-                "Error: unexpected error during search.", 
-                done=True, 
+                "Error: unexpected error during search.",
+                done=True,
                 hidden=False,
             )
             return (
