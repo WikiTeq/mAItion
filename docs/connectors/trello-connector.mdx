@@ -1,0 +1,68 @@
+---
+title: "Trello"
+description: "Configure the mAItion Trello connector to ingest cards from Trello boards."
+keywords:
+  - mAItion
+  - Trello connector
+  - connectors
+  - ingestion
+---
+
+Use the Trello Connector to ingest cards from [Trello](https://trello.com/) boards into the mAItion knowledge base.
+
+## What It Does
+
+- reads cards from configured Trello boards, or all boards accessible to the account when none are specified
+- converts card content to Markdown for indexing
+- optionally ingests card comments alongside card content
+- runs ingestion on configurable schedules
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `TRELLO1_API_KEY`: Trello API key
+- `TRELLO1_API_TOKEN`: Trello API token
+- `TRELLO1_BOARD_IDS`: optional, comma-separated board IDs; omit to ingest all boards
+- `TRELLO1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "trello"
+    name: "trello1"
+    enabled: true  # optional, default: true
+    config:
+      api_key: "${TRELLO1_API_KEY}"
+      api_token: "${TRELLO1_API_TOKEN}"
+      #board_ids: "${TRELLO1_BOARD_IDS}"  # optional, comma-separated; omit to ingest all boards
+      load_comments: false                # optional, default false
+      max_comments: 10                    # optional, default 10
+      schedules: "${TRELLO1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+TRELLO1_API_KEY=your-trello-api-key
+TRELLO1_API_TOKEN=your-trello-api-token
+TRELLO1_BOARD_IDS=boardid1,boardid2
+TRELLO1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `api_key` | yes | — | Trello API key |
+| `api_token` | yes | — | Trello API token |
+| `board_ids` | no | all boards | Comma-separated list of board IDs to restrict ingestion to; omit to ingest all boards accessible to the account |
+| `load_comments` | no | `false` | Whether to ingest card comments along with card content |
+| `max_comments` | no | `10` | Maximum number of comments to ingest per card, when `load_comments` is enabled |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Trello Sources
+
+Add more `sources` entries (`trello2`, `trello3`, etc) with separate env vars per source.

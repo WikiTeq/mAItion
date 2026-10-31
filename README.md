@@ -51,6 +51,7 @@ interact with your knowledge with ease!
 * Outlook (Microsoft 365 / Entra ID mailboxes via Microsoft Graph)
 * GitHub (repository files and issues, PAT or GitHub App auth)
 * GitLab (repository files and issues, supports GitLab.com and self-hosted)
+* Trello (cards from configured boards or all boards, with optional comment ingestion)
 
 ## 🌐 Extra connectors
 
@@ -962,6 +963,36 @@ OUTLOOK1_CLIENT_SECRET=your-azure-app-client-secret
 OUTLOOK1_TENANT_ID=your-azure-tenant-id
 OUTLOOK1_USER_EMAIL=user@company.onmicrosoft.com
 OUTLOOK1_SCHEDULES=3600
+```
+
+### Trello Connector
+
+The Trello connector ingests cards from Trello boards using the `py-trello` Python wrapper.
+Supports ingesting from specific boards or all accessible boards, with optional comment ingestion.
+Requires a [Trello API key and token](https://trello.com/apps/admin) with `read` scope.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "trello"
+    name: "trello1"
+    config:
+      api_key: "${TRELLO1_API_KEY}"
+      api_token: "${TRELLO1_API_TOKEN}"
+      #board_ids: "${TRELLO1_BOARD_IDS}"  # optional, comma-separated; omit to ingest all boards
+      load_comments: false                # optional, default false
+      max_comments: 10                    # optional, default 10
+      schedules: "${TRELLO1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+TRELLO1_API_KEY=your-trello-api-key
+TRELLO1_API_TOKEN=your-trello-api-token
+TRELLO1_BOARD_IDS=boardid1,boardid2
+TRELLO1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
