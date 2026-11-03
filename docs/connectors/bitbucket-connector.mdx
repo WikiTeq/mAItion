@@ -19,13 +19,13 @@ Use the Bitbucket Connector to ingest repository files from a [Bitbucket Cloud](
 
 ## Authentication
 
-The connector authenticates with your Bitbucket username and a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/). App passwords are not supported. Create the API token with the `read:repository:bitbucket` scope.
+The connector authenticates with your Atlassian account email and a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/). App passwords are not supported. Create the API token with the `read:repository:bitbucket` scope.
 
 ## Required Environment Variables
 
 Set these in `.env.rag`:
 
-- `BITBUCKET1_USERNAME` (required): Bitbucket username
+- `BITBUCKET1_USERNAME` (required): Atlassian account email
 - `BITBUCKET1_API_TOKEN` (required): Bitbucket API token
 - `BITBUCKET1_WORKSPACE` (required): workspace slug
 - `BITBUCKET1_REPO` (required): repository slug
@@ -55,7 +55,7 @@ sources:
 ## `.env.rag` Example
 
 ```dotenv
-BITBUCKET1_USERNAME=your-bitbucket-username
+BITBUCKET1_USERNAME=your-atlassian-account@example.com
 BITBUCKET1_API_TOKEN=your-api-token
 BITBUCKET1_WORKSPACE=your-workspace-slug
 BITBUCKET1_REPO=your-repo-slug
@@ -68,7 +68,7 @@ BITBUCKET1_SCHEDULES=3600
 | Field | Required | Default | Description |
 |---|---|---|---|
 | `enabled` | no | `true` | Set to `false` to skip this source entirely |
-| `username` | yes | — | Bitbucket username |
+| `username` | yes | — | Atlassian account email |
 | `api_token` | yes | — | Bitbucket API token |
 | `workspace` | yes | — | Workspace slug |
 | `repo` | yes | — | Repository slug |
