@@ -1025,7 +1025,7 @@ GITBOOK1_SCHEDULES=3600
 
 The Bitbucket connector ingests files from Bitbucket Cloud repositories via the Bitbucket REST API v2.0. Supports workspace/repository scoping, branch selection, recursive file walking, and include/exclude filtering on file extensions and directories.
 
-Authenticates with a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/) (not an app password) — create one scoped to `read:repository:bitbucket`.
+Authenticates with a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/) (not an app password) — create one scoped to `read:repository:bitbucket`. Basic auth on the REST API uses your Atlassian account **email** as `username` together with the API token; a Bitbucket profile username returns 401.
 
 > **Note:** `include_extensions` and `exclude_extensions` are mutually exclusive. `include_directories` and `exclude_directories` are mutually exclusive.
 
@@ -1036,11 +1036,11 @@ sources:
   - type: "bitbucket"
     name: "bitbucket1"
     config:
-      username: "${BITBUCKET1_USERNAME}"
+      username: "${BITBUCKET1_USERNAME}"    # Atlassian account email
       api_token: "${BITBUCKET1_API_TOKEN}"
       workspace: "${BITBUCKET1_WORKSPACE}"
       repo: "${BITBUCKET1_REPO}"
-      #branch: "${BITBUCKET1_BRANCH}"       # optional; defaults to the repo's actual default branch (resolved via API)
+      #branch: "${BITBUCKET1_BRANCH}"       # optional; leave commented to use the repo's default branch (resolved via API)
       include_extensions: "md,txt"          # optional (mutually exclusive with exclude_extensions)
       include_directories: "docs"           # optional (mutually exclusive with exclude_directories)
       schedules: "${BITBUCKET1_SCHEDULES}"
@@ -1049,11 +1049,11 @@ sources:
 ```dotenv
 # .env.rag
 
-BITBUCKET1_USERNAME=your-bitbucket-username
+BITBUCKET1_USERNAME=your-atlassian-account@example.com
 BITBUCKET1_API_TOKEN=your-api-token
 BITBUCKET1_WORKSPACE=your-workspace-slug
 BITBUCKET1_REPO=your-repo-slug
-#BITBUCKET1_BRANCH=master   # optional override example; unset uses the repo default branch
+#BITBUCKET1_BRANCH=main  # optional
 BITBUCKET1_SCHEDULES=3600
 ```
 

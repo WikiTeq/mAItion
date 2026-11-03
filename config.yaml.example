@@ -362,11 +362,11 @@ sources:
   #- type: "bitbucket"
   #  name: "bitbucket1"
   #  config:
-  #    username: "${BITBUCKET1_USERNAME}"
+  #    username: "${BITBUCKET1_USERNAME}"        # Atlassian account email (used with the API token for Basic auth)
   #    api_token: "${BITBUCKET1_API_TOKEN}"
   #    workspace: "${BITBUCKET1_WORKSPACE}"
   #    repo: "${BITBUCKET1_REPO}"
-  #    #branch: "${BITBUCKET1_BRANCH}"         # optional; defaults to the repo's actual default branch (resolved via API)
+  #    #branch: "${BITBUCKET1_BRANCH}"         # optional; leave commented to use the repo's default branch (resolved via API). Do not leave it active without setting BITBUCKET1_BRANCH
   #    # include_extensions and exclude_extensions are mutually exclusive:
   #    #include_extensions: "md,txt"           # optional: only ingest these extensions
   #    #exclude_extensions: "png,jpg"          # optional: skip these extensions
