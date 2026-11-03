@@ -87,7 +87,8 @@
 							"connectors/gitlab-connector",
 							"connectors/trello-connector",
 							"connectors/database-connector",
-							"connectors/fireflies-connector"
+							"connectors/fireflies-connector",
+							"connectors/wikijs-connector"
 						]
 					},
 					{
