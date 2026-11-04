@@ -15,11 +15,16 @@ Use the Bitbucket Connector to ingest repository files from a [Bitbucket Cloud](
 - fetches files from a Bitbucket Cloud repository at a given branch
 - walks the repository tree recursively
 - filters files by extension and by directory
+- optionally ingests pull requests (title, state, author, reviewers, branches, dates, decline reason, description), with their comments if you turn that on
 - runs ingestion on configurable schedules
+
+<Note>
+Bitbucket Cloud removed its native issue tracker and the API for it on 20 August 2026, so the connector cannot ingest issues.
+</Note>
 
 ## Authentication
 
-The connector authenticates with your Atlassian account email and a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/). App passwords are not supported. Create the API token with the `read:repository:bitbucket` scope.
+The connector authenticates with your Atlassian account email and a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/). App passwords are not supported. Create the API token with the `read:repository:bitbucket` scope. To ingest pull requests, add the `read:pullrequest:bitbucket` scope.
 
 ## Required Environment Variables
 
@@ -49,6 +54,9 @@ sources:
       #exclude_extensions: ""           # optional (mutually exclusive with include_extensions)
       include_directories: "docs"       # optional, comma-separated (mutually exclusive with exclude_directories)
       #exclude_directories: ""          # optional (mutually exclusive with include_directories)
+      #include_pull_requests: true      # optional, default false (needs the read:pullrequest:bitbucket scope)
+      #pull_request_states: "open,merged,declined"  # optional: open, merged, declined, superseded
+      #include_pull_request_comments: true          # optional, default false; requires include_pull_requests
       schedules: "${BITBUCKET1_SCHEDULES}"
 ```
 
@@ -77,7 +85,14 @@ BITBUCKET1_SCHEDULES=3600
 | `exclude_extensions` | no | — | Comma-separated file extensions to exclude (mutually exclusive with `include_extensions`) |
 | `include_directories` | no | — | Comma-separated directories to include (mutually exclusive with `exclude_directories`) |
 | `exclude_directories` | no | — | Comma-separated directories to exclude (mutually exclusive with `include_directories`) |
+| `include_pull_requests` | no | `false` | Also ingest pull requests, one item per pull request. The file filters above apply to files only. Needs the `read:pullrequest:bitbucket` token scope |
+| `pull_request_states` | no | `open,merged,declined` | Comma-separated pull request states to ingest: `open`, `merged`, `declined`, `superseded` |
+| `include_pull_request_comments` | no | `false` | Add the comments of each pull request, up to 50 per pull request (requires `include_pull_requests`) |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Pull Requests
+
+Bitbucket Cloud allows about 1,000 API requests per hour for repository endpoints. The connector reads pull requests in pages of 50 and adds no request per pull request, except for comments. With `include_pull_request_comments` on, it makes one extra request for each changed pull request that has comments. A pull request counts as changed when its last update time or, with comments on, its comment count changes. Turning comments on or off re-ingests every pull request once. Adding or deleting a comment is detected, but editing the text of an existing comment is not, until the pull request changes for another reason. Comments after the 50th are left out and the connector logs a warning.
 
 ## Multiple Bitbucket Sources
 

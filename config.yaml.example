@@ -373,6 +373,9 @@ sources:
   #    # include_directories and exclude_directories are mutually exclusive:
   #    #include_directories: "docs,src"        # optional: only ingest files under these dirs
   #    #exclude_directories: "tests"           # optional: skip files under these dirs
+  #    #include_pull_requests: true            # optional, default false: also ingest pull requests (token scope read:pullrequest:bitbucket)
+  #    #pull_request_states: "open,merged,declined"  # optional: open, merged, declined, superseded
+  #    #include_pull_request_comments: true    # optional, default false: add up to 50 comments per pull request (one extra request per changed pull request)
   #    schedules: "${BITBUCKET1_SCHEDULES}"
 
 embedding:

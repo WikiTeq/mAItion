@@ -1023,11 +1023,15 @@ GITBOOK1_SCHEDULES=3600
 
 ### Bitbucket Connector
 
-The Bitbucket connector ingests files from Bitbucket Cloud repositories via the Bitbucket REST API v2.0. Supports workspace/repository scoping, branch selection, recursive file walking, and include/exclude filtering on file extensions and directories.
+The Bitbucket connector ingests files, and optionally pull requests, from Bitbucket Cloud repositories via the Bitbucket REST API v2.0. Supports workspace/repository scoping, branch selection, recursive file walking, and include/exclude filtering on file extensions and directories.
 
-Authenticates with a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/) (not an app password) — create one scoped to `read:repository:bitbucket`. Basic auth on the REST API uses your Atlassian account **email** as `username` together with the API token; a Bitbucket profile username returns 401.
+Authenticates with a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/) (not an app password) — create one scoped to `read:repository:bitbucket`, and also `read:pullrequest:bitbucket` when you turn on pull request ingestion. Basic auth on the REST API uses your Atlassian account **email** as `username` together with the API token; a Bitbucket profile username returns 401.
 
 > **Note:** `include_extensions` and `exclude_extensions` are mutually exclusive. `include_directories` and `exclude_directories` are mutually exclusive.
+
+**Pull requests.** Set `include_pull_requests: true` to ingest one item per pull request: title, state, author, reviewers, branches, dates, decline reason and description. `pull_request_states` selects the states (`open`, `merged`, `declined`, `superseded`; default `open,merged,declined`). Set `include_pull_request_comments: true` (requires `include_pull_requests`) to add the comments of each pull request, up to 50 per pull request. This costs one extra request per changed pull request that has comments; Bitbucket Cloud limits repository endpoints to about 1,000 requests per hour. The file filters apply to files only, not to pull requests. Adding or deleting a comment is detected, but editing the text of an existing comment is not, until the pull request changes for another reason. Comments after the 50th are left out and a warning is logged.
+
+> **Issues are not supported.** Atlassian removed the native Bitbucket Cloud issue tracker and its API endpoints on 20 August 2026 ([CHANGE-3071](https://developer.atlassian.com/cloud/bitbucket/changelog#CHANGE-3071)).
 
 ```yaml
 # config.yaml
@@ -1043,6 +1047,9 @@ sources:
       #branch: "${BITBUCKET1_BRANCH}"       # optional; leave commented to use the repo's default branch (resolved via API)
       include_extensions: "md,txt"          # optional (mutually exclusive with exclude_extensions)
       include_directories: "docs"           # optional (mutually exclusive with exclude_directories)
+      #include_pull_requests: true          # optional, default false (token scope read:pullrequest:bitbucket)
+      #pull_request_states: "open,merged,declined"  # optional: open, merged, declined, superseded
+      #include_pull_request_comments: true  # optional, default false; requires include_pull_requests
       schedules: "${BITBUCKET1_SCHEDULES}"
 ```
 
