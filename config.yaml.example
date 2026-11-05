@@ -358,6 +358,26 @@ sources:
   #    #space_ids:                   # optional; if omitted, all accessible spaces are ingested
   #    #  - "space_abc123"
 
+  # Bitbucket Cloud
+  #- type: "bitbucket"
+  #  name: "bitbucket1"
+  #  config:
+  #    username: "${BITBUCKET1_USERNAME}"        # Atlassian account email (used with the API token for Basic auth)
+  #    api_token: "${BITBUCKET1_API_TOKEN}"
+  #    workspace: "${BITBUCKET1_WORKSPACE}"
+  #    repo: "${BITBUCKET1_REPO}"
+  #    #branch: "${BITBUCKET1_BRANCH}"         # optional; leave commented to use the repo's default branch (resolved via API). Do not leave it active without setting BITBUCKET1_BRANCH
+  #    # include_extensions and exclude_extensions are mutually exclusive:
+  #    #include_extensions: "md,txt"           # optional: only ingest these extensions
+  #    #exclude_extensions: "png,jpg"          # optional: skip these extensions
+  #    # include_directories and exclude_directories are mutually exclusive:
+  #    #include_directories: "docs,src"        # optional: only ingest files under these dirs
+  #    #exclude_directories: "tests"           # optional: skip files under these dirs
+  #    #include_pull_requests: true            # optional, default false: also ingest pull requests (token scope read:pullrequest:bitbucket)
+  #    #pull_request_states: "open,merged,declined"  # optional: open, merged, declined, superseded
+  #    #include_pull_request_comments: true    # optional, default false: add up to 50 comments per pull request (one extra request per changed pull request)
+  #    schedules: "${BITBUCKET1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

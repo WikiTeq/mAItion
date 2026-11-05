@@ -1,0 +1,99 @@
+---
+title: "Bitbucket"
+description: "Configure the mAItion Bitbucket connector to ingest repository files from a Bitbucket Cloud repository."
+keywords:
+  - mAItion
+  - Bitbucket connector
+  - Bitbucket ingestion
+  - connectors
+---
+
+Use the Bitbucket Connector to ingest repository files from a [Bitbucket Cloud](https://bitbucket.org) repository into the mAItion knowledge base.
+
+## What It Does
+
+- fetches files from a Bitbucket Cloud repository at a given branch
+- walks the repository tree recursively
+- filters files by extension and by directory
+- optionally ingests pull requests (title, state, author, reviewers, branches, dates, decline reason, description), with their comments if you turn that on
+- runs ingestion on configurable schedules
+
+<Note>
+Bitbucket Cloud removed its native issue tracker and the API for it on 20 August 2026, so the connector cannot ingest issues.
+</Note>
+
+## Authentication
+
+The connector authenticates with your Atlassian account email and a Bitbucket [API token](https://support.atlassian.com/bitbucket-cloud/docs/api-tokens/). App passwords are not supported. Create the API token with the `read:repository:bitbucket` scope. To ingest pull requests, add the `read:pullrequest:bitbucket` scope.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `BITBUCKET1_USERNAME` (required): Atlassian account email
+- `BITBUCKET1_API_TOKEN` (required): Bitbucket API token
+- `BITBUCKET1_WORKSPACE` (required): workspace slug
+- `BITBUCKET1_REPO` (required): repository slug
+- `BITBUCKET1_BRANCH` (optional): branch to ingest from. If not set, the default branch of the repository is used
+- `BITBUCKET1_SCHEDULES` (optional): ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "bitbucket"
+    name: "bitbucket1"
+    enabled: true  # optional, default: true
+    config:
+      username: "${BITBUCKET1_USERNAME}"
+      api_token: "${BITBUCKET1_API_TOKEN}"
+      workspace: "${BITBUCKET1_WORKSPACE}"
+      repo: "${BITBUCKET1_REPO}"
+      #branch: "${BITBUCKET1_BRANCH}"   # optional, defaults to the repository default branch
+      include_extensions: "md,txt"      # optional, comma-separated (mutually exclusive with exclude_extensions)
+      #exclude_extensions: ""           # optional (mutually exclusive with include_extensions)
+      include_directories: "docs"       # optional, comma-separated (mutually exclusive with exclude_directories)
+      #exclude_directories: ""          # optional (mutually exclusive with include_directories)
+      #include_pull_requests: true      # optional, default false (needs the read:pullrequest:bitbucket scope)
+      #pull_request_states: "open,merged,declined"  # optional: open, merged, declined, superseded
+      #include_pull_request_comments: true          # optional, default false; requires include_pull_requests
+      schedules: "${BITBUCKET1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+BITBUCKET1_USERNAME=your-atlassian-account@example.com
+BITBUCKET1_API_TOKEN=your-api-token
+BITBUCKET1_WORKSPACE=your-workspace-slug
+BITBUCKET1_REPO=your-repo-slug
+#BITBUCKET1_BRANCH=main   # optional override example; unset uses the repository default branch
+BITBUCKET1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `username` | yes | — | Atlassian account email |
+| `api_token` | yes | — | Bitbucket API token |
+| `workspace` | yes | — | Workspace slug |
+| `repo` | yes | — | Repository slug |
+| `branch` | no | repository default branch | Branch to ingest from |
+| `include_extensions` | no | — | Comma-separated file extensions to include, e.g. `md,txt` (mutually exclusive with `exclude_extensions`) |
+| `exclude_extensions` | no | — | Comma-separated file extensions to exclude (mutually exclusive with `include_extensions`) |
+| `include_directories` | no | — | Comma-separated directories to include (mutually exclusive with `exclude_directories`) |
+| `exclude_directories` | no | — | Comma-separated directories to exclude (mutually exclusive with `include_directories`) |
+| `include_pull_requests` | no | `false` | Also ingest pull requests, one item per pull request. The file filters above apply to files only. Needs the `read:pullrequest:bitbucket` token scope |
+| `pull_request_states` | no | `open,merged,declined` | Comma-separated pull request states to ingest: `open`, `merged`, `declined`, `superseded` |
+| `include_pull_request_comments` | no | `false` | Add the comments of each pull request, up to 50 per pull request (requires `include_pull_requests`) |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Pull Requests
+
+Bitbucket Cloud allows about 1,000 API requests per hour for repository endpoints. The connector reads pull requests in pages of 50 and adds no request per pull request, except for comments. With `include_pull_request_comments` on, it makes one extra request for each changed pull request that has comments. A pull request counts as changed when its last update time or, with comments on, its comment count changes. Turning comments on or off re-ingests every pull request once. Adding or deleting a comment is detected, but editing the text of an existing comment is not, until the pull request changes for another reason. Comments after the 50th are left out and the connector logs a warning.
+
+## Multiple Bitbucket Sources
+
+Add more `sources` entries (`bitbucket2`, `bitbucket3`, etc) with separate env vars per source.
