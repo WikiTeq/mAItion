@@ -1,6 +1,6 @@
 ---
 title: "Video Inject Filter"
-description: "Configure the Video Inject Filter, which appends an inline video player to responses that reference a video."
+description: "Configure the Video Inject Filter, which appends inline video players to responses that reference videos."
 keywords:
   - mAItion
   - filter
@@ -9,7 +9,7 @@ keywords:
   - inline player
 ---
 
-The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**. It runs automatically on every response once enabled — the LLM never calls it directly. It looks for a `<!--VIDEO:https://...-->` marker in the conversation. The Knowledge Base Search tool can emit one when a retrieved source has a video URL.
+The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**. It runs automatically on every response once enabled — the LLM never calls it directly. It looks for `<!--VIDEO:https://...-->` markers in the conversation and adds a player for each video. The Knowledge Base Search tool can emit one for each retrieved source that has a video URL.
 
 ## Valves
 

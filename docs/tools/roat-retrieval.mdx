@@ -25,7 +25,9 @@ The knowledge base is powered by [ROAT (rag-of-all-trades)](https://github.com/W
 | `rag_service_timeout` | no | `30` | Request timeout, in seconds. |
 | `top_k` | no | `20` | Number of top results to retrieve from the knowledge base. |
 | `max_document_preview_chars` | no | `0` | Maximum characters shown in the document preview of each source citation. `0` means unlimited. |
-| `video_metadata_field` | no | `"video_url"` | Metadata field name to check for a video URL. When a result's metadata has one, the tool prepends a hidden marker to its response that the Video Inject Filter turns into an inline player — this valve has no effect unless that filter is also enabled. |
+| `video_metadata_field` | no | `"video_url"` | Metadata field name to check for a video URL. When a result's metadata has one, the tool adds a hidden marker to its response that the Video Inject Filter turns into an inline player — this valve has no effect unless that filter is also enabled. |
+| `max_videos` | no | `3` | Maximum number of videos to show for one search, highest-scoring sources first. `0` shows none. |
+| `min_video_score` | no | `0.0` | Minimum relevance score a source needs for its video to be shown. |
 
 Valves can be edited after install from **Workspace → Tools** in mAItion.
 
