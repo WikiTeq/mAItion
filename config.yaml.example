@@ -382,7 +382,7 @@ sources:
   #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
   #    schedules: "${DB_MYSQL1_SCHEDULES}"
 
-  # Wiki.js connector (API token must have read:pages and read:source scopes)
+  # Wiki.js connector (API token needs read:pages, read:source and manage:pages (or delete:pages) scopes)
   #- type: "wikijs"
   #  name: "wikijs1"
   #  config:

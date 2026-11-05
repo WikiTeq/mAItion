@@ -1079,10 +1079,11 @@ The Wiki.js connector ingests pages from a [Wiki.js](https://js.wiki) v2 instanc
 Both `markdown` and `html` content types are handled; HTML is automatically converted to Markdown.
 Metadata collected per page includes: page_id, path, locale, title, url, updated_at, tags, is_published.
 
-The API token requires two permission scopes:
+The API token requires three permission scopes:
 
 - `read:pages` — required for page discovery and metadata
-- `read:source` — required for page content; without it the content field is returned empty with no error
+- `manage:pages` (or `delete:pages`) — required by the Wiki.js `pages.single` call; with only `read:pages` and `read:source` every page is rejected with `PageViewForbidden` and nothing is ingested
+- `read:source` — required for page content; without it Wiki.js returns a `Forbidden` error for the content field
 
 ```yaml
 # config.yaml
@@ -1092,7 +1093,7 @@ sources:
     name: "wikijs1"
     config:
       base_url: "${WIKIJS1_BASE_URL}"
-      api_token: "${WIKIJS1_API_TOKEN}"   # must have read:pages and read:source scopes
+      api_token: "${WIKIJS1_API_TOKEN}"   # needs read:pages, read:source and manage:pages (or delete:pages) scopes
       schedules: "${WIKIJS1_SCHEDULES}"
       #paths:                             # optional; ingest only pages under these path prefixes
       #  - "/engineering"

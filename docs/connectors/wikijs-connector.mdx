@@ -24,10 +24,11 @@ Use the Wiki.js Connector to ingest pages from a [Wiki.js](https://js.wiki) v2 i
 The connector authenticates with a Wiki.js API token. Generate one in the Wiki.js administration area under **API Access**. The token needs these permission scopes:
 
 - `read:pages`: page discovery and metadata
+- `manage:pages` (or `delete:pages`): required by the Wiki.js `pages.single` call that loads each page
 - `read:source`: page content
 
 <Note>
-  Without the `read:source` scope, Wiki.js returns empty page content and does not report an error.
+  A token with only `read:pages` and `read:source` can list pages, but Wiki.js rejects every page fetch with a `PageViewForbidden` error, so no page is ingested. Without the `read:source` scope, Wiki.js returns a `Forbidden` error for the page content.
 </Note>
 
 ## Required Environment Variables
@@ -46,7 +47,7 @@ sources:
     name: "wikijs1"
     config:
       base_url: "${WIKIJS1_BASE_URL}"
-      api_token: "${WIKIJS1_API_TOKEN}"   # must have read:pages and read:source scopes
+      api_token: "${WIKIJS1_API_TOKEN}"   # needs read:pages, read:source and manage:pages (or delete:pages) scopes
       schedules: "${WIKIJS1_SCHEDULES}"
       #paths:                             # optional; ingest only pages under these path prefixes
       #  - "/engineering"
@@ -69,7 +70,7 @@ WIKIJS1_SCHEDULES=3600
 | Field | Required | Default | Description |
 |---|---|---|---|
 | `base_url` | yes | — | Base URL of the Wiki.js instance |
-| `api_token` | yes | — | Wiki.js API token with `read:pages` and `read:source` scopes |
+| `api_token` | yes | — | Wiki.js API token with `read:pages`, `read:source` and `manage:pages` (or `delete:pages`) scopes |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
 | `paths` | no | all pages | List of path prefixes to ingest |
 | `tags` | no | all tags | Comma-separated tags to filter pages by |
