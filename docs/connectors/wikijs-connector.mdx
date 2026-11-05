@@ -27,6 +27,8 @@ The connector authenticates with a Wiki.js API token. Generate one in the Wiki.j
 - `manage:pages` (or `delete:pages`): required by the Wiki.js `pages.single` call that loads each page
 - `read:source`: page content
 
+The group of the API key also needs a page rule that grants `read:pages` and `manage:pages` (or `delete:pages`) on the pages to ingest. To ingest all pages, use the match type **Path Starts With** with an empty path. Without a matching rule, Wiki.js lists no pages or rejects every page fetch.
+
 <Note>
   A token with only `read:pages` and `read:source` can list pages, but Wiki.js rejects every page fetch with a `PageViewForbidden` error, so no page is ingested. Without the `read:source` scope, Wiki.js returns a `Forbidden` error for the page content.
 </Note>

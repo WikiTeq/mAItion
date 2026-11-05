@@ -1085,6 +1085,8 @@ The API token requires three permission scopes:
 - `manage:pages` (or `delete:pages`) — required by the Wiki.js `pages.single` call; with only `read:pages` and `read:source` every page is rejected with `PageViewForbidden` and nothing is ingested
 - `read:source` — required for page content; without it Wiki.js returns a `Forbidden` error for the content field
 
+The group of the API key also needs a page rule that grants `read:pages` and `manage:pages` (or `delete:pages`) on the pages to ingest. To ingest all pages, use the match type **Path Starts With** with an empty path. Without a matching rule, Wiki.js lists no pages or rejects every page fetch.
+
 ```yaml
 # config.yaml
 
