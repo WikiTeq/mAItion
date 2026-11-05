@@ -58,7 +58,8 @@
 						"pages": [
 							"features/up-to-date-knowledge",
 							"features/citation-backed-answers",
-							"features/mcp-server"
+							"features/mcp-server",
+							"features/mcp-client"
 						]
 					},
 					{
