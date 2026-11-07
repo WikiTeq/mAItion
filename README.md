@@ -1064,11 +1064,11 @@ sources:
 # .env.rag
 
 # PostgreSQL
-DB_POSTGRES1_CONNECTION_STRING=postgresql+psycopg2://user:pass@localhost/mydb
+DB_POSTGRES1_CONNECTION_STRING=postgresql+psycopg2://user:pass@db-host/mydb
 DB_POSTGRES1_SCHEDULES=3600
 
 # MySQL
-DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@localhost/mydb
+DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@db-host/mydb
 DB_MYSQL1_SCHEDULES=3600
 ```
 
