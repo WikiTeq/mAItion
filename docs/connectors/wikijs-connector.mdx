@@ -1,0 +1,84 @@
+---
+title: "Wiki.js"
+description: "Configure the mAItion Wiki.js connector to ingest Wiki.js pages into the knowledge base."
+keywords:
+  - mAItion
+  - Wiki.js connector
+  - Wiki.js ingestion
+  - connectors
+---
+
+Use the Wiki.js Connector to ingest pages from a [Wiki.js](https://js.wiki) v2 instance into the mAItion knowledge base.
+
+## What It Does
+
+- fetches pages from a Wiki.js instance through its GraphQL API
+- handles both Markdown and HTML pages, and converts HTML to Markdown
+- stores the page ID, path, locale, title, URL, updated date, tags, and published status as metadata
+- can limit ingestion to specific path prefixes, a tag, or a locale
+- skips unpublished pages unless `include_unpublished` is enabled
+- runs ingestion on configurable schedules
+
+## Authentication
+
+The connector authenticates with a Wiki.js API token. Generate one in the Wiki.js administration area under **API Access**. The token needs these permission scopes:
+
+- `read:pages`: page discovery and metadata
+- `manage:pages` (or `delete:pages`): required by the Wiki.js `pages.single` call that loads each page
+- `read:source`: page content
+
+The group of the API key also needs a page rule that grants `read:pages` and `manage:pages` (or `delete:pages`) on the pages to ingest. To ingest all pages, use the match type **Path Starts With** with an empty path. Without a matching rule, Wiki.js lists no pages or rejects every page fetch.
+
+<Note>
+  A token with only `read:pages` and `read:source` can list pages, but Wiki.js rejects every page fetch with a `PageViewForbidden` error, so no page is ingested. Without the `read:source` scope, Wiki.js returns a `Forbidden` error for the page content.
+</Note>
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `WIKIJS1_BASE_URL`: base URL of the Wiki.js instance
+- `WIKIJS1_API_TOKEN`: Wiki.js API token
+- `WIKIJS1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "wikijs"
+    name: "wikijs1"
+    config:
+      base_url: "${WIKIJS1_BASE_URL}"
+      api_token: "${WIKIJS1_API_TOKEN}"   # needs read:pages, read:source and manage:pages (or delete:pages) scopes
+      schedules: "${WIKIJS1_SCHEDULES}"
+      #paths:                             # optional; ingest only pages under these path prefixes
+      #  - "/engineering"
+      #  - "/product"
+      #tags: "public"                     # optional; server-side tag filter (comma-separated)
+      #locale: "en"                       # optional; server-side locale filter
+      #include_unpublished: false         # optional, default false
+```
+
+## `.env.rag` Example
+
+```dotenv
+WIKIJS1_BASE_URL=https://wiki.example.com
+WIKIJS1_API_TOKEN=your-api-token
+WIKIJS1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `base_url` | yes | — | Base URL of the Wiki.js instance |
+| `api_token` | yes | — | Wiki.js API token with `read:pages`, `read:source` and `manage:pages` (or `delete:pages`) scopes |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+| `paths` | no | all pages | List of path prefixes to ingest |
+| `tags` | no | all tags | Comma-separated tags to filter pages by |
+| `locale` | no | all locales | Locale to filter pages by |
+| `include_unpublished` | no | `false` | Ingest unpublished pages |
+
+## Multiple Wiki.js Sources
+
+Add more `sources` entries (`wikijs2`, `wikijs3`, etc) with separate env vars per source.
