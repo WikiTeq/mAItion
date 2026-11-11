@@ -382,6 +382,15 @@ sources:
   #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
   #    schedules: "${DB_MYSQL1_SCHEDULES}"
 
+  # Discord connector — reads messages (and thread messages) from a server or specific channels using a bot token
+  #- type: "discord"
+  #  name: "discord1"
+  #  config:
+  #    bot_token: "${DISCORD1_BOT_TOKEN}"
+  #    guild_ids: "${DISCORD1_GUILD_IDS}"           # comma-separated guild IDs; alone, reads every text, announcement, forum and media channel
+  #    # channel_ids: "${DISCORD1_CHANNEL_IDS}"     # optional, comma-separated channel or thread IDs; with guild_ids they must belong to those guilds
+  #    schedules: "${DISCORD1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

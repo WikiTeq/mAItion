@@ -54,6 +54,7 @@ interact with your knowledge with ease!
 * GitLab (repository files and issues, supports GitLab.com and self-hosted)
 * Trello (cards from configured boards or all boards, with optional comment ingestion)
 * Database (MySQL + PostgreSQL via SQL SELECT query)
+* Discord (messages and thread messages from servers or selected channels, bot token auth)
 
 ## 🌐 Extra connectors
 
@@ -1071,6 +1072,62 @@ DB_POSTGRES1_SCHEDULES=3600
 DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@db-host/mydb
 DB_MYSQL1_SCHEDULES=3600
 ```
+
+### Discord Connector
+
+The Discord connector ingests messages from Discord servers (guilds) using a bot token. Each message,
+including each message inside a thread, is ingested as an individual item. A selected channel includes its
+active and archived threads. Forum and media channels are read through their posts (threads).
+
+- `guild_ids` only: every text, announcement, forum and media channel of those guilds.
+- `channel_ids` only: only those channels or threads. A thread ID reads that thread only.
+- Both: only the listed channels, which must belong to the listed guilds. A mismatch fails the run.
+- At least one of the two is required. Voice, stage and category IDs are rejected.
+
+Bot setup:
+
+1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications) and add a bot.
+2. Enable the **Message Content Intent** under Bot > Privileged Gateway Intents. Without it Discord empties the text, attachments and embeds of other users' messages, and those messages are skipped.
+3. Invite the bot with the `bot` scope and, for each channel to ingest, the **View Channel** and **Read Message History** permissions. Do not grant Administrator.
+4. Optional: **Manage Threads** lets the bot list archived private threads that it has not joined. Private threads that the bot has joined are read without it.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "discord"
+    name: "discord1"
+    config:
+      bot_token: "${DISCORD1_BOT_TOKEN}"
+      guild_ids: "${DISCORD1_GUILD_IDS}"             # comma-separated guild IDs
+      schedules: "${DISCORD1_SCHEDULES}"
+
+  # Only specific channels (or threads) of a guild:
+  - type: "discord"
+    name: "discord2"
+    config:
+      bot_token: "${DISCORD2_BOT_TOKEN}"
+      guild_ids: "${DISCORD2_GUILD_IDS}"
+      channel_ids: "${DISCORD2_CHANNEL_IDS}"         # comma-separated channel or thread IDs
+      schedules: "${DISCORD2_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+DISCORD1_BOT_TOKEN=your-discord-bot-token
+DISCORD1_GUILD_IDS=1234567890123456789
+DISCORD1_SCHEDULES=3600
+DISCORD2_BOT_TOKEN=your-second-discord-bot-token
+DISCORD2_GUILD_IDS=1234567890123456789
+DISCORD2_CHANNEL_IDS=2345678901234567890,3456789012345678901
+DISCORD2_SCHEDULES=3600
+```
+
+> Every run reads the full history again, so message edits are picked up. Deleted messages and lost access are not removed from the index.
+> Attachments are listed by file name and embeds by title and description. Files are not downloaded.
+> Channels or archived threads that the bot cannot read are skipped with a warning, except channels listed in `channel_ids`, which fail the run.
+> The source selection limits what is ingested. It does not give per-user Discord access control to query results.
 
 ## Single Sign-On (SSO)
 
