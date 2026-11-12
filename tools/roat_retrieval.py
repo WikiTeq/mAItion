@@ -15,6 +15,7 @@ import math
 import os
 import re
 from collections.abc import Awaitable, Callable
+from urllib.parse import parse_qs, urlparse
 
 import requests
 import yaml
@@ -93,6 +94,43 @@ def _get_filename_from_extras(extras: dict) -> str | None:
 _VIDEO_URL_RE = re.compile(r"https://(?!\S*-->)\S+")
 
 
+_YOUTUBE_HOSTS = {
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "youtube-nocookie.com",
+    "www.youtube-nocookie.com",
+}
+_YOUTUBE_ID_RE = re.compile(r"^[\w-]{11}$")
+
+
+def _video_key(video_url: str) -> tuple[str, str]:
+    """Return the key that identifies a video, so URL variants count once.
+
+    Must match `_video_key` in functions/video_inject.py (the tool and the
+    filter are deployed separately, so the rule is duplicated). YouTube videos
+    are keyed by ID, so the timestamp does not matter. Other URLs are keyed by
+    the full URL without a `#` fragment.
+    """
+    try:
+        parsed = urlparse(video_url)
+    except ValueError:
+        return "url", video_url.split("#", 1)[0]
+    host = parsed.hostname or ""
+    video_id = None
+    if host == "youtu.be":
+        video_id = parsed.path.lstrip("/").split("/")[0]
+    elif host in _YOUTUBE_HOSTS:
+        parts = [p for p in parsed.path.split("/") if p]
+        if parts and parts[0] in ("shorts", "embed", "live") and len(parts) > 1:
+            video_id = parts[1]
+        elif parsed.path in ("/watch", "/"):
+            video_id = (parse_qs(parsed.query).get("v") or [None])[0]
+    if video_id and _YOUTUBE_ID_RE.match(video_id):
+        return "youtube", video_id
+    return "url", video_url.split("#", 1)[0]
+
+
 def _find_video_urls(
     references: list,
     field: str = "video_url",
@@ -109,6 +147,7 @@ def _find_video_urls(
         return score if math.isfinite(score) else 0.0
 
     urls: list[str] = []
+    seen: set[tuple[str, str]] = set()
     if limit <= 0:
         return urls
     for ref in sorted(references, key=score_of, reverse=True):
@@ -118,10 +157,15 @@ def _find_video_urls(
         if not isinstance(extras, dict):
             continue
         url = extras.get(field, "")
-        if isinstance(url, str) and _VIDEO_URL_RE.fullmatch(url) and url not in urls:
-            urls.append(url)
-            if len(urls) >= limit:
-                break
+        if not (isinstance(url, str) and _VIDEO_URL_RE.fullmatch(url)):
+            continue
+        key = _video_key(url)
+        if key in seen:
+            continue
+        seen.add(key)
+        urls.append(url)
+        if len(urls) >= limit:
+            break
     return urls
 
 
