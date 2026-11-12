@@ -13,7 +13,7 @@ from html import escape as html_escape
 from html import unescape
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 log = logging.getLogger(__name__)
 
@@ -121,7 +121,11 @@ def _render_video_block(video_url: str) -> str:
 
 class Filter:
     class Valves(BaseModel):
-        pass
+        max_videos: int = Field(
+            default=3,
+            ge=0,
+            description="Maximum number of videos to show in one answer, across all searches (0 = none).",
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -183,6 +187,8 @@ class Filter:
         seen = set()
         video_blocks = []
         for video_url in video_urls:
+            if len(video_blocks) >= self.valves.max_videos:
+                break
             key = _video_key(video_url)
             if key in seen:
                 # Do not log the URL or key: a direct video URL can carry a
