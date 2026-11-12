@@ -185,10 +185,9 @@ class Filter:
         for video_url in video_urls:
             key = _video_key(video_url)
             if key in seen:
-                log.info(
-                    "video_inject: video repeated in this answer, skipping %s",
-                    video_url[:80],
-                )
+                # Do not log the URL or key: a direct video URL can carry a
+                # signed query token.
+                log.info("video_inject: skipping a video repeated in this answer")
                 continue
             seen.add(key)
             video_blocks.append(_render_video_block(video_url))
