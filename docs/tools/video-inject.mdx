@@ -13,7 +13,11 @@ The **Video Inject Filter** (`video_inject`) is a mAItion **Filter**. It runs au
 
 ## Valves
 
-This filter has no configurable valves.
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `max_videos` | no | `3` | Maximum number of videos to show in one answer, across all searches. A video that appears more than once is shown once, even if the links have different timestamps. `0` shows none. |
+
+Valves can be edited after install from **Workspace → Functions** in mAItion.
 
 ## Enabling via ENV
 
