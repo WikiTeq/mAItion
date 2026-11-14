@@ -1091,8 +1091,9 @@ see. To limit what is ingested, create the token for a dedicated Asana user that
 
 Comments are loaded newest first, up to `max_comments` per task (default 10); set `load_comments: false` to skip them.
 The tracker key of a task includes a hash of the source `name`, so renaming a source ingests its tasks again.
-Each run downloads all tasks and their comments. Unchanged tasks are skipped afterwards by comparing a content hash,
-so this saves embedding work, not API calls. The hash covers the task content and metadata. Notes and comments are plain text.
+Each run lists all tasks but loads comments only for tasks that changed. A task is ingested again when its `modified_at`
+(Asana updates it when a comment is added) or its metadata changes, or when `load_comments` or `max_comments` changes.
+Notes and comments are plain text.
 
 Metadata collected per task (empty values are omitted): `task_id`, `task_title`, `url`, `completed`, `workspace_id`,
 `assignee`, `followers`, `projects`, `custom_fields` (a list of `Name: value` entries).
