@@ -54,6 +54,7 @@ interact with your knowledge with ease!
 * GitLab (repository files and issues, supports GitLab.com and self-hosted)
 * Trello (cards from configured boards or all boards, with optional comment ingestion)
 * Database (MySQL + PostgreSQL via SQL SELECT query)
+* Asana
 
 ## 🌐 Extra connectors
 
@@ -1070,6 +1071,54 @@ DB_POSTGRES1_SCHEDULES=3600
 # MySQL
 DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@db-host/mydb
 DB_MYSQL1_SCHEDULES=3600
+```
+
+### Asana Connector
+
+The Asana connector ingests tasks from one Asana workspace or from a single project using the official `asana`
+Python SDK. Each task becomes one document with the task title, notes and comments.
+
+Requires an Asana [personal access token](https://developers.asana.com/docs/personal-access-token). The token has the
+same access as the Asana user who created it, so the connector sees only the workspaces and projects that user can
+see. To limit what is ingested, create the token for a dedicated Asana user that is a member of only the needed projects.
+
+- **Workspace mode** (`project_id` omitted): tasks of every non-archived project in the workspace that the token can
+  access. Tasks that belong to no project are not ingested. A task shared by several projects is ingested once.
+- **Project mode** (`project_id` set): tasks of that project only. The project must belong to `workspace_id`,
+  otherwise the run fails. Leave the key out for workspace mode; a blank `project_id` is a configuration error.
+- Subtasks are not discovered recursively. A subtask that was added directly to a project can appear in its task list
+  and is then ingested like any other task.
+
+Comments are loaded newest first, up to `max_comments` per task (default 10); set `load_comments: false` to skip them.
+The tracker key of a task includes a hash of the source `name`, so renaming a source ingests its tasks again.
+Each run downloads all tasks and their comments. Unchanged tasks are skipped afterwards by comparing a content hash,
+so this saves embedding work, not API calls. The hash covers the task content and metadata. Notes and comments are plain text.
+
+Metadata collected per task (empty values are omitted): `task_id`, `task_title`, `url`, `completed`, `workspace_id`,
+`assignee`, `followers`, `projects`, `custom_fields` (a list of `Name: value` entries).
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "asana"
+    name: "asana-workspace-1"
+    config:
+      asana_token: "${ASANA1_TOKEN}"
+      workspace_id: "${ASANA1_WORKSPACE_ID}"
+      #project_id: "${ASANA1_PROJECT_ID}"  # optional; omit to ingest the whole workspace
+      #load_comments: true                  # optional, default true
+      #max_comments: 10                     # optional, default 10; newest comments first
+      schedules: "${ASANA1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+ASANA1_TOKEN=your-asana-personal-access-token
+ASANA1_WORKSPACE_ID=1234567890
+#ASANA1_PROJECT_ID=9876543210
+ASANA1_SCHEDULES=60
 ```
 
 ## Single Sign-On (SSO)
