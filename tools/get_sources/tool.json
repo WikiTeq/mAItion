@@ -5,5 +5,13 @@
 	"meta": {
 		"description": "Retrieve all sources/citations emitted by tools during the current chat turn.",
 		"manifest": {}
+	},
+	"valves": {
+		"max_sources": {
+			"type": "int"
+		},
+		"max_excerpt_chars": {
+			"type": "int"
+		}
 	}
 }

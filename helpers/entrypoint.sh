@@ -99,7 +99,22 @@ do_first_start() {
       -H "Content-Type: application/json" \
       --data-raw "{\"name\":\"$X_WEBUI_ADMIN_USER\", \"email\":\"$X_WEBUI_ADMIN_EMAIL\", \"password\":\"$X_WEBUI_ADMIN_PASS\"}")
 
-    API_KEY=$(echo "${SIGNUP_RESPONSE}" | jq -r '.token')
+    API_KEY=$(echo "${SIGNUP_RESPONSE}" | jq -r '.token // empty')
+
+    if [ -z "$API_KEY" ]; then
+        # An earlier boot may have failed after the admin signup. Sign in instead.
+        echo "[Custom entrypoint] Signup returned no token, trying sign in..."
+        SIGNIN_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/auths/signin" \
+          -H "Content-Type: application/json" \
+          --data-raw "$(jq -n --arg email "$X_WEBUI_ADMIN_EMAIL" --arg pass "$X_WEBUI_ADMIN_PASS" \
+            '{email:$email,password:$pass}')")
+        API_KEY=$(echo "${SIGNIN_RESPONSE}" | jq -r '.token // empty')
+    fi
+
+    if [ -z "$API_KEY" ]; then
+        echo "[Custom entrypoint] ERROR: could not get an admin token" >&2
+        exit 1
+    fi
 
     echo ""
     echo "[Custom entrypoint] Received API_KEY.."
@@ -139,25 +154,14 @@ do_first_start() {
     #   -H "Authorization: Bearer ${API_KEY}" \
     #   -H "Content-Type: application/json"
 
-    TOOL_PYTHON_CODE=$(jq -Rs . < "/etc/roat_retrieval.py")
-    TOOL_DATA_RAW=$(jq --argjson content "${TOOL_PYTHON_CODE}" \
-      '.content=$content' \
-      "/etc/roat_retrieval.json")
-
     echo ""
-    echo "[Custom entrypoint] Installing ROAT search Tool"
-    curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${TOOL_DATA_RAW}"
-
-    echo ""
-    echo "[Custom entrypoint] Configuring the tool valves"
-    curl -s -X POST "http://localhost:8080/api/v1/tools/id/roat_retrieval/valves/update" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "$(jq -n --arg url "$ROAT_API_URL/api/v1/query" --arg key "$ROAT_API_KEY" \
-        '{rag_service_url:$url,rag_service_api_key:$key}')"
+    echo "[Custom entrypoint] Importing tools..."
+    ENSURED_TOOLS_FILE=/tmp/ensured_tools.txt
+    rm -f "$ENSURED_TOOLS_FILE"
+    if ! API_KEY="$API_KEY" ENSURED_TOOLS_FILE="$ENSURED_TOOLS_FILE" python3 /etc/tools_import.py; then
+        echo "[Custom entrypoint] ERROR: tool import failed. Fix the settings and restart." >&2
+        exit 1
+    fi
 
     echo ""
     echo "[Custom entrypoint] Disabling Direct Connections for regular users"
@@ -215,14 +219,16 @@ do_first_start() {
                       '.params.system = (.params.system + "\n\n" + $append)')
                 fi
 
-                if mediawiki_tool_enabled READ && [ -n "$MEDIAWIKI_API_URL" ]; then
-                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
-                      '.meta.toolIds += ["mediawiki_read"]')
-                fi
-                if mediawiki_tool_enabled WRITE && [ -n "$MEDIAWIKI_API_URL" ]; then
-                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
-                      '.meta.toolIds += ["mediawiki_write"]')
-                fi
+                # Attach a MediaWiki tool to the model only when it was imported
+                # and a wiki URL is configured for it.
+                for MODEL_TOOL_ID in mediawiki_read mediawiki_write; do
+                    MODEL_TOOL_URL_VAR="TOOL_VALVE_$(echo "$MODEL_TOOL_ID" | tr '[:lower:]' '[:upper:]')_WIKI_URL"
+                    MODEL_TOOL_URL="${!MODEL_TOOL_URL_VAR-$MEDIAWIKI_API_URL}"
+                    if grep -qx "$MODEL_TOOL_ID" "$ENSURED_TOOLS_FILE" && [ -n "$MODEL_TOOL_URL" ]; then
+                        WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
+                          --arg tool "$MODEL_TOOL_ID" '.meta.toolIds += [$tool]')
+                    fi
+                done
                 curl -s -X POST "http://localhost:8080/api/v1/models/create" \
                   -H "Authorization: Bearer ${API_KEY}" \
                   -H "Content-Type: application/json" \
@@ -267,144 +273,11 @@ do_first_start() {
       -H "Content-Type: application/json" \
       --data-raw "{\"suggestions\":[]}"
 
-    install_mediawiki_tool read "MediaWiki Search Tool"
-    install_mediawiki_tool write "MediaWiki Write Tool"
-    install_web_search_tool
-    install_get_sources_tool
     install_video_inject_filter
     install_image_resizer_filter
     install_async_context_compression_filter
 
     touch /app/backend/data/.first_start
-}
-
-# A MediaWiki tool is enabled by its own flag (TOOL_MEDIAWIKI_<READ|WRITE>_ENABLED).
-mediawiki_tool_enabled() {
-    local flag="TOOL_MEDIAWIKI_$1_ENABLED"
-    [ "${!flag}" == "True" ]
-}
-
-# Usage: install_mediawiki_tool <read|write> <label>
-install_mediawiki_tool() {
-    local kind="$1"
-    local label="$2"
-    local upper
-    upper=$(echo "$kind" | tr '[:lower:]' '[:upper:]')
-
-    if ! mediawiki_tool_enabled "$upper"; then
-        return
-    fi
-
-    if [ -z "$MEDIAWIKI_API_URL" ]; then
-        echo "[Custom entrypoint] WARNING: TOOL_MEDIAWIKI_${upper}_ENABLED=True but MEDIAWIKI_API_URL is not set. Skipping ${label} install." >&2
-        return
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing ${label}..."
-
-    TOOL_CODE=$(jq -Rs . < "/etc/mediawiki_${kind}_tool.py")
-    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/mediawiki_${kind}_tool.json)
-
-    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}")
-
-    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] WARNING: ${label} install failed"
-        echo "${CREATE_RESPONSE}"
-        return
-    fi
-
-    echo "[Custom entrypoint] ${label} created with id: ${TOOL_ID}"
-
-    echo ""
-    echo "[Custom entrypoint] Configuring ${label} valves..."
-    VALVES_JSON=$(jq -n \
-      --arg wiki "${MEDIAWIKI_API_URL}" \
-      --arg user "${MEDIAWIKI_USERNAME:-}" \
-      --arg pass "${MEDIAWIKI_PASSWORD:-}" \
-      '{wiki_url:$wiki,username:$user,password:$pass}')
-
-    curl -s -X POST "http://localhost:8080/api/v1/tools/id/${TOOL_ID}/valves/update" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${VALVES_JSON}"
-
-}
-
-install_web_search_tool() {
-    if [ "$TOOL_WEB_SEARCH_ENABLED" != "True" ]; then
-        return
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing Web Search Tool..."
-
-    TOOL_CODE=$(jq -Rs . < "/etc/web_search.py")
-    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/web_search.json)
-
-    CREATE_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}")
-
-    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] WARNING: Web Search Tool install failed"
-        echo "${CREATE_RESPONSE}"
-        return
-    fi
-
-    echo "[Custom entrypoint] Web Search Tool created with id: ${TOOL_ID}"
-
-    if [ -n "$TOOL_WEB_SEARCH_API_KEY" ]; then
-        echo ""
-        echo "[Custom entrypoint] Configuring Web Search Tool valves..."
-        VALVES_JSON=$(jq -n --arg key "${TOOL_WEB_SEARCH_API_KEY}" '{tavily_api_key:$key}')
-
-        curl -s -X POST "http://localhost:8080/api/v1/tools/id/${TOOL_ID}/valves/update" \
-          -H "Authorization: Bearer ${API_KEY}" \
-          -H "Content-Type: application/json" \
-          --data-raw "${VALVES_JSON}"
-    else
-        echo "[Custom entrypoint] TOOL_WEB_SEARCH_API_KEY not set. Set the tavily_api_key valve from Workspace -> Tools in the UI."
-    fi
-
-}
-
-install_get_sources_tool() {
-    if [ "$TOOL_GET_SOURCES_ENABLED" != "True" ]; then
-        return 0
-    fi
-
-    echo ""
-    echo "[Custom entrypoint] Installing Get Sources Tool..."
-
-    TOOL_CODE=$(jq -Rs . < "/etc/get_sources.py")
-    DATA_RAW=$(jq --argjson content "${TOOL_CODE}" '.content=$content' /etc/get_sources.json)
-
-    CURL_STATUS=0
-    CREATE_RESPONSE=$(curl -s --connect-timeout 10 --max-time 30 -X POST "http://localhost:8080/api/v1/tools/create" \
-      -H "Authorization: Bearer ${API_KEY}" \
-      -H "Content-Type: application/json" \
-      --data-raw "${DATA_RAW}") || CURL_STATUS=$?
-
-    if [ "$CURL_STATUS" -ne 0 ]; then
-        echo "[Custom entrypoint] WARNING: Get Sources Tool install request failed (curl exit code ${CURL_STATUS})" >&2
-        return
-    fi
-
-    TOOL_ID=$(echo "${CREATE_RESPONSE}" | jq -r '.id // empty')
-    if [ -z "$TOOL_ID" ]; then
-        echo "[Custom entrypoint] WARNING: Get Sources Tool install failed" >&2
-        echo "${CREATE_RESPONSE}" >&2
-        return
-    fi
-
-    echo "[Custom entrypoint] Get Sources Tool created with id: ${TOOL_ID}"
 }
 
 install_video_inject_filter() {

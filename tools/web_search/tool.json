@@ -1,0 +1,41 @@
+{
+	"id": "web_search",
+	"name": "Web Search",
+	"content": "",
+	"meta": {
+		"description": "Search the web using the Tavily search API",
+		"manifest": {}
+	},
+	"valves": {
+		"tavily_api_key": {
+			"type": "str"
+		},
+		"max_results": {
+			"type": "int"
+		},
+		"search_depth": {
+			"type": "literal",
+			"values": [
+				"basic",
+				"advanced"
+			]
+		},
+		"include_answer": {
+			"type": "bool"
+		},
+		"topic": {
+			"type": "literal",
+			"values": [
+				"general",
+				"news",
+				"finance"
+			]
+		},
+		"timeout": {
+			"type": "int"
+		},
+		"max_content_chars": {
+			"type": "int"
+		}
+	}
+}
