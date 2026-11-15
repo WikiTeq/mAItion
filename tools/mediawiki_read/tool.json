@@ -1,0 +1,41 @@
+{
+	"id": "mediawiki_read",
+	"name": "MediaWiki Search Tool",
+	"content": "",
+	"meta": {
+		"description": "Search and read MediaWiki pages",
+		"manifest": {}
+	},
+	"valves": {
+		"wiki_url": {
+			"type": "str"
+		},
+		"username": {
+			"type": "str"
+		},
+		"password": {
+			"type": "str"
+		},
+		"timeout": {
+			"type": "int"
+		},
+		"max_search_results": {
+			"type": "int"
+		},
+		"max_page_chars": {
+			"type": "int"
+		},
+		"verify_ssl": {
+			"type": "bool"
+		},
+		"resolve_ip": {
+			"type": "str"
+		},
+		"user_agent": {
+			"type": "str"
+		},
+		"headers": {
+			"type": "str"
+		}
+	}
+}
