@@ -2,7 +2,7 @@
 title: Knowledge Base Search
 author: WikiTeq
 date: 2025-05-01
-version: 1.0
+version: 1.1
 license: MIT
 description: Searches the RAG-of-All-Trades knowledge base and returns relevant context for the user's query.
 requirements: requests, pyyaml
@@ -11,9 +11,11 @@ requirements: requests, pyyaml
 import asyncio
 import hashlib
 import logging
+import math
 import os
 import re
 from collections.abc import Awaitable, Callable
+from urllib.parse import parse_qs, urlparse
 
 import requests
 import yaml
@@ -88,25 +90,83 @@ def _get_filename_from_extras(extras: dict) -> str | None:
     return extras.get("key") or extras.get("filename") or extras.get("name") or None
 
 
-def _find_video_url(
-    references: list, field: str = "video_url"
-) -> tuple[str | None, str | None]:
-    """Return (video_url, source_name) from the highest-scored ref with extras.<field>."""
+# A marker URL must stay on one line and must not contain the marker end "-->".
+_VIDEO_URL_RE = re.compile(r"https://(?!\S*-->)\S+")
 
-    def score_key(ref):
+
+_YOUTUBE_HOSTS = {
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "youtube-nocookie.com",
+    "www.youtube-nocookie.com",
+}
+_YOUTUBE_ID_RE = re.compile(r"^[\w-]{11}$")
+
+
+def _video_key(video_url: str) -> tuple[str, str]:
+    """Return the key that identifies a video, so URL variants count once.
+
+    Must match `_video_key` in functions/video_inject.py (the tool and the
+    filter are deployed separately, so the rule is duplicated). YouTube videos
+    are keyed by ID, so the timestamp does not matter. Other URLs are keyed by
+    the full URL without a `#` fragment.
+    """
+    try:
+        parsed = urlparse(video_url)
+    except ValueError:
+        return "url", video_url.split("#", 1)[0]
+    host = parsed.hostname or ""
+    video_id = None
+    if host == "youtu.be":
+        video_id = parsed.path.lstrip("/").split("/")[0]
+    elif host in _YOUTUBE_HOSTS:
+        parts = [p for p in parsed.path.split("/") if p]
+        if parts and parts[0] in ("shorts", "embed", "live") and len(parts) > 1:
+            video_id = parts[1]
+        elif parsed.path in ("/watch", "/"):
+            video_id = (parse_qs(parsed.query).get("v") or [None])[0]
+    if video_id and _YOUTUBE_ID_RE.match(video_id):
+        return "youtube", video_id
+    return "url", video_url.split("#", 1)[0]
+
+
+def _find_video_urls(
+    references: list,
+    field: str = "video_url",
+    limit: int = 3,
+    min_score: float = 0.0,
+) -> list[str]:
+    """Return up to `limit` distinct video URLs from refs scored at least `min_score`, best first."""
+
+    def score_of(ref):
         try:
-            return float(ref.get("score") or 0)
+            score = float(ref.get("score") or 0)
         except (TypeError, ValueError):
             return 0.0
+        return score if math.isfinite(score) else 0.0
 
-    for ref in sorted(references, key=score_key, reverse=True):
+    urls: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    if limit <= 0:
+        return urls
+    for ref in sorted(references, key=score_of, reverse=True):
+        if score_of(ref) < min_score:
+            break
         extras = ref.get("extras") or {}
         if not isinstance(extras, dict):
             continue
         url = extras.get(field, "")
-        if url and isinstance(url, str) and url.startswith("https://"):
-            return url, ref.get("title") or ref.get("source_name") or "Source"
-    return None, None
+        if not (isinstance(url, str) and _VIDEO_URL_RE.fullmatch(url)):
+            continue
+        key = _video_key(url)
+        if key in seen:
+            continue
+        seen.add(key)
+        urls.append(url)
+        if len(urls) >= limit:
+            break
+    return urls
 
 
 def _store_turn_sources(request, sources: list) -> None:
@@ -270,6 +330,16 @@ class Tools:
         video_metadata_field: str = Field(
             default="video_url",
             description="Metadata field name in retrieved sources that contains the video URL.",
+        )
+        max_videos: int = Field(
+            default=3,
+            ge=0,
+            description="Maximum number of videos to show for one search (0 = none).",
+        )
+        min_video_score: float = Field(
+            default=0.0,
+            allow_inf_nan=False,
+            description="Minimum relevance score a source needs for its video to be shown.",
         )
 
     def __init__(self):
@@ -442,10 +512,14 @@ class Tools:
 
         if os.environ.get("FUNCTION_VIDEO_INJECT_ENABLED", "") == "True":
             references = rag_result.get("references", []) or []
-            video_url, _ = _find_video_url(
-                references, field=self.valves.video_metadata_field
+            video_urls = _find_video_urls(
+                references,
+                field=self.valves.video_metadata_field,
+                limit=self.valves.max_videos,
+                min_score=self.valves.min_video_score,
             )
-            if video_url:
-                log.info("Embedding video marker for %s", video_url[:80])
-                return f"<!--VIDEO:{video_url}-->{context}"
+            if video_urls:
+                log.info("Embedding %d video marker(s)", len(video_urls))
+                markers = "".join(f"<!--VIDEO:{url}-->" for url in video_urls)
+                return f"{markers}{context}"
         return context
