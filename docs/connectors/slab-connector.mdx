@@ -1,0 +1,89 @@
+---
+title: "Slab"
+description: "Configure the mAItion Slab connector to ingest posts from a Slab knowledge base."
+keywords:
+  - mAItion
+  - Slab connector
+  - Slab ingestion
+  - connectors
+---
+
+Use the Slab Connector to ingest posts from a [Slab](https://slab.com/) knowledge base into the mAItion knowledge base.
+
+## What It Does
+
+- ingests all posts in the organization, or only the posts in selected topics
+- converts each post to Markdown for indexing
+- stores the post URL, title, and topic details as metadata
+- retries failed Slab API requests
+- runs ingestion on configurable schedules
+
+## Authentication
+
+The connector authenticates with a Slab API token.
+
+<Note>
+  The Slab API is only available on the Slab **Business** and **Enterprise** plans. On the Free plan, export your content from Slab as Markdown, make the exported files available inside the `celery_worker` container, and ingest them with the [Directory connector](/connectors/directory-connector). Repeat the export when the content in Slab changes, because the Directory connector does not refresh it.
+</Note>
+
+## Environment Variables
+
+Set these in `.env.rag`:
+
+- `SLAB1_API_TOKEN`: Slab API token
+- `SLAB1_SCHEDULES`: ingestion interval in seconds (default: `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "slab"
+    name: "slab1"
+    enabled: true  # optional, default: true
+    config:
+      api_token: "${SLAB1_API_TOKEN}"
+      topic_ids: "topic_abc123,topic_def456"  # optional, omit to ingest all posts
+      max_retries: 3                          # optional, default 3
+      retry_delay: 2                          # optional, seconds, default 2
+      search_batch_size: 100                  # optional, default 100
+      schedules: "${SLAB1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+# .env.rag
+
+SLAB1_API_TOKEN=your-slab-api-token
+SLAB1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `api_token` | yes | — | Slab API token |
+| `topic_ids` | no | — | Comma-separated topic IDs. When set, only posts in these topics are ingested. When omitted, all posts in the organization are ingested |
+| `max_retries` | no | `3` | Maximum number of attempts for each Slab API request |
+| `retry_delay` | no | `2` | Seconds to wait between attempts |
+| `search_batch_size` | no | `100` | Number of posts fetched per request when `topic_ids` is not set. Not used when `topic_ids` is set |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Metadata
+
+Each ingested post has this metadata:
+
+- `url`: link to the post in Slab
+- `title`: post title
+- `topic_id`, `topic_name`: topic the post was ingested from
+- `topic_parent_id`, `topic_parent_name`: parent of that topic
+- `topic_ancestors`: ancestors of that topic
+
+The topic fields are filled in only when `topic_ids` is set. Without `topic_ids`, they are empty.
+
+Headings, emphasis, links, and lists in a post are kept. Code blocks and dividers are not kept.
+
+## Multiple Slab Sources
+
+Add more `sources` entries (`slab2`, `slab3`, etc) with separate env vars per source.
