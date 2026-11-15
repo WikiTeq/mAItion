@@ -32,22 +32,26 @@ Valves can be edited after install from **Workspace → Tools** in mAItion.
 ## Configuration via ENV
 
 <Note>
-Knowledge Base Search is always installed — there is no opt-in flag. The ENV variables below only affect what it connects to, and only apply during first-start initialization (the setup that runs only once, the first time the container boots, gated on a marker file). On an already-running instance, configure the resulting valves manually from the admin UI instead.
+Knowledge Base Search is opt-in. It is imported only when `TOOL_IMPORT_ROAT_RETRIEVAL=True`. The variables below apply only during first-start initialization (the setup that runs only once, the first time the container boots, gated on a marker file). On an already-running instance, configure the valves manually from the admin UI instead.
 </Note>
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `ROAT_API_URL` | yes | `http://api:8000` | Base URL of the ROAT API — the host and port only, with no path suffix. Used to set the tool's `rag_service_url` valve at first start. |
-| `ROAT_API_KEY` | no | `12345` | Bearer token for the ROAT API. Used to set the tool's `rag_service_api_key` valve at first start. |
+| `TOOL_IMPORT_ROAT_RETRIEVAL` | yes | unset | Set to `True` to import the tool. |
+| `TOOL_VALVE_ROAT_RETRIEVAL_RAG_SERVICE_URL` | yes | empty | Full URL of the ROAT query endpoint, for example `http://api:8000/api/v1/query`. Sets the `rag_service_url` valve. |
+| `TOOL_VALVE_ROAT_RETRIEVAL_RAG_SERVICE_API_KEY` | no | empty | Bearer token for the ROAT API. Sets the `rag_service_api_key` valve. |
+
+Any other valve can be set the same way with `TOOL_VALVE_ROAT_RETRIEVAL_<VALVE>`. An unset or empty variable keeps the default value.
 
 Example `.env`:
 
 ```bash
-ROAT_API_URL=http://api:8000
-ROAT_API_KEY=12345
+TOOL_IMPORT_ROAT_RETRIEVAL=True
+TOOL_VALVE_ROAT_RETRIEVAL_RAG_SERVICE_URL=http://api:8000/api/v1/query
+TOOL_VALVE_ROAT_RETRIEVAL_RAG_SERVICE_API_KEY=12345
 ```
 
-If you configure `rag_service_url` manually later (for example after changing `ROAT_API_URL` post-install), remember to include the `/api/v1/query` path — the bare host URL alone will not work.
+The old names `ROAT_API_URL` (host and port only) and `ROAT_API_KEY` still work but are deprecated. If both an old and a new name are set, the new name is used.
 
 ## Troubleshooting
 

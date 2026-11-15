@@ -33,19 +33,20 @@ Every numeric valve above has real schema validation — an out-of-range value i
 
 ## Enabling via ENV
 
-This tool is opt-in, with a single-condition gate. Set in `.env`:
+This tool is opt-in. Set in `.env`:
 
 ```bash
-TOOL_WEB_SEARCH_ENABLED=True
-TOOL_WEB_SEARCH_API_KEY=
+TOOL_IMPORT_WEB_SEARCH=True
+TOOL_VALVE_WEB_SEARCH_TAVILY_API_KEY=
 ```
 
-- `TOOL_WEB_SEARCH_ENABLED=True` is the only required condition to install.
-- `TOOL_WEB_SEARCH_API_KEY` is optional for install, but set it at the same time as `TOOL_WEB_SEARCH_ENABLED` in practice — without it, the tool installs but can't run any search until you set the `tavily_api_key` valve manually afterward. If left unset, the tool still installs, with `tavily_api_key` at its empty default, and the entrypoint script logs a note pointing to Workspace → Tools for manual configuration. Nothing fails and nothing is skipped.
-- Only `tavily_api_key` is ever set from ENV. The other six valves (`max_results`, `search_depth`, `include_answer`, `topic`, `timeout`, `max_content_chars`) are configured only through the UI, or left at their defaults above.
+- `TOOL_IMPORT_WEB_SEARCH=True` is the only required condition to import the tool.
+- Set `TOOL_VALVE_WEB_SEARCH_TAVILY_API_KEY` at the same time. Without it, the tool is imported but cannot run a search until you set the `tavily_api_key` valve from Workspace → Tools.
+- Any other valve can be set with `TOOL_VALVE_WEB_SEARCH_<VALVE>`, for example `TOOL_VALVE_WEB_SEARCH_MAX_RESULTS=10`. An unset or empty variable keeps the default value.
+- The old names `TOOL_WEB_SEARCH_ENABLED` and `TOOL_WEB_SEARCH_API_KEY` still work but are deprecated. If both an old and a new name are set, the new name is used.
 
 <Note>
-This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting the ENV flag on an already-running instance does not install it retroactively. Set the flag before the container's first boot, or add the tool manually afterward from the admin UI.
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting the `TOOL_IMPORT_WEB_SEARCH` flag on an already-running instance does not install it retroactively. Set the flag before the container's first boot, or add the tool manually afterward from the admin UI.
 </Note>
 
 ## Troubleshooting

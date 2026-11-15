@@ -48,36 +48,25 @@ When credentials are needed, use a [BotPassword](https://www.mediawiki.org/wiki/
 
 ## Enabling via ENV
 
-These tools are opt-in. Installing a tool requires both of these:
-
-- Its own flag set to `True`: `TOOL_MEDIAWIKI_READ_ENABLED` for the Search Tool, `TOOL_MEDIAWIKI_WRITE_ENABLED` for the Write Tool
-- `MEDIAWIKI_API_URL` set to a non-empty value
-
-If `MEDIAWIKI_API_URL` is missing while a flag is `True`, the entrypoint script skips
-that tool's install and prints a warning to the container logs — it does not fail the boot, so
-the omission is easy to miss.
-
-`MEDIAWIKI_USERNAME` and `MEDIAWIKI_PASSWORD` are optional — set them if the wiki needs
-credentials. Both tools read the same three variables. In `.env`:
+These tools are opt-in. Set the import flag of each tool you want, and the valves it needs. In `.env`:
 
 ```bash
-TOOL_MEDIAWIKI_READ_ENABLED=True
-TOOL_MEDIAWIKI_WRITE_ENABLED=True
-MEDIAWIKI_API_URL=https://wiki.example.com/w/api.php
-MEDIAWIKI_USERNAME=
-MEDIAWIKI_PASSWORD=
+TOOL_IMPORT_MEDIAWIKI_READ=True
+TOOL_IMPORT_MEDIAWIKI_WRITE=True
+TOOL_VALVE_MEDIAWIKI_READ_WIKI_URL=https://wiki.example.com/w/api.php
+TOOL_VALVE_MEDIAWIKI_READ_USERNAME=
+TOOL_VALVE_MEDIAWIKI_READ_PASSWORD=
+TOOL_VALVE_MEDIAWIKI_WRITE_WIKI_URL=https://wiki.example.com/w/api.php
+TOOL_VALVE_MEDIAWIKI_WRITE_USERNAME=
+TOOL_VALVE_MEDIAWIKI_WRITE_PASSWORD=
 ```
 
-At install, only three valves are set from ENV, on each installed tool:
+Any valve in the tables above can be set the same way with `TOOL_VALVE_<TOOL>_<VALVE>`, for example `TOOL_VALVE_MEDIAWIKI_READ_MAX_SEARCH_RESULTS=20`. An unset or empty variable keeps the default value. A value that does not match the valve type stops the first boot with an error in the container logs.
 
-- `wiki_url` ← `MEDIAWIKI_API_URL`
-- `username` ← `MEDIAWIKI_USERNAME`
-- `password` ← `MEDIAWIKI_PASSWORD`
-
-`timeout`, `edit_summary`, `max_search_results`, and `max_page_chars` are **not** configurable via ENV. They stay at their defaults above unless changed later from Workspace → Tools.
+The old names `TOOL_MEDIAWIKI_READ_ENABLED`, `TOOL_MEDIAWIKI_WRITE_ENABLED`, `MEDIAWIKI_API_URL`, `MEDIAWIKI_USERNAME` and `MEDIAWIKI_PASSWORD` still work but are deprecated. If both an old and a new name are set, the new name is used.
 
 <Note>
-This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting a `TOOL_MEDIAWIKI_*_ENABLED` flag on an already-running instance does not install it retroactively.
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting a `TOOL_IMPORT_MEDIAWIKI_*` flag on an already-running instance does not install it retroactively.
 </Note>
 
 ## Troubleshooting
