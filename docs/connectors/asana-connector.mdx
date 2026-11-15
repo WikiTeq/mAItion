@@ -1,0 +1,123 @@
+---
+title: "Asana"
+description: "Configure the mAItion Asana connector to ingest tasks from an Asana workspace or project."
+keywords:
+  - mAItion
+  - Asana connector
+  - connectors
+  - ingestion
+---
+
+Use the Asana Connector to ingest tasks from [Asana](https://asana.com/) into the mAItion knowledge base.
+
+## What It Does
+
+- reads tasks from one Asana workspace, or from a single project, using the official `asana` Python SDK
+- builds one document per task from the task title, notes, and the newest comments
+- stores the task URL, assignee, followers, projects, completion state, and custom fields as metadata
+- skips tasks whose content and metadata did not change since the previous run
+- runs ingestion on configurable schedules
+
+### Workspace and project modes
+
+| Mode | When | What is ingested |
+|---|---|---|
+| Workspace | `project_id` omitted | Tasks of every non-archived project in the workspace that the token can access |
+| Project | `project_id` set | Tasks of that project only. The project must belong to `workspace_id`, otherwise the run fails |
+
+### Limitations
+
+- Tasks that belong to no project are not ingested, in either mode.
+- A task shared by several projects is ingested once.
+- Archived projects are skipped in workspace mode.
+- Attachments are not ingested.
+- Subtasks are not discovered recursively. A subtask that was added directly to a project can appear in its task list and is then ingested like any other task.
+- Notes and comments are plain text.
+- The tracker key of a task includes a hash of the source `name`. Renaming a source in `config.yaml` ingests its tasks again.
+- Each run lists all tasks but loads comments only for tasks that changed. A task is ingested again when its `modified_at` (Asana updates it when a comment is added) or its metadata changes, or when `load_comments` or `max_comments` changes.
+
+## Authentication
+
+The connector uses an Asana [personal access token](https://developers.asana.com/docs/personal-access-token). A personal access token has the same access as the Asana user who created it. The connector can read every workspace, project, and task that this user can see.
+
+To limit what is ingested, create the token for a dedicated Asana user (or guest account) and add that user only to the projects you want to ingest.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `ASANA1_TOKEN`: Asana personal access token
+- `ASANA1_WORKSPACE_ID`: Asana workspace GID (numeric)
+- `ASANA1_PROJECT_ID`: optional, Asana project GID (numeric); omit to ingest the whole workspace
+- `ASANA1_SCHEDULES`: ingestion interval in seconds
+
+## `config.yaml` Example
+
+Workspace mode:
+
+```yaml
+sources:
+  - type: "asana"
+    name: "asana-workspace-1"
+    enabled: true  # optional, default: true
+    config:
+      asana_token: "${ASANA1_TOKEN}"
+      workspace_id: "${ASANA1_WORKSPACE_ID}"
+      #load_comments: true   # optional, default true
+      #max_comments: 10      # optional, default 10; newest comments first
+      schedules: "${ASANA1_SCHEDULES}"
+```
+
+Project mode:
+
+```yaml
+sources:
+  - type: "asana"
+    name: "asana-project-1"
+    config:
+      asana_token: "${ASANA1_TOKEN}"
+      workspace_id: "${ASANA1_WORKSPACE_ID}"
+      project_id: "${ASANA1_PROJECT_ID}"
+      schedules: "${ASANA1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+ASANA1_TOKEN=your-asana-personal-access-token
+ASANA1_WORKSPACE_ID=1234567890
+ASANA1_PROJECT_ID=9876543210
+ASANA1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `asana_token` | yes | — | Asana personal access token |
+| `workspace_id` | yes | — | Numeric GID of the Asana workspace |
+| `project_id` | no | whole workspace | Numeric GID of a single project. It must belong to `workspace_id`. Leave the key out for workspace mode; a blank value is a configuration error |
+| `load_comments` | no | `true` | Whether to ingest task comments along with the task |
+| `max_comments` | no | `10` | Maximum number of comments to ingest per task, newest first, when `load_comments` is enabled |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Metadata
+
+Each task is stored with these metadata fields. Empty values are omitted.
+
+| Field | Description |
+|---|---|
+| `task_id` | Asana task GID |
+| `task_title` | Task name |
+| `url` | Link to the task in Asana |
+| `completed` | Whether the task is completed |
+| `workspace_id` | Configured workspace GID |
+| `assignee` | Assignee name |
+| `followers` | Follower names |
+| `projects` | Names of the projects the task belongs to |
+| `custom_fields` | List of `Name: value` entries, one per custom field with a value |
+
+## Multiple Asana Sources
+
+Add more `sources` entries (`asana-workspace-2`, `asana-project-2`, etc) with separate env vars per source (`ASANA2_TOKEN`, `ASANA2_WORKSPACE_ID`, and so on).
