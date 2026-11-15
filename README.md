@@ -54,6 +54,7 @@ interact with your knowledge with ease!
 * GitLab (repository files and issues, supports GitLab.com and self-hosted)
 * Trello (cards from configured boards or all boards, with optional comment ingestion)
 * Database (MySQL + PostgreSQL via SQL SELECT query)
+* Fireflies
 
 ## 🌐 Extra connectors
 
@@ -1071,6 +1072,38 @@ DB_POSTGRES1_SCHEDULES=3600
 # MySQL
 DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@db-host/mydb
 DB_MYSQL1_SCHEDULES=3600
+```
+
+### Fireflies Connector
+
+The Fireflies connector ingests meeting transcripts from [Fireflies.ai](https://fireflies.ai) via its
+GraphQL API. Document content is composed from the transcript summary (overview, outline/sentences, notes).
+Metadata collected per transcript includes: title, host_email, organizer_email, participants, date,
+transcript_url, duration, meeting_link, speakers, keywords, gist, action_items.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "fireflies"
+    name: "fireflies1"
+    config:
+      api_key: "${FIREFLIES_API_KEY}"
+      schedules: "${FIREFLIES_SCHEDULES}"
+      filter_keyword: ""            # optional, filter by title keyword
+      filter_fromDate: ""           # optional, ISO 8601 e.g. 2024-01-01T00:00:00.000Z
+      filter_toDate: ""             # optional, ISO 8601
+      filter_hostEmail: ""          # optional, filter by host email
+      filter_organizers: ""         # optional, filter by organizer email(s), comma-separated
+      filter_channel_id: ""         # optional, filter by channel ID
+      max_items: 100                # optional, default 100
+```
+
+```dotenv
+# .env.rag
+
+FIREFLIES_API_KEY=your-fireflies-api-key
+FIREFLIES_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
