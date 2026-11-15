@@ -87,12 +87,12 @@ BITBUCKET1_SCHEDULES=3600
 | `exclude_directories` | no | — | Comma-separated directories to exclude (mutually exclusive with `include_directories`) |
 | `include_pull_requests` | no | `false` | Also ingest pull requests, one item per pull request. The file filters above apply to files only. Needs the `read:pullrequest:bitbucket` token scope |
 | `pull_request_states` | no | `open,merged,declined` | Comma-separated pull request states to ingest: `open`, `merged`, `declined`, `superseded` |
-| `include_pull_request_comments` | no | `false` | Add the comments of each pull request, up to 50 per pull request (requires `include_pull_requests`) |
+| `include_pull_request_comments` | no | `false` | Add the comments of each pull request, the 50 newest per pull request (requires `include_pull_requests`) |
 | `schedules` | no | `3600` | Ingestion interval in seconds |
 
 ## Pull Requests
 
-Bitbucket Cloud allows about 1,000 API requests per hour for repository endpoints. The connector reads pull requests in pages of 50 and adds no request per pull request, except for comments. With `include_pull_request_comments` on, it makes one extra request for each changed pull request that has comments. A pull request counts as changed when its last update time or, with comments on, its comment count changes. Turning comments on or off re-ingests every pull request once. Adding or deleting a comment is detected, but editing the text of an existing comment is not, until the pull request changes for another reason. Comments after the 50th are left out and the connector logs a warning.
+Bitbucket Cloud allows about 1,000 API requests per hour for repository endpoints. The connector reads pull requests in pages of 50 and adds no request per pull request, except for comments. With `include_pull_request_comments` on, it makes one extra request for each changed pull request that has comments. A pull request counts as changed when its last update time or, with comments on, its comment count changes. Turning comments on or off re-ingests every pull request once. Adding or deleting a comment is detected, but editing the text of an existing comment is not, until the pull request changes for another reason. Comments older than the 50 newest are left out and the connector logs a warning.
 
 ## Multiple Bitbucket Sources
 
