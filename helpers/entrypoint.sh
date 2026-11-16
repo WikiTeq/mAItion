@@ -77,29 +77,14 @@ do_first_start() {
     echo ""
     echo "[Custom entrypoint] First start detected.."
 
-    # Resolve and validate the custom workspace model file up front, before any
-    # API calls are made, so a bad CREATE_CUSTOM_WORKSPACE_MODEL value stops
-    # initialization cleanly with no side effects (signup, tool/provider setup, etc).
-    if [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "True" ]; then
-        WORKSPACE_MODEL_FILE="wikiteqcenturion.json"
-    elif [ "$CREATE_CUSTOM_WORKSPACE_MODEL" == "False" ] || [ -z "$CREATE_CUSTOM_WORKSPACE_MODEL" ]; then
-        WORKSPACE_MODEL_FILE=""
-    else
-        WORKSPACE_MODEL_FILE="$CREATE_CUSTOM_WORKSPACE_MODEL"
-    fi
-
-    if [ -n "$WORKSPACE_MODEL_FILE" ] && [ ! -f "/etc/owui-models/${WORKSPACE_MODEL_FILE}" ]; then
-        echo "[Custom entrypoint] ERROR: CREATE_CUSTOM_WORKSPACE_MODEL is set to '${CREATE_CUSTOM_WORKSPACE_MODEL}' but /etc/owui-models/${WORKSPACE_MODEL_FILE} was not found" >&2
-        exit 1
-    fi
+    # Validate every enabled workspace model up front, before any API calls,
+    # so a bad model stops initialization with no side effects. The helper
+    # exits non-zero on error, which stops the script (set -e).
+    ENABLED_MODELS=$(python3 /etc/models_import.py preflight)
 
     echo ""
     echo "[Custom entrypoint] Sign up default admin user ..."
-    SIGNUP_RESPONSE=$(curl -s -X POST "http://localhost:8080/api/v1/auths/signup" \
-      -H "Content-Type: application/json" \
-      --data-raw "{\"name\":\"$X_WEBUI_ADMIN_USER\", \"email\":\"$X_WEBUI_ADMIN_EMAIL\", \"password\":\"$X_WEBUI_ADMIN_PASS\"}")
-
-    API_KEY=$(echo "${SIGNUP_RESPONSE}" | jq -r '.token')
+    API_KEY=$(python3 /etc/models_import.py auth)
 
     echo ""
     echo "[Custom entrypoint] Received API_KEY.."
@@ -188,52 +173,20 @@ do_first_start() {
               -H "Content-Type: application/json" \
               --data-raw "{\"ui\":{\"version\":\"0.6.5\",\"models\":[\"$OPENAI_DEFAULT_MODEL\"]}}"
 
-            if [ -n "$WORKSPACE_MODEL_FILE" ]; then
+            # Workspace models first, then the core model record. The core
+            # model is hidden only after every enabled model was imported, so a
+            # failed import never leaves an instance without a usable model.
+            if [ -n "$ENABLED_MODELS" ]; then
+                echo ""
+                echo "[Custom entrypoint] Creating Workspace models"
+                API_KEY="$API_KEY" python3 /etc/models_import.py import
                 echo ""
                 echo "[Custom entrypoint] Making default model private"
-                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
-                  -H "Authorization: Bearer ${API_KEY}" \
-                  -H "Content-Type: application/json" \
-                  --data-raw "{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"$OPENAI_DEFAULT_MODEL\",\"base_model_id\":null,\"params\":{\"function_calling\":\"native\"},\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"access_control\":{\"read\":{\"group_ids\":[],\"user_ids\":[]},\"write\":{\"group_ids\":[],\"user_ids\":[]}},\"is_active\":true}"
-
-                echo ""
-                echo "[Custom entrypoint] Creating Workspace model"
-                WORKSPACE_MODEL_DATA=$(jq \
-                  --arg base_model "$OPENAI_DEFAULT_MODEL" \
-                  '.[0].base_model_id = $base_model | .[0]' \
-                  "/etc/owui-models/${WORKSPACE_MODEL_FILE}")
-
-                if [ -n "$OWUI_MODEL_PROMPT" ]; then
-                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
-                      --arg prompt "$OWUI_MODEL_PROMPT" \
-                      '.params.system = $prompt')
-                fi
-
-                if [ -n "$OWUI_MODEL_PROMPT_APPEND" ]; then
-                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
-                      --arg append "$OWUI_MODEL_PROMPT_APPEND" \
-                      '.params.system = (.params.system + "\n\n" + $append)')
-                fi
-
-                if mediawiki_tool_enabled READ && [ -n "$MEDIAWIKI_API_URL" ]; then
-                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
-                      '.meta.toolIds += ["mediawiki_read"]')
-                fi
-                if mediawiki_tool_enabled WRITE && [ -n "$MEDIAWIKI_API_URL" ]; then
-                    WORKSPACE_MODEL_DATA=$(echo "${WORKSPACE_MODEL_DATA}" | jq \
-                      '.meta.toolIds += ["mediawiki_write"]')
-                fi
-                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
-                  -H "Authorization: Bearer ${API_KEY}" \
-                  -H "Content-Type: application/json" \
-                  --data-raw "${WORKSPACE_MODEL_DATA}"
+                API_KEY="$API_KEY" python3 /etc/models_import.py core --private
             else
                 echo ""
                 echo "[Custom entrypoint] Making default model public"
-                curl -s -X POST "http://localhost:8080/api/v1/models/create" \
-                  -H "Authorization: Bearer ${API_KEY}" \
-                  -H "Content-Type: application/json" \
-                  --data-raw "{\"id\":\"$OPENAI_DEFAULT_MODEL\",\"name\":\"$OPENAI_DEFAULT_MODEL\",\"base_model_id\":null,\"params\":{\"function_calling\":\"native\"},\"meta\":{\"profile_image_url\":\"/static/favicon.png\",\"description\":null,\"suggestion_prompts\":null,\"tags\":[],\"capabilities\":{\"vision\":false,\"citations\":true}},\"access_control\":null,\"is_active\":true}"
+                API_KEY="$API_KEY" python3 /etc/models_import.py core --public
             fi
 
         fi
