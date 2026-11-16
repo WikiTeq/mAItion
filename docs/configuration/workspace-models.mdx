@@ -1,6 +1,6 @@
 ---
 title: "Workspace Models"
-description: "How mAItion installs a custom workspace model from ./models on first boot, the JSON file format, and how to add your own."
+description: "How mAItion installs workspace models from ./models on first boot, the model folder format, and how to add your own."
 keywords:
   - mAItion
   - workspace model
@@ -8,55 +8,70 @@ keywords:
   - models
 ---
 
-mAItion can install one custom **workspace model** automatically the first time the
-stack boots. This page explains the mechanism, the JSON file format, and how to add a
-model of your own.
+mAItion can install one or more custom **workspace models** automatically the first
+time the stack boots. Each model lives in its own folder under `models/`, and an
+environment variable turns it on.
 
 ## Adding a Custom Model
 
-To install your own workspace model instead of the bundled example:
-
-1. Copy an existing file under `models/`, for example `models/wikiteqcenturion.json`,
-   to a new file such as `models/my-model.json`. Keep the JSON array wrapper.
-2. Edit the fields you want to change — typically `id`, `name`, `params.system`, and
-   `meta.toolIds`. Leave `base_model_id` as-is; it gets overwritten at install time
-   regardless of what you put there.
-3. Set `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` in your `.env` file.
-4. Start the stack.
+1. Copy an existing folder under `models/`, for example `models/wikiteqcenturion/`,
+   to a new folder such as `models/my-model/`.
+2. Edit `model.json` — typically `id`, `name`, and `meta.toolIds`. Leave
+   `base_model_id` as-is; it gets overwritten at install time regardless of what you
+   put there.
+3. Write the system prompt in `system.md`.
+4. Set `MODEL_IMPORT_ENABLE_MY_MODEL=true` in your `.env` file.
+5. Start the stack.
 
 <Note>
-This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `CREATE_CUSTOM_WORKSPACE_MODEL` on an already-running instance does not install it retroactively.
+This installs only during first-start initialization — the setup that runs only once, the first time the container boots, gated on a marker file. Setting `MODEL_IMPORT_ENABLE_<NAME>` on an already-running instance does not install the model retroactively.
 </Note>
 
 ## Overview
 
-The `./models` directory is mounted read-only into the container at
-`/etc/owui-models` (see `compose.yaml`). On first boot, the entrypoint can take one
-JSON file from that directory and install it as a workspace model tied to your
-default model.
+The `./models` directory is mounted read-only into the container. Every folder in it
+is one model:
 
-The repository ships one example: `models/wikiteqcenturion.json`.
+```
+models/
+  wikiteqcenturion/
+    model.json
+    system.md
+  my-model/
+    model.json
+    system.md
+```
 
-## How It Works
+The repository ships one model: `models/wikiteqcenturion/`.
 
-The bootstrap logic lives in `helpers/entrypoint.sh` and runs only when both of these
-are true:
+### Enabling a model
+
+A model installs only when its flag is `true` or `1`. The flag name is
+`MODEL_IMPORT_ENABLE_` plus the folder name in upper case, with `.` and `-` replaced
+by `_`:
+
+| Folder | Flag |
+|---|---|
+| `wikiteqcenturion` | `MODEL_IMPORT_ENABLE_WIKITEQCENTURION` |
+| `my-model` | `MODEL_IMPORT_ENABLE_MY_MODEL` |
+
+`false`, `0`, and an unset flag skip the model. Any other value stops first-start
+initialization with an error. Folder names may use ASCII letters, digits, `.`, `_`
+and `-`. Two folders that map to the same flag also stop initialization with an error.
+
+If an enabled model has a problem — a missing or empty `system.md`, a `model.json`
+that is not valid, or an `id` that two models share — the container exits with an
+error before it changes anything.
+
+### Requirements
+
+Model installation runs only when both of these are true:
 
 - `ENABLE_OPENAI_API=True`
 - `OPENAI_DEFAULT_MODEL` is set to a non-empty model ID
 
-### Selecting a model file
-
-`CREATE_CUSTOM_WORKSPACE_MODEL` controls which file installs, if any:
-
-- `True` installs the bundled `wikiteqcenturion.json`.
-- Any other non-empty value is treated as a filename under `models/` — for example
-  `CREATE_CUSTOM_WORKSPACE_MODEL=my-model.json` installs `models/my-model.json`.
-- `False` or unset installs no custom model.
-
-The entrypoint validates the selected file exists **before** doing anything else —
-including before it signs up the admin user or configures any provider. If the file is
-missing, the container exits immediately with an error and no side effects.
+If a model is enabled and either is missing, first-start initialization stops with an
+error.
 
 ### What happens to the default model
 
@@ -64,51 +79,47 @@ missing, the container exits immediately with an error and no side effects.
 registered with your provider configuration. Setting it alone does not create a
 workspace model.
 
-Whether a workspace model gets created from it, and how visible that model is, depends
-on `CREATE_CUSTOM_WORKSPACE_MODEL`:
+- If no model is enabled, mAItion makes `OPENAI_DEFAULT_MODEL` **public**.
+- If one or more models are enabled, mAItion makes `OPENAI_DEFAULT_MODEL` **private**
+  and installs each enabled model as its own workspace model, with its
+  `base_model_id` pointed at `OPENAI_DEFAULT_MODEL`.
 
-- If no custom model file is selected, the entrypoint creates a workspace model for
-  `OPENAI_DEFAULT_MODEL` and makes it **public**.
-- If a custom model file **is** selected, the entrypoint instead creates the
-  `OPENAI_DEFAULT_MODEL` workspace model as **private**, and adds the custom model
-  file as its own, **public** workspace model — with its `base_model_id` pointed at
-  `OPENAI_DEFAULT_MODEL` (see below).
+### System prompt
 
-Both cases require first-start bootstrap to run, `ENABLE_OPENAI_API=True`, and
-`OPENAI_DEFAULT_MODEL` to be set — this is not unconditional behavior.
+The system prompt of each model is the content of its `system.md`. The file is
+required and must not be empty. Two optional variables change the prompt of **every**
+enabled model:
 
-### Install-time overrides
+- `OWUI_MODEL_PROMPT`, if not empty, replaces the prompt from `system.md`.
+- `OWUI_MODEL_PROMPT_APPEND`, if not empty, is added to the end of the prompt (the
+  one from `system.md`, or the replaced one), separated by a blank line.
 
-A few environment variables modify the installed model before it's created:
+Changing these later does not update a model that already exists.
 
-- The entrypoint always overwrites the file's `base_model_id` with
-  `OPENAI_DEFAULT_MODEL`. Whatever value the file itself has for
-  `base_model_id` is ignored.
-- `OWUI_MODEL_PROMPT`, if not empty, fully replaces the file's `params.system` prompt.
-- `OWUI_MODEL_PROMPT_APPEND`, if not empty, appends to the system prompt (bundled or
-  already replaced by `OWUI_MODEL_PROMPT`), separated by a blank line.
+### Migrating from `CREATE_CUSTOM_WORKSPACE_MODEL`
 
-These overrides apply only when the model is installed. Changing them later does not
-update a model that already exists.
+`CREATE_CUSTOM_WORKSPACE_MODEL=True` still installs `wikiteqcenturion`, but it is
+deprecated and prints a warning. If `MODEL_IMPORT_ENABLE_WIKITEQCENTURION` is also set,
+that flag wins. A file name in `CREATE_CUSTOM_WORKSPACE_MODEL` is no longer supported
+and stops initialization with an error. To migrate a custom file, move it to
+`models/<name>/model.json`, put its `params.system` text in `models/<name>/system.md`,
+and set `MODEL_IMPORT_ENABLE_<NAME>=true`.
 
-## JSON File Format
+## model.json Format
 
-A custom model file must be a **JSON array**, with the model definition as the array's
-first item — the entrypoint reads and installs only `.[0]` of the file. A file shaped
-as a bare JSON object instead of an array will not install correctly.
-
-The following table documents the fields present in the bundled
-`models/wikiteqcenturion.json` example:
+`model.json` must be a single **JSON object**. Do not wrap it in an array.
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `id` | Yes | — | Unique model identifier used internally. |
+| `id` | Yes | — | Unique model identifier. It must differ from `OPENAI_DEFAULT_MODEL` and from the `id` of every other enabled model. |
 | `user_id` | No | `""` | Owning user ID. Leave blank; not needed for bootstrap-installed models. |
-| `base_model_id` | No | — | Ignored at install time — the entrypoint always overwrites this with `OPENAI_DEFAULT_MODEL`. |
+| `base_model_id` | No | — | Ignored at install time — always replaced with `OPENAI_DEFAULT_MODEL`. |
 | `name` | Yes | — | Display name shown in the model picker. |
+| `params` | Yes | — | Object with model parameters. |
 | `params.function_calling` | **Yes** | — | Must be exactly `"native"`. |
-| `params.system` | No | — | System prompt. Replaced by `OWUI_MODEL_PROMPT` or extended by `OWUI_MODEL_PROMPT_APPEND` if not empty. |
+| `params.system` | No | — | Ignored. Write the system prompt in `system.md`. |
 | `params.reasoning_effort` | No | — | Reasoning effort hint for models that support it, e.g. `"medium"`. |
+| `meta` | Yes | — | Object with model metadata. |
 | `meta.profile_image_url` | No | — | Avatar image for the model. Use a base64 data URI for portability rather than a static path. |
 | `meta.description` | No | `null` | Short description shown in the model picker. |
 | `meta.capabilities.vision` | No | `false` | Whether the model accepts image input. |
@@ -116,9 +127,9 @@ The following table documents the fields present in the bundled
 | `meta.capabilities.citations` | No | `true` | Whether source citations are shown. |
 | `meta.suggestion_prompts` | No | `null` | Optional list of starter prompt suggestions. |
 | `meta.tags` | No | `[]` | Optional tag list for the model. |
-| `meta.toolIds` | No | `[]` | Tool IDs attached to the model. Tool registration during bootstrap may automatically add an ID to this list — check the tool's own docs. |
-| `access_control` | No | `null` | Access-control object. `null` means default visibility rules apply. |
-| `is_active` | No | `true` | Whether the model is active/selectable. |
+| `meta.toolIds` | No | `[]` | List of tool IDs attached to the model. Tool registration during bootstrap may automatically add an ID to this list — check the tool's own docs. |
+| `access_control` | No | `null` | `null` or an access-control object. `null` means the model is public. |
+| `is_active` | No | `true` | `true` or `false`. Whether the model is active/selectable. |
 | `created_at` | No | — | Timestamp field. Not meaningful to set by hand. |
 | `updated_at` | No | — | Timestamp field. Not meaningful to set by hand. |
 | `user` | No | `{}` | Metadata about the owning user. Not meaningful to set by hand. |
@@ -131,8 +142,9 @@ These environment variables control workspace model bootstrapping.
 
 | Field | Required | Default | Description |
 |---|---|---|---|
-| `ENABLE_OPENAI_API` | Yes, for this feature | `False` | Must be exactly `True` for workspace model bootstrap to run at all. |
-| `OPENAI_DEFAULT_MODEL` | Yes, for this feature | — | Must be a non-empty model ID. Used as `base_model_id` for any installed custom model. |
-| `CREATE_CUSTOM_WORKSPACE_MODEL` | No | unset | `True` installs the bundled `wikiteqcenturion.json`. A filename installs that file from `models/` instead. `False`/unset installs no custom model. |
-| `OWUI_MODEL_PROMPT` | No | unset | Fully replaces the installed model's system prompt when not empty. |
-| `OWUI_MODEL_PROMPT_APPEND` | No | unset | Appends to the installed model's system prompt (bundled or replaced) when not empty, separated by a blank line. |
+| `ENABLE_OPENAI_API` | Yes, for this feature | `False` | Must be exactly `True` to install models. |
+| `OPENAI_DEFAULT_MODEL` | Yes, for this feature | — | Must be a non-empty model ID. Used as `base_model_id` for every installed model. |
+| `MODEL_IMPORT_ENABLE_<NAME>` | No | unset | `true` or `1` installs the model in `models/<name>/`. `false`, `0` and unset skip it. |
+| `CREATE_CUSTOM_WORKSPACE_MODEL` | No | unset | Deprecated. `True` enables `wikiteqcenturion` when its new flag is unset. |
+| `OWUI_MODEL_PROMPT` | No | unset | Replaces the system prompt of every enabled model when not empty. |
+| `OWUI_MODEL_PROMPT_APPEND` | No | unset | Appends to the system prompt of every enabled model when not empty, separated by a blank line. |
