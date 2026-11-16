@@ -13,7 +13,7 @@ Commands (all read their settings from the environment):
              API_KEY. Pass --public or --private.
 
 Layout: <MODELS_DIR>/<name>/model.json and <MODELS_DIR>/<name>/system.md.
-A model is enabled by MODEL_IMPORT_ENABLE_<NAME> = true or 1, where <NAME> is
+A model is enabled by MODEL_IMPORT_ENABLE_<NAME> = True or 1, where <NAME> is
 the directory name in upper case with "." and "-" changed to "_".
 
 This module only creates models. It never updates or removes existing ones.
@@ -69,7 +69,7 @@ def parse_flag(var, value):
         return True
     if lowered in FALSE_VALUES:
         return False
-    raise ModelsImportError(f"{var} must be true, 1, false or 0 (got '{value}')")
+    raise ModelsImportError(f"{var} must be True, 1, False or 0 (got '{value}')")
 
 
 def discover(root):
@@ -108,7 +108,7 @@ def enabled_names(root, env):
     if legacy_state:
         log(
             f"{LEGACY_VAR} is deprecated. Use "
-            f"{flag_name(LEGACY_MODEL)}=true instead."
+            f"{flag_name(LEGACY_MODEL)}=True instead."
         )
         if LEGACY_MODEL not in flags:
             raise ModelsImportError(
@@ -129,7 +129,7 @@ def parse_legacy(value):
     raise ModelsImportError(
         f"{LEGACY_VAR}='{value}' is no longer supported. Put the model in "
         f"models/<name>/model.json with a system.md file and set "
-        f"{FLAG_PREFIX}<NAME>=true"
+        f"{FLAG_PREFIX}<NAME>=True"
     )
 
 

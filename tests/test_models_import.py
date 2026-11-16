@@ -84,9 +84,11 @@ class DiscoveryTests(ModelsDirCase):
         self.add_model("alpha")
         for value, expected in [
             ("true", ["alpha"]),
+            ("True", ["alpha"]),
             ("TRUE", ["alpha"]),
             ("1", ["alpha"]),
             ("false", []),
+            ("False", []),
             ("0", []),
             ("", []),
         ]:

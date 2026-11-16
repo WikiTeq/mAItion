@@ -20,7 +20,7 @@ environment variable turns it on.
    `base_model_id` as-is; it gets overwritten at install time regardless of what you
    put there.
 3. Write the system prompt in `system.md`.
-4. Set `MODEL_IMPORT_ENABLE_MY_MODEL=true` in your `.env` file.
+4. Set `MODEL_IMPORT_ENABLE_MY_MODEL=True` in your `.env` file.
 5. Start the stack.
 
 <Note>
@@ -46,7 +46,7 @@ The repository ships one model: `models/wikiteqcenturion/`.
 
 ### Enabling a model
 
-A model installs only when its flag is `true` or `1`. The flag name is
+A model installs only when its flag is `True` or `1`. The flag name is
 `MODEL_IMPORT_ENABLE_` plus the folder name in upper case, with `.` and `-` replaced
 by `_`:
 
@@ -55,7 +55,7 @@ by `_`:
 | `wikiteqcenturion` | `MODEL_IMPORT_ENABLE_WIKITEQCENTURION` |
 | `my-model` | `MODEL_IMPORT_ENABLE_MY_MODEL` |
 
-`false`, `0`, and an unset flag skip the model. Any other value stops first-start
+`False`, `0`, and an unset flag skip the model. Any other value stops first-start
 initialization with an error. Folder names may use ASCII letters, digits, `.`, `_`
 and `-`. Two folders that map to the same flag also stop initialization with an error.
 
@@ -103,7 +103,7 @@ deprecated and prints a warning. If `MODEL_IMPORT_ENABLE_WIKITEQCENTURION` is al
 that flag wins. A file name in `CREATE_CUSTOM_WORKSPACE_MODEL` is no longer supported
 and stops initialization with an error. To migrate a custom file, move it to
 `models/<name>/model.json`, put its `params.system` text in `models/<name>/system.md`,
-and set `MODEL_IMPORT_ENABLE_<NAME>=true`.
+and set `MODEL_IMPORT_ENABLE_<NAME>=True`.
 
 ## model.json Format
 
@@ -144,7 +144,7 @@ These environment variables control workspace model bootstrapping.
 |---|---|---|---|
 | `ENABLE_OPENAI_API` | Yes, for this feature | `False` | Must be exactly `True` to install models. |
 | `OPENAI_DEFAULT_MODEL` | Yes, for this feature | — | Must be a non-empty model ID. Used as `base_model_id` for every installed model. |
-| `MODEL_IMPORT_ENABLE_<NAME>` | No | unset | `true` or `1` installs the model in `models/<name>/`. `false`, `0` and unset skip it. |
+| `MODEL_IMPORT_ENABLE_<NAME>` | No | unset | `True` or `1` installs the model in `models/<name>/`. `False`, `0` and unset skip it. |
 | `CREATE_CUSTOM_WORKSPACE_MODEL` | No | unset | Deprecated. `True` enables `wikiteqcenturion` when its new flag is unset. |
 | `OWUI_MODEL_PROMPT` | No | unset | Replaces the system prompt of every enabled model when not empty. |
 | `OWUI_MODEL_PROMPT_APPEND` | No | unset | Appends to the system prompt of every enabled model when not empty, separated by a blank line. |
