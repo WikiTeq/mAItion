@@ -1,0 +1,100 @@
+---
+title: "Discord"
+description: "Configure the mAItion Discord connector to ingest server messages and thread messages into the knowledge base."
+keywords:
+  - mAItion
+  - Discord connector
+  - Discord ingestion
+  - connectors
+  - ingestion
+---
+
+Use the Discord Connector to ingest messages from [Discord](https://discord.com) servers and channels into the mAItion knowledge base.
+
+## What It Does
+
+- reads messages from the selected servers (guilds) or channels with a bot token
+- indexes each message, including each message inside a thread, as a separate document in the vector store
+- includes the active and archived threads of every selected channel, and the posts of forum and media channels
+- reads the full history of each channel and thread, so edited messages are updated on the next run
+- stores the author, server, channel, thread, timestamps and a link to the message as metadata on each document
+- resolves user mentions to names and keeps unknown mentions as raw IDs
+- lists attachments by file name and embeds by title and description. Files are not downloaded
+- skips system messages such as joins and pins
+- waits for Discord rate limits and retries failed requests a bounded number of times
+- runs ingestion on configurable schedules
+
+## Selecting What To Ingest
+
+- `guild_ids` only: every text, announcement, forum and media channel of those servers.
+- `channel_ids` only: only those channels or threads. A thread ID reads that thread only.
+- both: only the listed channels, which must belong to the listed servers. A channel from another server fails the run.
+- at least one of the two is required. Voice, stage and category IDs are rejected.
+
+Channels or archived threads that the bot cannot read are skipped with a warning in the logs. A channel listed in `channel_ids` that the bot cannot read fails the run.
+
+<Note>
+  Every run reads the full history again. This keeps edits in sync but makes large servers slow to read.
+  Deleted messages and channels that the bot can no longer read are not removed from the knowledge base.
+  Discord rate limits are shared by all workers that use the same bot token. A worker waits and retries when Discord asks for it, and fails the run if the limit does not clear.
+</Note>
+
+## Authentication
+
+The connector authenticates with a Discord bot token.
+
+1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications) and add a bot.
+2. Under **Bot > Privileged Gateway Intents**, enable **Message Content Intent**. Without it Discord empties the message text, attachments and embeds of other users' messages (messages that mention the bot, direct messages and the bot's own messages are exempt). Those messages are skipped. The logs show a warning when a channel has at least 5 such empty messages and they are at least as many as the messages with content. A smaller number of empty messages is skipped without a warning.
+3. Invite the bot to the server with the `bot` scope.
+4. Give the bot these permissions on every channel to ingest: **View Channel** and **Read Message History**. Do not grant Administrator.
+5. Optional: give the bot **Manage Threads** to read archived private threads that it has not joined. Without it, only the private threads that the bot has joined are read.
+
+The bot does not join threads, unarchive threads or change permissions.
+
+The source selection limits what mAItion ingests. It does not give per-user Discord access control: everyone who can query the knowledge base can see answers based on the ingested messages.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `DISCORD1_BOT_TOKEN`: Discord bot token
+- `DISCORD1_GUILD_IDS`: comma-separated server IDs
+- `DISCORD1_CHANNEL_IDS`: comma-separated channel or thread IDs (optional)
+- `DISCORD1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "discord"
+    name: "discord1"
+    enabled: true  # optional, default: true
+    config:
+      bot_token: "${DISCORD1_BOT_TOKEN}"
+      guild_ids: "${DISCORD1_GUILD_IDS}"             # comma-separated server IDs
+      # channel_ids: "${DISCORD1_CHANNEL_IDS}"       # optional: only these channels or threads
+      schedules: "${DISCORD1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+DISCORD1_BOT_TOKEN=your-discord-bot-token
+DISCORD1_GUILD_IDS=1234567890123456789
+DISCORD1_CHANNEL_IDS=2345678901234567890,3456789012345678901
+DISCORD1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `bot_token` | yes | — | Discord bot token |
+| `guild_ids` | one of `guild_ids`/`channel_ids` | — | Comma-separated server IDs. Alone, reads every text, announcement, forum and media channel of these servers |
+| `channel_ids` | one of `guild_ids`/`channel_ids` | — | Comma-separated channel or thread IDs. With `guild_ids`, the channels must belong to those servers |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple Discord Sources
+
+Add more `sources` entries (`discord2`, `discord3`, etc) with separate env vars per source.
