@@ -34,7 +34,7 @@ Use the Asana Connector to ingest tasks from [Asana](https://asana.com/) into th
 - Subtasks are not discovered recursively. A subtask that was added directly to a project can appear in its task list and is then ingested like any other task.
 - Notes and comments are plain text.
 - The tracker key of a task includes a hash of the source `name`. Renaming a source in `config.yaml` ingests its tasks again.
-- Each run lists all tasks but loads comments only for tasks that changed. A task is ingested again when its `modified_at` (Asana updates it when a comment is added) or its metadata changes, or when `load_comments` or `max_comments` changes.
+- Each run lists all tasks and loads the comments of each task, so an edited comment is found. This makes one extra Asana request for each task, unless `load_comments` is `false`. A task is ingested again when its `modified_at`, its metadata or its comment text changes, or when `load_comments` or `max_comments` changes.
 
 ## Authentication
 
@@ -112,6 +112,9 @@ Each task is stored with these metadata fields. Empty values are omitted.
 | `task_title` | Task name |
 | `url` | Link to the task in Asana |
 | `completed` | Whether the task is completed |
+| `created_at` | Creation time of the task |
+| `due_on` | Due date of the task |
+| `tags` | Tag names |
 | `workspace_id` | Configured workspace GID |
 | `assignee` | Assignee name |
 | `followers` | Follower names |
