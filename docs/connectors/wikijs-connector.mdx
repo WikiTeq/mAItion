@@ -8,13 +8,13 @@ keywords:
   - connectors
 ---
 
-Use the Wiki.js Connector to ingest pages from a [Wiki.js](https://js.wiki) v2 instance into the mAItion knowledge base.
+Use the Wiki.js Connector to ingest pages from a [Wiki.js](https://js.wiki) v2 instance into the mAItion knowledge base. Wiki.js v3 is not supported, because it replaces the GraphQL API with a REST API.
 
 ## What It Does
 
 - fetches pages from a Wiki.js instance through its GraphQL API
-- handles both Markdown and HTML pages, and converts HTML to Markdown
-- stores the page ID, path, locale, title, URL, updated date, tags, and published status as metadata
+- handles Markdown, HTML and asciidoc pages, and converts HTML and asciidoc to Markdown
+- stores the page ID, path, locale, title, URL, created date, updated date, tags, and published status as metadata
 - can limit ingestion to specific path prefixes, a tag, or a locale
 - skips unpublished pages unless `include_unpublished` is enabled
 - runs ingestion on configurable schedules
@@ -30,7 +30,7 @@ The connector authenticates with a Wiki.js API token. Generate one in the Wiki.j
 The group of the API key also needs a page rule that grants `read:pages` and `manage:pages` (or `delete:pages`) on the pages to ingest. To ingest all pages, use the match type **Path Starts With** with an empty path. Without a matching rule, Wiki.js lists no pages or rejects every page fetch.
 
 <Note>
-  A token with only `read:pages` and `read:source` can list pages, but Wiki.js rejects every page fetch with a `PageViewForbidden` error, so no page is ingested. Without the `read:source` scope, Wiki.js returns a `Forbidden` error for the page content.
+  Wiki.js checks permissions on `pages.single` in a way that requires `manage:pages` (or `delete:pages`) in addition to `read:pages` and `read:source`. See [requarks/wiki#8065](https://github.com/requarks/wiki/discussions/8065) for details.
 </Note>
 
 ## Required Environment Variables
