@@ -840,6 +840,11 @@ Supports two modes:
 - **File mode** (`sharepoint_type: file`, default): load files from a drive/folder
 - **Page mode** (`sharepoint_type: page`): load SharePoint site pages
 
+Set `transcribe_videos: true` to transcribe video files in file mode and the SharePoint-hosted videos on a page in page
+mode. The transcript of a page video is added after the page text. Videos larger than `max_video_mb` are skipped.
+Transcription runs on the CPU, so it is slow for long videos. Set `video_asr_model` (default `WHISPER_TINY`) to use a
+different Docling Whisper model. Turning `transcribe_videos` on or off ingests every page again on the next run.
+
 ```yaml
 # config.yaml
 
@@ -862,6 +867,8 @@ sources:
       sharepoint_folder_path: "Documents/Reports"
       sharepoint_type: "file"                   # "file" (default) or "page"
       recursive: true
+      #transcribe_videos: false                 # optional, default false, transcribe videos (.mp4, .avi, .mov, .mkv, .webm)
+      #max_video_mb: 500                        # optional, default 500, largest video in MiB
       schedules: "${SHAREPOINT1_SCHEDULES}"
 
   # Loading SharePoint site pages
