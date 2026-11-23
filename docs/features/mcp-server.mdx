@@ -157,17 +157,21 @@ The optional `mcp-owui` service gives MCP clients (Claude Desktop, Codex CLI and
 
 ### Enable the Bridge
 
-Set `COMPOSE_FILE` in `.env` and start the stack:
+Add `compose.mcp.owui.yaml` to the end of your `COMPOSE_FILE` value in `.env`. Keep the files you already use, for example `compose.caddy.yaml`:
 
 ```bash
 COMPOSE_FILE=compose.yaml:compose.mcp.owui.yaml
 ```
 
+A `COMPOSE_FILE` value exported in your shell takes precedence over `.env`. Update or unset the exported value before you start the stack, or the `mcp-owui` service is not included. Then start the stack:
+
 ```bash
 docker compose up -d
 ```
 
-The endpoint is `http://<host>:8001/mcp`. Set `MCP_PORT` to use a different host port.
+The bridge listens on host port `8001`. Set `MCP_PORT` to use a different host port. For local testing, the endpoint is `http://localhost:8001/mcp`.
+
+Remote clients must use HTTPS through a reverse proxy that terminates TLS. The Caddy overlay routes `/mcp` to the bridge. Do not expose the plain HTTP port to remote clients.
 
 ### Authentication
 
@@ -176,9 +180,9 @@ The bridge has no shared API key. Each client sends its own mAItion API key, and
 Generate a key in **User → Settings → Account → API Keys**, then send it in one of two ways:
 
 - An `Authorization: Bearer <api-key>` header.
-- An `apiKey` query parameter on the URL, for clients that cannot set headers: `http://<host>:8001/mcp?apiKey=<api-key>`.
+- An `apiKey` query parameter on the URL, for clients that cannot set headers: `https://<host>/mcp?apiKey=<api-key>`.
 
-The header is checked first.
+The header is checked first. Use the Bearer header when your client supports it. Servers and proxies can record query parameters in access logs, also over HTTPS. If you use the `apiKey` parameter, redact query strings in the logs of every proxy and server on the path.
 
 ### Bridge Configuration Reference
 
@@ -194,4 +198,4 @@ Set these variables in `.env`.
 | `MCP_OPENWEBUI_INSTRUCTIONS` | no | `""` | Custom instructions sent to MCP clients |
 | `MCP_OWUI_TIMEOUT_MS` | no | `120000` | Request timeout in milliseconds |
 | `MCP_OPENWEBUI_CA_BUNDLE` | no | `""` | Path to a CA file, as seen inside the `mcp-owui` container |
-| `MCP_OPENWEBUI_SSL_VERIFY` | no | `true` | Verify TLS certificates |
+| `MCP_OPENWEBUI_SSL_VERIFY` | no | `true` | Set to `false` to skip certificate verification for JSON requests to mAItion. Tool-enabled `ask` calls still verify certificates and can fail with an untrusted certificate. Use `MCP_OPENWEBUI_CA_BUNDLE` instead |
