@@ -150,3 +150,48 @@ Expected: a JSON response listing `retrieve_chunks` and `rephrase_chunks`.
 | `API_KEY` | no | `""` | Bearer token to protect the REST API (`/api/` endpoints). Recommended when exposing port 8000 outside Docker |
 
 See [Environment Variables (Backend)](/configuration/backend-env) for the full `.env.rag` reference.
+
+## mAItion Chat MCP Bridge
+
+The optional `mcp-owui` service gives MCP clients (Claude Desktop, Codex CLI and others) access to mAItion chat over Streamable HTTP. It exposes two tools: `ask` and `list_models`.
+
+### Enable the Bridge
+
+Set `COMPOSE_FILE` in `.env` and start the stack:
+
+```bash
+COMPOSE_FILE=compose.yaml:compose.mcp.owui.yaml
+```
+
+```bash
+docker compose up -d
+```
+
+The endpoint is `http://<host>:8001/mcp`. Set `MCP_PORT` to use a different host port.
+
+### Authentication
+
+The bridge has no shared API key. Each client sends its own mAItion API key, and requests run as that user. A request without a key fails.
+
+Generate a key in **User → Settings → Account → API Keys**, then send it in one of two ways:
+
+- An `Authorization: Bearer <api-key>` header.
+- An `apiKey` query parameter on the URL, for clients that cannot set headers: `http://<host>:8001/mcp?apiKey=<api-key>`.
+
+The header is checked first.
+
+### Bridge Configuration Reference
+
+Set these variables in `.env`.
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `MCP_PORT` | no | `8001` | Host port for the bridge |
+| `MCP_OPENWEBUI_BASE_URL` | no | `http://openwebui:8080` | Address of the mAItion service |
+| `MCP_OPENWEBUI_DEFAULT_MODEL` | no | `""` | Model used when the client does not pick one |
+| `MCP_OPENWEBUI_ENFORCE_DEFAULT_MODEL` | no | `false` | Always use the default model |
+| `MCP_OPENWEBUI_ASK_DESCRIPTION` | no | `""` | Custom description of the `ask` tool |
+| `MCP_OPENWEBUI_INSTRUCTIONS` | no | `""` | Custom instructions sent to MCP clients |
+| `MCP_OWUI_TIMEOUT_MS` | no | `120000` | Request timeout in milliseconds |
+| `MCP_OPENWEBUI_CA_BUNDLE` | no | `""` | Path to a CA file, as seen inside the `mcp-owui` container |
+| `MCP_OPENWEBUI_SSL_VERIFY` | no | `true` | Verify TLS certificates |
