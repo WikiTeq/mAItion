@@ -1,0 +1,81 @@
+---
+title: "ClickUp"
+description: "Configure the mAItion ClickUp connector to ingest tasks and comments from ClickUp."
+keywords:
+  - mAItion
+  - ClickUp connector
+  - connectors
+  - ingestion
+---
+
+Use the ClickUp Connector to ingest tasks from [ClickUp](https://clickup.com/) into the mAItion knowledge base.
+
+## What It Does
+
+- reads tasks from a ClickUp Workspace, or only from selected spaces, folders or lists
+- ingests closed tasks as well as open tasks
+- converts task descriptions to Markdown and adds task metadata (status, list, folder, space, tags, priority, dates, creator and assignees)
+- optionally ingests top-level task comments, and re-ingests a task when a comment is added
+- picks up edited or deleted comments and comment replies only when the task changes for another reason, because ClickUp does not update the task's modification time for them
+- keeps requests under the ClickUp rate limit and retries failed or rate-limited requests
+- runs ingestion on configurable schedules
+
+## Authentication
+
+The connector uses a ClickUp personal API token. To generate one, open ClickUp, click your avatar, select **Settings**, click **Apps**, and click **Generate** under **API Token**. Personal tokens start with `pk_`.
+
+The token has the same access as the ClickUp user who generated it, and the connector can read every task that this user can access. `connector_type` and `connector_ids` limit what the connector ingests, but they do not limit the token. To restrict access, generate the token for a ClickUp user that can only see the intended spaces.
+
+The `team_id` is the ID of the ClickUp Workspace (ClickUp API v2 calls a Workspace a "team"). The ClickUp API endpoint `GET https://api.clickup.com/api/v2/team` returns the Workspaces that the token can access, with their IDs.
+
+## Required Environment Variables
+
+Set these in `.env.rag`:
+
+- `CLICKUP1_API_TOKEN`: ClickUp personal API token
+- `CLICKUP1_TEAM_ID`: ClickUp Workspace ID
+- `CLICKUP1_CONNECTOR_IDS`: optional, comma-separated space, folder or list IDs; required when `connector_type` is not `workspace`
+- `CLICKUP1_SCHEDULES`: ingestion interval in seconds (default is `3600`)
+
+## `config.yaml` Example
+
+```yaml
+sources:
+  - type: "clickup"
+    name: "clickup1"
+    enabled: true  # optional, default: true
+    config:
+      api_token: "${CLICKUP1_API_TOKEN}"
+      team_id: "${CLICKUP1_TEAM_ID}"
+      #connector_type: "space"                      # optional: workspace (default), space, folder or list
+      #connector_ids: "${CLICKUP1_CONNECTOR_IDS}"   # comma-separated; required unless connector_type is workspace
+      retrieve_task_comments: true                  # optional, default true
+      schedules: "${CLICKUP1_SCHEDULES}"
+```
+
+## `.env.rag` Example
+
+```dotenv
+CLICKUP1_API_TOKEN=your-clickup-api-token
+CLICKUP1_TEAM_ID=your-workspace-id
+CLICKUP1_CONNECTOR_IDS=spaceid1,spaceid2
+CLICKUP1_SCHEDULES=3600
+```
+
+## Configuration Reference
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `enabled` | no | `true` | Set to `false` to skip this source entirely |
+| `api_token` | yes | — | ClickUp personal API token |
+| `team_id` | yes | — | ClickUp Workspace ID |
+| `connector_type` | no | `workspace` | Scope of the ingestion: `workspace`, `space`, `folder` or `list` |
+| `connector_ids` | when `connector_type` is not `workspace` | — | Comma-separated IDs of the spaces, folders or lists to ingest |
+| `retrieve_task_comments` | no | `true` | Whether to ingest task comments along with the task |
+| `max_retries` | no | `3` | Number of retries for failed or rate-limited requests |
+| `max_requests_per_minute` | no | `100` | Request limit per minute. ClickUp allows 100 requests per minute per token on the Free, Unlimited and Business plans, and more on higher plans |
+| `schedules` | no | `3600` | Ingestion interval in seconds |
+
+## Multiple ClickUp Sources
+
+Add more `sources` entries (`clickup2`, `clickup3`, etc) with separate env vars per source.

@@ -382,6 +382,16 @@ sources:
   #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
   #    schedules: "${DB_MYSQL1_SCHEDULES}"
 
+  #- type: "clickup"
+  #  name: "clickup1"
+  #  config:
+  #    api_token: "${CLICKUP1_API_TOKEN}"
+  #    team_id: "${CLICKUP1_TEAM_ID}"
+  #    #connector_type: "space"                    # optional: workspace (default), space, folder or list
+  #    #connector_ids: "${CLICKUP1_CONNECTOR_IDS}" # comma-separated; required unless connector_type is workspace
+  #    retrieve_task_comments: true                # optional, default true
+  #    schedules: "${CLICKUP1_SCHEDULES}"
+
 embedding:
   # can be `local` or `openrouter`/`openai`
   provider: local

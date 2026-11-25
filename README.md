@@ -54,6 +54,7 @@ interact with your knowledge with ease!
 * GitLab (repository files and issues, supports GitLab.com and self-hosted)
 * Trello (cards from configured boards or all boards, with optional comment ingestion)
 * Database (MySQL + PostgreSQL via SQL SELECT query)
+* ClickUp (tasks and comments from a Workspace, or from selected spaces, folders or lists)
 
 ## 🌐 Extra connectors
 
@@ -1071,6 +1072,37 @@ DB_POSTGRES1_SCHEDULES=3600
 # MySQL
 DB_MYSQL1_CONNECTION_STRING=mysql+pymysql://user:pass@db-host/mydb
 DB_MYSQL1_SCHEDULES=3600
+```
+
+### ClickUp Connector
+
+The ClickUp connector ingests tasks from a ClickUp Workspace through the ClickUp API v2. It ingests the whole
+Workspace by default. Set `connector_type` (`space`, `folder` or `list`) and `connector_ids` to limit it.
+Task descriptions are ingested as Markdown, and task comments are included unless `retrieve_task_comments` is
+`false`. Generate a personal API token in ClickUp under Settings, Apps, API Token.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "clickup"
+    name: "clickup1"
+    config:
+      api_token: "${CLICKUP1_API_TOKEN}"
+      team_id: "${CLICKUP1_TEAM_ID}"
+      #connector_type: "space"                      # optional: workspace (default), space, folder or list
+      #connector_ids: "${CLICKUP1_CONNECTOR_IDS}"   # comma-separated; required unless connector_type is workspace
+      retrieve_task_comments: true                  # optional, default true
+      schedules: "${CLICKUP1_SCHEDULES}"
+```
+
+```dotenv
+# .env.rag
+
+CLICKUP1_API_TOKEN=your-clickup-api-token
+CLICKUP1_TEAM_ID=your-workspace-id
+#CLICKUP1_CONNECTOR_IDS=spaceid1,spaceid2
+CLICKUP1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
