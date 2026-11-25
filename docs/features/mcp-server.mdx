@@ -11,12 +11,16 @@ keywords:
 
 The mAItion MCP server exposes the retrieval API as a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint. This lets any MCP-compatible system — agents, orchestration frameworks, or custom integrations — call mAItion's retrieval tools programmatically.
 
+<Note>
+  This page covers two separate MCP servers. The retrieval endpoint runs on the API service and uses one shared key, `MCP_API_KEY`. The chat bridge runs as its own `mcp-owui` service and has no shared key, because each client sends its own mAItion API key.
+</Note>
+
 ## Prerequisites
 
 - mAItion is running (`docker compose up -d`) and healthy
 - At least one connector has been configured and has indexed data
 
-## Enable the MCP Server
+## Enable the Retrieval MCP Server
 
 Add the following to your `.env.rag` file:
 
