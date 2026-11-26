@@ -55,6 +55,7 @@ interact with your knowledge with ease!
 * Trello (cards from configured boards or all boards, with optional comment ingestion)
 * Database (MySQL + PostgreSQL via SQL SELECT query)
 * Fireflies
+* Wiki.js
 
 ## 🌐 Extra connectors
 
@@ -1104,6 +1105,50 @@ sources:
 
 FIREFLIES_API_KEY=your-fireflies-api-key
 FIREFLIES_SCHEDULES=3600
+```
+
+### Wiki.js Connector
+
+The Wiki.js connector ingests pages from a [Wiki.js](https://js.wiki) v2 instance via the GraphQL API.
+The `markdown`, `html` and `asciidoc` content types are handled; HTML and the rendered HTML of asciidoc pages
+are automatically converted to Markdown. Metadata collected per page includes: page_id, path, locale, title,
+url, created_at, updated_at, tags, is_published.
+
+> **Only Wiki.js v2 is supported.** Wiki.js v3 replaces the GraphQL API with a REST API, so this connector
+> does not work with v3.
+
+The API token requires three permission scopes:
+
+- `read:pages` — required for page discovery and metadata
+- `manage:pages` (or `delete:pages`) — required by the Wiki.js `pages.single` call, see [requarks/wiki#8065](https://github.com/requarks/wiki/discussions/8065)
+- `read:source` — required for page content
+
+The group of the API key also needs a page rule that grants `read:pages` and `manage:pages` (or `delete:pages`) on the pages to ingest. To ingest all pages, use the match type **Path Starts With** with an empty path. Without a matching rule, Wiki.js lists no pages or rejects every page fetch.
+
+```yaml
+# config.yaml
+
+sources:
+  - type: "wikijs"
+    name: "wikijs1"
+    config:
+      base_url: "${WIKIJS1_BASE_URL}"
+      api_token: "${WIKIJS1_API_TOKEN}"   # needs read:pages, read:source and manage:pages (or delete:pages) scopes
+      schedules: "${WIKIJS1_SCHEDULES}"
+      #paths:                             # optional; ingest only pages under these path prefixes
+      #  - "/engineering"
+      #  - "/product"
+      #tags: "public"                     # optional; server-side tag filter (comma-separated)
+      #locale: "en"                       # optional; server-side locale filter
+      #include_unpublished: false         # optional, default false
+```
+
+```dotenv
+# .env.rag
+
+WIKIJS1_BASE_URL=https://wiki.example.com
+WIKIJS1_API_TOKEN=your-api-token
+WIKIJS1_SCHEDULES=3600
 ```
 
 ## Single Sign-On (SSO)
