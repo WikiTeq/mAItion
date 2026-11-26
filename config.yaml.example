@@ -381,6 +381,15 @@ sources:
   #    query: "SELECT id, title, updated_at, content, author, year FROM books LIMIT 100"
   #    metadata_columns: "author,year"  # optional: extra columns stored in document metadata
   #    schedules: "${DB_MYSQL1_SCHEDULES}"
+  #- type: "asana"
+  #  name: "asana-workspace-1"
+  #  config:
+  #    asana_token: "${ASANA1_TOKEN}"
+  #    workspace_id: "${ASANA1_WORKSPACE_ID}"
+  #    #project_id: "${ASANA1_PROJECT_ID}"   # optional; omit to ingest the whole workspace
+  #    #load_comments: true                   # optional, default true
+  #    #max_comments: 10                      # optional, default 10; newest comments first
+  #    schedules: "${ASANA1_SCHEDULES}"
 
 embedding:
   # can be `local` or `openrouter`/`openai`
