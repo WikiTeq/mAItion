@@ -16,16 +16,8 @@ services:
       - open-webui:/app/backend/data
       - open-webui-model-cache:/app/backend/data/cache/embedding/models
       - open-webui-cache:/root/.cache
-      - ./tools/roat_retrieval.py:/etc/roat_retrieval.py
-      - ./tools/roat_retrieval.json:/etc/roat_retrieval.json
-      - ./tools/mediawiki_read_tool.py:/etc/mediawiki_read_tool.py
-      - ./tools/mediawiki_write_tool.py:/etc/mediawiki_write_tool.py
-      - ./tools/mediawiki_read_tool.json:/etc/mediawiki_read_tool.json
-      - ./tools/mediawiki_write_tool.json:/etc/mediawiki_write_tool.json
-      - ./tools/web_search.py:/etc/web_search.py
-      - ./tools/web_search.json:/etc/web_search.json
-      - ./tools/get_sources.py:/etc/get_sources.py
-      - ./tools/get_sources.json:/etc/get_sources.json
+      - ./tools:/etc/owui-tools:ro
+      - ./helpers/tools_import.py:/etc/tools_import.py:ro
       - ./functions/video_inject.py:/etc/video_inject.py
       - ./functions/video_inject.json:/etc/video_inject.json
       - ./functions/image_resizer.py:/etc/image_resizer.py

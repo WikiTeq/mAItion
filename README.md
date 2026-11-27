@@ -125,8 +125,8 @@ pre-configured with the values you have in the `.env` including the default chat
 Three components handle RAG service communication and web search integration:
 
 - **Filter function** (`functions/function.py`) — intercepts every user message and injects ROAT context automatically. Enabled globally via Admin Panel → Functions.
-- **Knowledge Base Search tool** (`tools/roat_retrieval.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. Both are automatically provisioned on first boot.
-- **Web Search Tool** (`tools/web_search.py`) — an optional Workspace Tool that lets the LLM search the web via the Tavily API. Enable with `TOOL_WEB_SEARCH_ENABLED=True` in `.env`, then either set `TOOL_WEB_SEARCH_API_KEY` to auto-configure the key on install, or set the `tavily_api_key` valve manually from Workspace → Tools.
+- **Knowledge Base Search tool** (`tools/roat_retrieval/tool.py`) — a Workspace Tool that lets the LLM decide when to query ROAT. Requires a model with native function calling support. It is imported on first boot when `TOOL_IMPORT_ROAT_RETRIEVAL=True`.
+- **Web Search Tool** (`tools/web_search/tool.py`) — an optional Workspace Tool that lets the LLM search the web via the Tavily API. Enable with `TOOL_IMPORT_WEB_SEARCH=True` in `.env`, then either set `TOOL_VALVE_WEB_SEARCH_TAVILY_API_KEY` to auto-configure the key on install, or set the `tavily_api_key` valve manually from Workspace → Tools.
 
 ## HTTPS with Caddy
 

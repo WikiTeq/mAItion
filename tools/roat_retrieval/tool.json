@@ -5,5 +5,25 @@
 	"meta": {
 		"description": "Searches the organizational knowledge base for internal documents, company processes, and domain-specific information. Use for questions about internal or organization-specific topics; skip for general knowledge questions.",
 		"manifest": {}
+	},
+	"valves": {
+		"rag_service_url": {
+			"type": "str"
+		},
+		"rag_service_api_key": {
+			"type": "str"
+		},
+		"rag_service_timeout": {
+			"type": "int"
+		},
+		"top_k": {
+			"type": "int"
+		},
+		"max_document_preview_chars": {
+			"type": "int"
+		},
+		"video_metadata_field": {
+			"type": "str"
+		}
 	}
 }

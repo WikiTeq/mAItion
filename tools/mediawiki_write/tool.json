@@ -1,0 +1,38 @@
+{
+    "id": "mediawiki_write",
+    "name": "MediaWiki Write Tool",
+    "content": "",
+    "meta": {
+        "description": "Create or update MediaWiki pages",
+        "manifest": {}
+    },
+    "valves": {
+        "wiki_url": {
+            "type": "str"
+        },
+        "username": {
+            "type": "str"
+        },
+        "password": {
+            "type": "str"
+        },
+        "timeout": {
+            "type": "int"
+        },
+        "edit_summary": {
+            "type": "str"
+        },
+        "verify_ssl": {
+            "type": "bool"
+        },
+        "resolve_ip": {
+            "type": "str"
+        },
+        "user_agent": {
+            "type": "str"
+        },
+        "headers": {
+            "type": "str"
+        }
+    }
+}
