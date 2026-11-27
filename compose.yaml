@@ -35,6 +35,7 @@ services:
       - ./models:/etc/owui-models:ro
       - ./helpers/entrypoint.sh:/custom-entrypoint.sh
       - ./helpers/healthz.py:/etc/healthz.py
+      - ./helpers/models_import.py:/etc/models_import.py:ro
       - ./patches:/etc/patches
       - ./static:/app/build/static:ro
       - ./static/favicon.png:/app/build/favicon.png:ro
