@@ -177,6 +177,8 @@ sources:
   #    sharepoint_folder_path: "Documents/Reports"
   #    sharepoint_type: "file"                   # "file" (default) or "page"
   #    recursive: true
+  #    #transcribe_videos: false                 # optional, default false, transcribe videos
+  #    #max_video_mb: 500                        # optional, default 500, largest video in MiB
   #    schedules: "${SHAREPOINT1_SCHEDULES}"
 
   #- type: "github"
