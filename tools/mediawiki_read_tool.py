@@ -627,35 +627,21 @@ class Tools:
                 target = page.redirects_to()
                 if target is not None:
                     page = target
-                result = site.api("parse", page=page.name, prop="text", redirects=True)
+                # Section edit links are UI chrome ("[edit | edit source]").
+                # The parser drops them when this flag is set, for every language
+                # and both the html and markdown formats.
+                result = site.api(
+                    "parse",
+                    page=page.name,
+                    prop="text",
+                    redirects=True,
+                    disableeditsection=True,
+                )
                 html = result["parse"]["text"]["*"]
                 if fmt == "markdown":
                     # Lazy import: only needed in markdown mode.
                     from markdownify import markdownify as md
 
-                    # Strip MediaWiki edit-section spans so "[edit]" links
-                    # don't leak into the markdown output.
-                    # HTML structure:
-                    #   <span class="mw-editsection">
-                    #     <span class="mw-editsection-bracket">[</span>
-                    #     <a ...>edit source</a>
-                    #     <span class="mw-editsection-bracket">]</span>
-                    #   </span>
-                    # The non-greedy regex stops at the FIRST </span>, so
-                    # remove inner brackets first — then the outer span has
-                    # no nested spans and matches correctly.
-                    html = re.sub(
-                        r'<span class="mw-editsection-bracket">.*?</span>',
-                        "",
-                        html,
-                        flags=re.DOTALL,
-                    )
-                    html = re.sub(
-                        r'<span class="mw-editsection">.*?</span>',
-                        "",
-                        html,
-                        flags=re.DOTALL,
-                    )
                     # Do NOT pass strip=["script", "style"] here: markdownify
                     # already drops <script>/<style> content via dedicated
                     # no-op converters, but explicitly stripping those tags
